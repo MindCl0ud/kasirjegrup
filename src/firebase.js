@@ -238,3 +238,17 @@ export const syncToSheets = async (gsUrl, users, products, transactions, stockLo
   });
   return r.ok;
 };
+
+// ── Attendance delete/clear ───────────────────────────────────
+export const fbDeleteAttendance = async (docId) => {
+  await deleteDoc(doc(_db, "attendance", docId));
+};
+
+export const fbClearAttendanceByDate = async (dateStr) => {
+  const snap = await getDocs(collection(_db, "attendance"));
+  const batch = writeBatch(_db);
+  snap.docs.forEach(d => {
+    if (d.data().date === dateStr) batch.delete(d.ref);
+  });
+  await batch.commit();
+};
