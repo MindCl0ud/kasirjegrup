@@ -59,7 +59,7 @@ const todayISO  = () => new Date().toISOString().slice(0,10);
 // ─────────────────────────────────────────────────────────────
 //  DESIGN TOKENS
 // ─────────────────────────────────────────────────────────────
-const C = {
+const DARK_C = {
   bg0:"#020817", bg1:"#060e1e", bg2:"#0a1628", bg3:"#0f1e36", bg4:"#152440",
   b0:"rgba(255,255,255,0.06)", b1:"rgba(255,255,255,0.1)", b2:"rgba(255,255,255,0.16)",
   t0:"#e8f4ff", t1:"#8aaac8", t2:"#4a6480", t3:"#253347",
@@ -71,15 +71,46 @@ const C = {
   cy:"#22d3ee", cy1:"rgba(34,211,238,0.12)",
   vi:"#a78bfa", vi1:"rgba(167,139,250,0.12)",
 };
+const LIGHT_C = {
+  bg0:"#e8edf2", bg1:"#f0f4f8", bg2:"#ffffff", bg3:"#f4f7fa", bg4:"#e2e8ef",
+  b0:"rgba(0,0,0,0.08)", b1:"rgba(0,0,0,0.12)", b2:"rgba(0,0,0,0.18)",
+  t0:"#0f172a", t1:"#334155", t2:"#64748b", t3:"#94a3b8",
+  g:"#059669", g1:"rgba(5,150,105,0.1)", g2:"rgba(5,150,105,0.05)",
+  a:"#b45309", a1:"rgba(180,83,9,0.1)",
+  r:"#e11d48", r1:"rgba(225,29,72,0.1)",
+  b:"#0284c7", b1:"rgba(2,132,199,0.1)",
+  p:"#be185d", p1:"rgba(190,24,93,0.1)",
+  cy:"#0e7490", cy1:"rgba(14,116,144,0.1)",
+  vi:"#6d28d9", vi1:"rgba(109,40,217,0.1)",
+};
+let C = { ...(localStorage.getItem("je_theme")==="light" ? LIGHT_C : DARK_C) };
 const F = { sans:"'Plus Jakarta Sans',system-ui,sans-serif", mono:"'JetBrains Mono',monospace" };
 
+
+// ─────────────────────────────────────────────────────────────
+//  EXCEL / CSV DOWNLOAD
+// ─────────────────────────────────────────────────────────────
+const downloadCSV = (rows, cols, filename) => {
+  const BOM = "\uFEFF";
+  const headers = cols.map(c => c.label);
+  const lines = rows.map(r => cols.map(col => {
+    let v = col.fn ? col.fn(r) : (r[col.key] ?? "");
+    v = String(v).replace(/"/g, '""');
+    return `"${v}"`;
+  }).join(","));
+  const csv = BOM + [headers.join(","), ...lines].join("\n");
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(new Blob([csv], {type:"text/csv;charset=utf-8"}));
+  a.download = filename + "_" + new Date().toLocaleDateString("id-ID").replace(/\//g,"-") + ".csv";
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+};
 // ─────────────────────────────────────────────────────────────
 //  GLOBAL CSS
 // ─────────────────────────────────────────────────────────────
-const CSS = `
+const makeCSS = () => `
   @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap');
   *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
-  :root{color-scheme:dark;--safe-b:env(safe-area-inset-bottom,0px);}
+  :root{color-scheme:${C===DARK_C||C.bg1==="rgb(6,14,30)"||C.bg0==="#020817"?"dark":"light"};--safe-b:env(safe-area-inset-bottom,0px);}
   html{height:100%;-webkit-tap-highlight-color:transparent;}
   body{font-family:${F.sans};background:${C.bg1};color:${C.t0};height:100%;
     -webkit-font-smoothing:antialiased;overscroll-behavior:none;}
@@ -103,12 +134,13 @@ const CSS = `
   .press{transition:transform .1s;}
   .press:active{transform:scale(.96);}
   .hrow:hover{background:${C.bg4}!important;}
+  .hrow{transition:background .1s;}
   .mn{font-family:${F.mono};font-variant-numeric:tabular-nums;}
   .atab{padding:10px 14px;background:transparent;border:none;border-bottom:2px solid transparent;
     color:${C.t2};font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap;
-    letter-spacing:.2px;transition:.15s;font-family:${F.sans};}
-  .atab.on{border-bottom-color:${C.g};color:${C.g};}
-  .atab:hover:not(.on){color:${C.t0};}
+    letter-spacing:.2px;transition:.15s;font-family:${F.sans};border-top:1px solid ${C.b0};}
+  .atab.on{border-bottom-color:${C.g};color:${C.g};background:${C.g2};}
+  .atab:hover:not(.on){color:${C.t0};background:${C.bg3};}
   @media(max-width:640px){
     .hide-mobile{display:none!important;}
     .atab{padding:8px 10px;font-size:11px;}
@@ -262,7 +294,7 @@ function THead({cols}) {
 // ─────────────────────────────────────────────────────────────
 //  HEADER
 // ─────────────────────────────────────────────────────────────
-function Header({title,biz,user,onLogout,onSwitchBiz,onAbsenPulang,hasCheckedIn,online}) {
+function Header({title,biz,user,onLogout,onSwitchBiz,onAbsenPulang,hasCheckedIn,online,onToggleTheme,isDark}) {
   const b = BIZ[biz];
   return <header style={{background:`${C.bg2}ee`,backdropFilter:"blur(20px)",WebkitBackdropFilter:"blur(20px)",
     borderBottom:`1px solid ${C.b0}`,padding:"0 12px",height:52,
@@ -302,6 +334,11 @@ function Header({title,biz,user,onLogout,onSwitchBiz,onAbsenPulang,hasCheckedIn,
           overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{user?.name?.split(" ")[0]}</span>
         <div className="hide-mobile"><RoleTag role={user?.role}/></div>
       </div>
+      {onToggleTheme&&<button onClick={onToggleTheme} className="press" title={isDark?"Mode Terang":"Mode Gelap"}
+        style={{padding:"5px 9px",background:C.bg3,border:`1px solid ${C.b1}`,
+          borderRadius:8,color:C.t2,fontSize:13,lineHeight:1}}>
+        {isDark?"☀️":"🌙"}
+      </button>}
       <button onClick={onLogout} className="press" style={{padding:"5px 9px",background:C.bg3,
         border:`1px solid ${C.b1}`,borderRadius:8,color:C.t2,fontSize:11,fontWeight:600}}>Keluar</button>
     </div>
@@ -590,6 +627,16 @@ export default function App() {
   const [fbSetup,  setFbSetup]  = useState(false);
   const [fbLoad,   setFbLoad]   = useState(true);
 
+  // ─── Theme ───
+  const [isDark, setIsDark] = useState(() => localStorage.getItem("je_theme") !== "light");
+  const toggleTheme = () => {
+    const next = !isDark;
+    Object.assign(C, next ? DARK_C : LIGHT_C);
+    CSS = makeCSS();
+    localStorage.setItem("je_theme", next ? "dark" : "light");
+    setIsDark(next);
+  };
+
   // ─── Online ───
   const [online, setOnline] = useState(navigator.onLine);
   useEffect(()=>{
@@ -733,6 +780,8 @@ export default function App() {
 
   // ─── Admin state ───
   const [adminTab, setAdminTab] = useState("dashboard");
+  const [adminScanQ, setAdminScanQ] = useState("");
+  const adminScanRef = useRef(null);
   const [adminBiz, setAdminBiz] = useState("JS_CLOTHING");
   const [searchQ,  setSearchQ]  = useState("");
   const [reportBiz,setReportBiz]= useState("ALL");
@@ -942,6 +991,9 @@ export default function App() {
   // ─────────────────────────────────
   //  RENDER: Loading
   // ─────────────────────────────────
+  // Sync CSS on render
+  CSS = makeCSS();
+
   if(fbLoad) return <div style={{fontFamily:F.sans,background:C.bg1,color:C.t0,height:"100vh",
     display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:14}}>
     <style>{CSS}</style>
@@ -1043,11 +1095,17 @@ export default function App() {
         </div>
       </Card>
 
-      <button onClick={()=>{clearConfig();setFbReady(false);setFbSetup(true);}}
-        style={{display:"block",margin:"12px auto 0",background:"transparent",border:"none",
-          color:C.t3,cursor:"pointer",fontSize:11,textDecoration:"underline"}}>
-        Ganti Firebase Project
-      </button>
+      <div style={{display:"flex",justifyContent:"center",gap:12,marginTop:10}}>
+        <button onClick={()=>{clearConfig();setFbReady(false);setFbSetup(true);}}
+          style={{background:"transparent",border:"none",color:C.t3,cursor:"pointer",fontSize:11,textDecoration:"underline"}}>
+          Ganti Firebase Project
+        </button>
+        <button onClick={toggleTheme} className="press"
+          style={{background:C.bg2,border:`1px solid ${C.b1}`,borderRadius:20,
+            padding:"4px 14px",color:C.t1,fontSize:12,fontWeight:600}}>
+          {isDark?"☀️ Mode Terang":"🌙 Mode Gelap"}
+        </button>
+      </div>
     </div>
   </div>;
 
@@ -1104,7 +1162,7 @@ export default function App() {
       <style>{CSS}</style><Toast n={notif}/>
       <Header biz={biz} user={user} online={online} onLogout={doLogout}
         onSwitchBiz={user?.access?.length>1?()=>{setCart([]);setScreen("bizselect");}:null}
-        onAbsenPulang={handlePulang} hasCheckedIn={hasCheckedIn}/>
+        onAbsenPulang={handlePulang} hasCheckedIn={hasCheckedIn} onToggleTheme={toggleTheme} isDark={isDark}/>
 
       {/* Receipt bottom sheet */}
       {receipt&&<div style={{position:"fixed",inset:0,background:"rgba(2,8,24,.85)",zIndex:500,
@@ -1270,7 +1328,7 @@ export default function App() {
       <style>{CSS}</style><Toast n={notif}/>
       <Header biz={biz} user={user} online={online} onLogout={doLogout}
         onSwitchBiz={user?.access?.length>1?()=>{setStokTarget(null);setScreen("bizselect");}:null}
-        onAbsenPulang={handlePulang} hasCheckedIn={hasCheckedIn}/>
+        onAbsenPulang={handlePulang} hasCheckedIn={hasCheckedIn} onToggleTheme={toggleTheme} isDark={isDark}/>
 
       <div style={{flex:1,overflowY:"auto",padding:10,display:"flex",flexDirection:"column",gap:10,minHeight:0}}>
         {/* Scan */}
@@ -1412,7 +1470,7 @@ export default function App() {
 
     return <div style={{fontFamily:F.sans,background:C.bg1,color:C.t0,height:"100vh",display:"flex",flexDirection:"column"}}>
       <style>{CSS}</style><Toast n={notif}/>
-      <Header title="Admin Panel" user={user} online={online} onLogout={doLogout}/>
+      <Header title="Admin Panel" user={user} online={online} onLogout={doLogout} onToggleTheme={toggleTheme} isDark={isDark}/>
 
       {/* Tab bar */}
       <div style={{background:C.bg2,borderBottom:`1px solid ${C.b0}`,
@@ -1583,8 +1641,43 @@ export default function App() {
                   border:`2px solid ${active?(isJ?C.b:C.p):C.b0}`,color:active?(isJ?C.b:C.p):C.t2,fontFamily:F.sans}}>
                 {b2.icon} {b2.name}</button>;})}
             <input value={searchQ} onChange={e=>setSearchQ(e.target.value)} placeholder="Cari produk..."
-              style={{marginLeft:"auto",padding:"7px 11px",background:C.bg2,border:`1px solid ${C.b0}`,borderRadius:8,color:C.t0,fontSize:12,width:160,fontFamily:F.sans}}/>
+              style={{padding:"7px 11px",background:C.bg2,border:`1px solid ${C.b0}`,borderRadius:8,color:C.t0,fontSize:12,width:140,fontFamily:F.sans}}/>
+            <button onClick={()=>downloadCSV(adminPs,[
+              {key:"barcode",label:"Barcode"},{key:"name",label:"Nama Produk"},
+              {key:"category",label:"Kategori"},{key:"hpp",label:"HPP",fn:r=>r.hpp||0},
+              {key:"price",label:"Harga Jual"},{key:"stock",label:"Stok"},
+              {key:"business",label:"Bisnis",fn:r=>BIZ[r.business]?.name||r.business},
+              {key:"margin",label:"Margin %",fn:r=>r.price>0?(((r.price-(r.hpp||0))/r.price)*100).toFixed(1)+"%":"0%"},
+            ],"produk_"+adminBiz)} className="press"
+              style={{padding:"7px 12px",background:C.g1,border:`1px solid ${C.g}33`,borderRadius:8,
+                color:C.g,fontSize:12,fontWeight:700,fontFamily:F.sans}}>
+              ⬇ Excel
+            </button>
             <Btn onClick={openAddP} size="sm">+ Tambah</Btn>
+          </div>
+          {/* Scan barcode di produk admin */}
+          <div style={{display:"flex",gap:8,alignItems:"center",padding:"10px 14px",
+            background:C.bg2,borderRadius:12,border:`1px solid ${C.b0}`}}>
+            <span style={{fontSize:12,color:C.t2,fontWeight:600,whiteSpace:"nowrap"}}>🔍 Scan/Cari:</span>
+            <input ref={adminScanRef} value={adminScanQ} onChange={e=>setAdminScanQ(e.target.value)}
+              onKeyDown={e=>{
+                if(e.key==="Enter"){
+                  const bc=adminScanQ.trim();
+                  const found=prods.find(p=>p.barcode===bc&&p.business===adminBiz)||prods.find(p=>p.name.toLowerCase().includes(bc.toLowerCase())&&p.business===adminBiz);
+                  if(found){openEditP(found);setAdminScanQ("");}
+                  else toast("Produk tidak ditemukan: "+bc,"warn");
+                }
+              }}
+              placeholder="Scan barcode atau ketik nama → Enter untuk edit..."
+              style={{flex:1,padding:"10px 12px",background:C.bg3,border:`1.5px solid ${C.b1}`,
+                borderRadius:9,color:C.t0,fontSize:13,fontFamily:F.mono}}/>
+            <button onClick={()=>{
+              const bc=adminScanQ.trim();
+              const found=prods.find(p=>p.barcode===bc&&p.business===adminBiz)||prods.find(p=>p.name.toLowerCase().includes(bc.toLowerCase())&&p.business===adminBiz);
+              if(found){openEditP(found);setAdminScanQ("");}
+              else toast("Tidak ditemukan: "+bc,"warn");
+            }} className="press" style={{padding:"10px 14px",background:C.b,border:"none",borderRadius:9,
+              color:"#fff",fontWeight:700,fontSize:12,flexShrink:0}}>Cari</button>
           </div>
 
           {pModal&&<Card accent={C.g} style={{padding:16}}>
@@ -1652,10 +1745,32 @@ export default function App() {
         {adminTab==="laporan"&&<div style={{display:"flex",flexDirection:"column",gap:10}}>
           {/* Filter */}
           <div style={{display:"flex",gap:7,alignItems:"center",flexWrap:"wrap"}}>
-            <div>
+            <div style={{flex:1}}>
               <h2 style={{fontSize:15,fontWeight:800}}>Laporan Keuangan</h2>
               <p style={{fontSize:11.5,color:C.t2,marginTop:2}}>Analisis pendapatan, HPP & laba per periode</p>
             </div>
+            <button onClick={()=>downloadCSV(filtTrx,[
+              {key:"id",label:"ID Transaksi"},{key:"date",label:"Tanggal"},
+              {key:"kasir",label:"Kasir"},{key:"business",label:"Bisnis",fn:r=>BIZ[r.business]?.name||r.business},
+              {key:"total",label:"Total (Rp)"},{key:"totalHpp",label:"HPP (Rp)",fn:r=>r.totalHpp||0},
+              {key:"profit",label:"Laba (Rp)",fn:r=>r.profit||0},
+              {key:"margin",label:"Margin %",fn:r=>r.total>0?(((r.profit||0)/r.total)*100).toFixed(1)+"%":"0%"},
+              {key:"items",label:"Jumlah Item",fn:r=>r.items?.length||0},
+            ],"laporan_keuangan")} className="press"
+              style={{padding:"8px 14px",background:C.g1,border:`1px solid ${C.g}33`,borderRadius:9,
+                color:C.g,fontSize:12,fontWeight:700,fontFamily:F.sans}}>
+              ⬇ Excel Transaksi
+            </button>
+            <button onClick={()=>downloadCSV(prodPerf,[
+              {key:"barcode",label:"Barcode"},{key:"name",label:"Nama Produk"},
+              {key:"qty",label:"Qty Terjual"},{key:"rev",label:"Pendapatan (Rp)"},
+              {key:"hpp",label:"HPP (Rp)"},{key:"laba",label:"Laba (Rp)",fn:r=>r.rev-r.hpp},
+              {key:"margin",label:"Margin %",fn:r=>r.rev>0?(((r.rev-r.hpp)/r.rev)*100).toFixed(1)+"%":"0%"},
+            ],"laporan_produk")} className="press"
+              style={{padding:"8px 14px",background:C.cy1,border:`1px solid ${C.cy}33`,borderRadius:9,
+                color:C.cy,fontSize:12,fontWeight:700,fontFamily:F.sans}}>
+              ⬇ Excel Produk
+            </button>
           </div>
           <div style={{display:"flex",gap:7,flexWrap:"wrap",alignItems:"center"}}>
             {/* Bisnis filter */}
@@ -1680,7 +1795,7 @@ export default function App() {
             <Stat icon="📦" label="Total HPP / Modal" value={rp(totalHppAll)} color={C.a}/>
             <Stat icon="📈" label="Laba Kotor" value={rp(grossProfit)} color={C.cy}/>
             <Stat icon="🎯" label="Margin Laba" value={margin} color={C.b}
-              sub={`Rata-rata per trx: ${filtTrx.length?rp(Math.floor(totalRev/filtTrx.length)):rp(0)}`}/>
+              sub={`Laba: ${rp(grossProfit)} | Avg/trx: ${filtTrx.length?rp(Math.floor(totalRev/filtTrx.length)):rp(0)}`}/>
           </div>
 
           {/* Pie per bisnis */}
@@ -1740,8 +1855,9 @@ export default function App() {
               </table>
               <div style={{padding:"14px 13px",borderTop:`1px solid ${C.b0}`,display:"flex",gap:16,fontSize:11,flexWrap:"wrap"}}>
                 <span style={{color:C.t2}}>Pendapatan: <b className="mn" style={{color:C.g}}>{rp(totalRev)}</b></span>
+                <span style={{color:C.t2}}>HPP: <b className="mn" style={{color:C.a}}>{rp(totalHppAll)}</b></span>
                 <span style={{color:C.t2}}>Laba: <b className="mn" style={{color:C.cy}}>{rp(grossProfit)}</b></span>
-                <span style={{color:C.t2}}>Margin: <b className="mn" style={{color:C.b}}>{margin}</b></span>
+                <span style={{color:C.t2}}>Margin: <b className="mn" style={{color:C.b}}>{margin}</b> <span className="mn" style={{color:C.cy}}>({rp(grossProfit)})</span></span>
               </div>
             </div>
           </Card>}
@@ -1774,6 +1890,21 @@ export default function App() {
         {adminTab==="absensi"&&<div style={{display:"flex",flexDirection:"column",gap:10}}>
           <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",flexWrap:"wrap",gap:8}}>
             <h2 style={{fontSize:15,fontWeight:800}}>Laporan Absensi</h2>
+            <div style={{display:"flex",gap:7,flexWrap:"wrap"}}>
+            <button onClick={()=>downloadCSV(attFiltered.sort((a,b)=>{try{return new Date(b.checkInISO||b.checkIn)-new Date(a.checkInISO||a.checkIn);}catch{return 0;}}),[
+              {key:"date",label:"Tanggal"},{key:"name",label:"Nama Pegawai"},
+              {key:"role",label:"Role"},{key:"business",label:"Bisnis",fn:r=>BIZ[r.business]?.name||r.business},
+              {key:"checkIn",label:"Jam Masuk"},{key:"checkOut",label:"Jam Pulang",fn:r=>r.checkOut||"-"},
+              {key:"durasi",label:"Durasi",fn:r=>{
+                const ci=r.checkInISO||r.checkIn,co=r.checkOutISO||r.checkOut;
+                if(!ci||!co) return "-";
+                try{const ms=new Date(co)-new Date(ci);return Math.floor(ms/3600000)+"j "+Math.floor((ms%3600000)/60000)+"m";}catch{return "-";}
+              }},
+            ],"absensi")} className="press"
+              style={{padding:"7px 14px",background:C.g1,border:`1px solid ${C.g}33`,borderRadius:8,
+                color:C.g,fontSize:12,fontWeight:700,fontFamily:F.sans}}>
+              ⬇ Excel
+            </button>
             <button onClick={async()=>{
               if(!window.confirm("Reset semua absensi hari ini? Data akan dihapus permanen.")) return;
               await fbClearAttendanceByDate(todayDate()).catch(()=>{});
@@ -1782,6 +1913,7 @@ export default function App() {
               borderRadius:9,color:C.r,fontSize:12,fontWeight:700,fontFamily:F.sans}}>
               🗑 Reset Absensi Hari Ini
             </button>
+            </div>
           </div>
 
           {/* Filter */}
@@ -1872,7 +2004,20 @@ export default function App() {
 
         {/* ── LOG STOK ── */}
         {adminTab==="stoklog"&&<div style={{display:"flex",flexDirection:"column",gap:10}}>
-          <h2 style={{fontSize:15,fontWeight:800}}>Log Stok <span style={{color:C.t2,fontWeight:500,fontSize:13}}>({slogs.length})</span></h2>
+          <div style={{display:"flex",alignItems:"center",gap:8,flexWrap:"wrap"}}>
+            <h2 style={{fontSize:15,fontWeight:800,flex:1}}>Log Stok <span style={{color:C.t2,fontWeight:500,fontSize:13}}>({slogs.length})</span></h2>
+            <button onClick={()=>downloadCSV(slogs,[
+              {key:"date",label:"Waktu"},{key:"barcode",label:"Barcode"},
+              {key:"name",label:"Nama Produk"},{key:"business",label:"Bisnis",fn:r=>BIZ[r.business]?.name||r.business},
+              {key:"type",label:"Tipe"},{key:"qty",label:"Qty"},
+              {key:"before",label:"Stok Sebelum"},{key:"after",label:"Stok Sesudah"},
+              {key:"by",label:"Oleh"},
+            ],"log_stok")} className="press"
+              style={{padding:"7px 14px",background:C.g1,border:`1px solid ${C.g}33`,borderRadius:8,
+                color:C.g,fontSize:12,fontWeight:700,fontFamily:F.sans}}>
+              ⬇ Excel
+            </button>
+          </div>
           {slogs.length===0
             ?<div style={{textAlign:"center",padding:"48px",color:C.t3}}><div style={{fontSize:40,opacity:.08,marginBottom:10}}>📋</div><p>Belum ada log</p></div>
             :<Card noPad style={{overflow:"hidden"}}>
