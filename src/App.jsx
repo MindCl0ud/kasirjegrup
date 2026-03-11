@@ -892,17 +892,23 @@ export default function App() {
   };
 
   // ─── Reports computation ───
+  const parseD = str => { try{ return new Date(str.replace(/(\d+)\/(\d+)\/(\d+),/,"$3-$2-$1 ")); }catch{ return null; } };
+
   const getDateFilter=(trxs)=>{
-    if(reportRange==="all") return trxs;
     const now=new Date();
     return trxs.filter(t=>{
-      try{
-        const d=new Date(t.date.replace(/(\d+)\/(\d+)\/(\d+),/,"$3-$2-$1 "));
-        if(reportRange==="today") return d.toDateString()===now.toDateString();
-        if(reportRange==="week"){const w=new Date(now);w.setDate(w.getDate()-7);return d>=w;}
-        if(reportRange==="month") return d.getMonth()===now.getMonth()&&d.getFullYear()===now.getFullYear();
+      const d=parseD(t.date); if(!d) return true;
+      if(reportRange==="today") return d.toDateString()===now.toDateString();
+      if(reportRange==="week"){const w=new Date(now);w.setDate(w.getDate()-7);return d>=w;}
+      if(reportRange==="month") return d.getMonth()===now.getMonth()&&d.getFullYear()===now.getFullYear();
+      if(reportRange==="custom"){
+        const from=lapFrom?new Date(lapFrom):null;
+        const to=lapTo?new Date(lapTo+"T23:59:59"):null;
+        if(from&&d<from) return false;
+        if(to&&d>to) return false;
         return true;
-      }catch{return true;}
+      }
+      return true; // "all"
     });
   };
   const filtTrx=getDateFilter(trxs.filter(t=>reportBiz==="ALL"||t.business===reportBiz));
@@ -942,21 +948,45 @@ export default function App() {
   // ─── Attendance report per pegawai ───
   const [selUser,setSelUser]=useState("ALL");
   const [selMonth,setSelMonth]=useState(new Date().toISOString().slice(0,7));
+
+  // ─── Log stok filter ───
+  const [slogRange,setSlogRange]=useState("all");
+  const [slogBiz,setSlogBiz]=useState("ALL");
+  const [slogFrom,setSlogFrom]=useState("");
+  const [slogTo,setSlogTo]=useState("");
+  const [slogType,setSlogType]=useState("ALL");
+
+  // ─── Absensi range ───
+  const [attRange,setAttRange]=useState("month");
+  const [attFrom,setAttFrom]=useState("");
+  const [attTo,setAttTo]=useState("");
+
+  // ─── Laporan custom range ───
+  const [lapFrom,setLapFrom]=useState("");
+  const [lapTo,setLapTo]=useState("");
   const [selY,selM]=(selMonth+"-01").split("-").map(Number);
 
   const attFiltered=attend.filter(a=>{
     const matchUser=selUser==="ALL"||String(a.userId)===String(selUser);
-    let matchMonth=true;
-    // prefer ISO field, fallback to date string prefix
+    // month filter (used for summary table)
     const isoSrc = a.checkInISO||a.dateISO||"";
-    if(isoSrc){
-      const [y,m]=isoSrc.split("-").map(Number);
-      matchMonth=y===selY&&m===selM;
-    } else {
-      // fallback: try parsing locale date
-      try{const d=new Date(a.checkIn);matchMonth=d.getFullYear()===selY&&d.getMonth()+1===selM;}catch{}
+    let matchMonth=true;
+    if(isoSrc){const [y,m]=isoSrc.split("-").map(Number);matchMonth=y===selY&&m===selM;}
+    else{try{const d=new Date(a.checkIn);matchMonth=d.getFullYear()===selY&&d.getMonth()+1===selM;}catch{}}
+    // range filter (used for detail table)
+    const aDate = isoSrc?new Date(isoSrc):null;
+    const now2=new Date();
+    let matchRange=true;
+    if(attRange==="today") matchRange=aDate?aDate.toDateString()===now2.toDateString():matchMonth;
+    else if(attRange==="week"){const w=new Date(now2);w.setDate(w.getDate()-7);matchRange=aDate?aDate>=w:matchMonth;}
+    else if(attRange==="month") matchRange=matchMonth;
+    else if(attRange==="custom"){
+      const from=attFrom?new Date(attFrom):null;
+      const to=attTo?new Date(attTo+"T23:59:59"):null;
+      if(from&&aDate&&aDate<from) matchRange=false;
+      else if(to&&aDate&&aDate>to) matchRange=false;
     }
-    return matchUser&&matchMonth;
+    return matchUser&&matchRange;
   });
 
   // Summary per user for selected month
@@ -1781,11 +1811,18 @@ export default function App() {
                 color:reportBiz===b2?(b2==="JB_STORE"?C.p:b2==="JS_CLOTHING"?C.b:C.g):C.t2,fontFamily:F.sans}}>
               {b2==="ALL"?"Semua":BIZ[b2]?.name}</button>)}
             {/* Range filter */}
-            {[["all","Semua"],["today","Hari Ini"],["week","7 Hari"],["month","Bulan Ini"]].map(([v,l])=><button key={v}
+            {[["all","Semua"],["today","Hari Ini"],["week","7 Hari"],["month","Bulan Ini"],["custom","Rentang"]].map(([v,l])=><button key={v}
               onClick={()=>setReportRange(v)} className="press"
               style={{padding:"6px 12px",borderRadius:8,fontSize:11.5,fontWeight:600,cursor:"pointer",
                 background:reportRange===v?C.g1:"transparent",border:`1.5px solid ${reportRange===v?C.g:C.b0}`,
                 color:reportRange===v?C.g:C.t2,fontFamily:F.sans}}>{l}</button>)}
+            {reportRange==="custom"&&<div style={{display:"flex",gap:6,alignItems:"center",flexWrap:"wrap"}}>
+              <input type="date" value={lapFrom} onChange={e=>setLapFrom(e.target.value)}
+                style={{padding:"6px 10px",background:C.bg3,border:`1.5px solid ${C.b1}`,borderRadius:8,color:C.t0,fontSize:12,fontFamily:F.sans}}/>
+              <span style={{color:C.t2,fontSize:12}}>s/d</span>
+              <input type="date" value={lapTo} onChange={e=>setLapTo(e.target.value)}
+                style={{padding:"6px 10px",background:C.bg3,border:`1.5px solid ${C.b1}`,borderRadius:8,color:C.t0,fontSize:12,fontFamily:F.sans}}/>
+            </div>}
           </div>
 
           {/* KPI cards */}
@@ -1918,7 +1955,7 @@ export default function App() {
 
           {/* Filter */}
           <Card style={{padding:"12px 14px"}}>
-            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,alignItems:"end"}}>
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,alignItems:"end",marginBottom:10}}>
               <div>
                 <div style={{fontSize:9.5,fontWeight:700,color:C.t2,textTransform:"uppercase",letterSpacing:.5,marginBottom:5}}>Filter Pegawai</div>
                 <select value={selUser} onChange={e=>setSelUser(e.target.value)}
@@ -1929,10 +1966,29 @@ export default function App() {
                 </select>
               </div>
               <div>
-                <div style={{fontSize:9.5,fontWeight:700,color:C.t2,textTransform:"uppercase",letterSpacing:.5,marginBottom:5}}>Bulan</div>
+                <div style={{fontSize:9.5,fontWeight:700,color:C.t2,textTransform:"uppercase",letterSpacing:.5,marginBottom:5}}>Bulan (Ringkasan)</div>
                 <input type="month" value={selMonth} onChange={e=>setSelMonth(e.target.value)}
                   style={{width:"100%",padding:"10px 12px",background:C.bg3,border:`1.5px solid ${C.b0}`,
                     borderRadius:10,color:C.t0,fontSize:13,cursor:"pointer",fontFamily:F.sans}}/>
+              </div>
+            </div>
+            {/* Quick range for detail */}
+            <div style={{borderTop:`1px solid ${C.b0}`,paddingTop:10}}>
+              <div style={{fontSize:9.5,fontWeight:700,color:C.t2,textTransform:"uppercase",letterSpacing:.5,marginBottom:8}}>Rentang Detail Absensi</div>
+              <div style={{display:"flex",gap:7,flexWrap:"wrap",alignItems:"center"}}>
+                {[["all","Semua"],["today","Hari Ini"],["week","7 Hari"],["month","Bulan Ini"],["custom","Rentang"]].map(([v,l])=>(
+                  <button key={v} onClick={()=>setAttRange(v)} className="press"
+                    style={{padding:"5px 11px",borderRadius:7,fontSize:11.5,fontWeight:600,cursor:"pointer",
+                      background:attRange===v?C.b1:"transparent",border:`1.5px solid ${attRange===v?C.b:C.b0}`,
+                      color:attRange===v?C.b:C.t2,fontFamily:F.sans}}>{l}</button>
+                ))}
+                {attRange==="custom"&&<div style={{display:"flex",gap:6,alignItems:"center",flexWrap:"wrap"}}>
+                  <input type="date" value={attFrom} onChange={e=>setAttFrom(e.target.value)}
+                    style={{padding:"5px 9px",background:C.bg3,border:`1.5px solid ${C.b1}`,borderRadius:8,color:C.t0,fontSize:12,fontFamily:F.sans}}/>
+                  <span style={{color:C.t2,fontSize:12}}>s/d</span>
+                  <input type="date" value={attTo} onChange={e=>setAttTo(e.target.value)}
+                    style={{padding:"5px 9px",background:C.bg3,border:`1.5px solid ${C.b1}`,borderRadius:8,color:C.t0,fontSize:12,fontFamily:F.sans}}/>
+                </div>}
               </div>
             </div>
           </Card>
@@ -2003,10 +2059,32 @@ export default function App() {
         </div>}
 
         {/* ── LOG STOK ── */}
-        {adminTab==="stoklog"&&<div style={{display:"flex",flexDirection:"column",gap:10}}>
+        {adminTab==="stoklog"&&(()=>{
+          const now3=new Date();
+          const slogsFiltered=slogs.filter(l=>{
+            const matchBiz=slogBiz==="ALL"||l.business===slogBiz;
+            const matchType=slogType==="ALL"||l.type===slogType;
+            let matchDate=true;
+            if(slogRange!=="all"){
+              try{
+                const d=new Date(l.date.replace(/(\d+)\/(\d+)\/(\d+),/,"$3-$2-$1 "));
+                if(slogRange==="today") matchDate=d.toDateString()===now3.toDateString();
+                else if(slogRange==="week"){const w=new Date(now3);w.setDate(w.getDate()-7);matchDate=d>=w;}
+                else if(slogRange==="month") matchDate=d.getMonth()===now3.getMonth()&&d.getFullYear()===now3.getFullYear();
+                else if(slogRange==="custom"){
+                  const from=slogFrom?new Date(slogFrom):null;
+                  const to=slogTo?new Date(slogTo+"T23:59:59"):null;
+                  if(from&&d<from) matchDate=false;
+                  if(to&&d>to) matchDate=false;
+                }
+              }catch{}
+            }
+            return matchBiz&&matchType&&matchDate;
+          });
+          return <div style={{display:"flex",flexDirection:"column",gap:10}}>
           <div style={{display:"flex",alignItems:"center",gap:8,flexWrap:"wrap"}}>
-            <h2 style={{fontSize:15,fontWeight:800,flex:1}}>Log Stok <span style={{color:C.t2,fontWeight:500,fontSize:13}}>({slogs.length})</span></h2>
-            <button onClick={()=>downloadCSV(slogs,[
+            <h2 style={{fontSize:15,fontWeight:800,flex:1}}>Log Stok <span style={{color:C.t2,fontWeight:500,fontSize:13}}>({slogsFiltered.length}/{slogs.length})</span></h2>
+            <button onClick={()=>downloadCSV(slogsFiltered,[
               {key:"date",label:"Waktu"},{key:"barcode",label:"Barcode"},
               {key:"name",label:"Nama Produk"},{key:"business",label:"Bisnis",fn:r=>BIZ[r.business]?.name||r.business},
               {key:"type",label:"Tipe"},{key:"qty",label:"Qty"},
@@ -2018,13 +2096,48 @@ export default function App() {
               ⬇ Excel
             </button>
           </div>
-          {slogs.length===0
-            ?<div style={{textAlign:"center",padding:"48px",color:C.t3}}><div style={{fontSize:40,opacity:.08,marginBottom:10}}>📋</div><p>Belum ada log</p></div>
+          {/* Filter bar */}
+          <Card style={{padding:"12px 14px"}}>
+            <div style={{display:"flex",gap:7,flexWrap:"wrap",alignItems:"center"}}>
+              {/* Bisnis */}
+              {["ALL","JS_CLOTHING","JB_STORE"].map(b2=><button key={b2} onClick={()=>setSlogBiz(b2)} className="press"
+                style={{padding:"5px 11px",borderRadius:7,fontSize:11.5,fontWeight:600,cursor:"pointer",
+                  background:slogBiz===b2?(b2==="JB_STORE"?C.p1:b2==="JS_CLOTHING"?C.b1:C.g1):"transparent",
+                  border:`1.5px solid ${slogBiz===b2?(b2==="JB_STORE"?C.p:b2==="JS_CLOTHING"?C.b:C.g):C.b0}`,
+                  color:slogBiz===b2?(b2==="JB_STORE"?C.p:b2==="JS_CLOTHING"?C.b:C.g):C.t2,fontFamily:F.sans}}>
+                {b2==="ALL"?"Semua Bisnis":BIZ[b2]?.name}</button>)}
+              <div style={{width:1,height:20,background:C.b0,margin:"0 2px"}}/>
+              {/* Tipe */}
+              {["ALL","masuk","keluar"].map(t=><button key={t} onClick={()=>setSlogType(t)} className="press"
+                style={{padding:"5px 11px",borderRadius:7,fontSize:11.5,fontWeight:600,cursor:"pointer",
+                  background:slogType===t?(t==="masuk"?C.g1:t==="keluar"?C.r1:C.a1):"transparent",
+                  border:`1.5px solid ${slogType===t?(t==="masuk"?C.g:t==="keluar"?C.r:C.a):C.b0}`,
+                  color:slogType===t?(t==="masuk"?C.g:t==="keluar"?C.r:C.a):C.t2,fontFamily:F.sans}}>
+                {t==="ALL"?"Semua Tipe":t==="masuk"?"↑ Masuk":"↓ Keluar"}</button>)}
+              <div style={{width:1,height:20,background:C.b0,margin:"0 2px"}}/>
+              {/* Range */}
+              {[["all","Semua"],["today","Hari Ini"],["week","7 Hari"],["month","Bulan Ini"],["custom","Rentang"]].map(([v,l])=>(
+                <button key={v} onClick={()=>setSlogRange(v)} className="press"
+                  style={{padding:"5px 11px",borderRadius:7,fontSize:11.5,fontWeight:600,cursor:"pointer",
+                    background:slogRange===v?C.g1:"transparent",border:`1.5px solid ${slogRange===v?C.g:C.b0}`,
+                    color:slogRange===v?C.g:C.t2,fontFamily:F.sans}}>{l}</button>
+              ))}
+              {slogRange==="custom"&&<div style={{display:"flex",gap:6,alignItems:"center",flexWrap:"wrap"}}>
+                <input type="date" value={slogFrom} onChange={e=>setSlogFrom(e.target.value)}
+                  style={{padding:"5px 9px",background:C.bg3,border:`1.5px solid ${C.b1}`,borderRadius:8,color:C.t0,fontSize:12,fontFamily:F.sans}}/>
+                <span style={{color:C.t2,fontSize:12}}>s/d</span>
+                <input type="date" value={slogTo} onChange={e=>setSlogTo(e.target.value)}
+                  style={{padding:"5px 9px",background:C.bg3,border:`1.5px solid ${C.b1}`,borderRadius:8,color:C.t0,fontSize:12,fontFamily:F.sans}}/>
+              </div>}
+            </div>
+          </Card>
+          {slogsFiltered.length===0
+            ?<div style={{textAlign:"center",padding:"48px",color:C.t3}}><div style={{fontSize:40,opacity:.08,marginBottom:10}}>📋</div><p>Tidak ada data untuk filter ini</p></div>
             :<Card noPad style={{overflow:"hidden"}}>
               <div style={{overflowX:"auto"}}>
                 <table style={{width:"100%",borderCollapse:"collapse",fontSize:11.5,minWidth:540}}>
                   <THead cols={["Waktu","Produk","Bisnis","Tipe","Qty","Sblm","Ssdh","Oleh"]}/>
-                  <tbody>{slogs.map((l,i)=><tr key={l.id||i} className="hrow" style={{borderTop:`1px solid ${C.b0}`,background:i%2===0?"transparent":C.bg0}}>
+                  <tbody>{slogsFiltered.map((l,i)=><tr key={l.id||i} className="hrow" style={{borderTop:`1px solid ${C.b0}`,background:i%2===0?"transparent":C.bg0}}>
                     <td style={{padding:"14px 13px",color:C.t2,fontSize:10,whiteSpace:"nowrap"}}>{l.date}</td>
                     <td style={{padding:"14px 13px",fontWeight:500,fontSize:12}}>{l.name}<div className="mn" style={{fontSize:9,color:C.t3}}>{l.barcode}</div></td>
                     <td style={{padding:"14px 13px"}}><BizChip biz={l.business} sm/></td>
@@ -2040,7 +2153,7 @@ export default function App() {
                 </table>
               </div>
             </Card>}
-        </div>}
+        </div>;})()}
 
         {/* ── GOOGLE SHEETS ── */}
         {adminTab==="sheets"&&<div style={{maxWidth:640,display:"flex",flexDirection:"column",gap:10}}>
