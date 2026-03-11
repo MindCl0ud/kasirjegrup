@@ -947,7 +947,6 @@ export default function App() {
 
   // ─── Attendance report per pegawai ───
   const [selUser,setSelUser]=useState("ALL");
-  const [selMonth,setSelMonth]=useState(new Date().toISOString().slice(0,7));
 
   // ─── Log stok filter ───
   const [slogRange,setSlogRange]=useState("all");
@@ -964,43 +963,32 @@ export default function App() {
   // ─── Laporan custom range ───
   const [lapFrom,setLapFrom]=useState("");
   const [lapTo,setLapTo]=useState("");
-  const [selY,selM]=(selMonth+"-01").split("-").map(Number);
-
-  const attFiltered=attend.filter(a=>{
-    const matchUser=selUser==="ALL"||String(a.userId)===String(selUser);
-    // month filter (used for summary table)
-    const isoSrc = a.checkInISO||a.dateISO||"";
-    let matchMonth=true;
-    if(isoSrc){const [y,m]=isoSrc.split("-").map(Number);matchMonth=y===selY&&m===selM;}
-    else{try{const d=new Date(a.checkIn);matchMonth=d.getFullYear()===selY&&d.getMonth()+1===selM;}catch{}}
-    // range filter (used for detail table)
-    const aDate = isoSrc?new Date(isoSrc):null;
+  const attFiltered=(()=>{
     const now2=new Date();
-    let matchRange=true;
-    if(attRange==="today") matchRange=aDate?aDate.toDateString()===now2.toDateString():matchMonth;
-    else if(attRange==="week"){const w=new Date(now2);w.setDate(w.getDate()-7);matchRange=aDate?aDate>=w:matchMonth;}
-    else if(attRange==="month") matchRange=matchMonth;
-    else if(attRange==="custom"){
-      const from=attFrom?new Date(attFrom):null;
-      const to=attTo?new Date(attTo+"T23:59:59"):null;
-      if(from&&aDate&&aDate<from) matchRange=false;
-      else if(to&&aDate&&aDate>to) matchRange=false;
-    }
-    return matchUser&&matchRange;
-  });
+    return attend.filter(a=>{
+      const matchUser=selUser==="ALL"||String(a.userId)===String(selUser);
+      const isoSrc=a.checkInISO||a.dateISO||"";
+      const aDate=isoSrc?new Date(isoSrc):null;
+      let matchRange=true;
+      if(attRange==="today") matchRange=aDate?aDate.toDateString()===now2.toDateString():false;
+      else if(attRange==="week"){const w=new Date(now2);w.setDate(w.getDate()-7);matchRange=aDate?aDate>=w:false;}
+      else if(attRange==="month"){
+        matchRange=aDate?aDate.getFullYear()===now2.getFullYear()&&aDate.getMonth()===now2.getMonth():false;
+      } else if(attRange==="custom"){
+        const from=attFrom?new Date(attFrom):null;
+        const to=attTo?new Date(attTo+"T23:59:59"):null;
+        if(from&&aDate&&aDate<from) matchRange=false;
+        else if(to&&aDate&&aDate>to) matchRange=false;
+      }
+      // "all" => matchRange stays true
+      return matchUser&&matchRange;
+    });
+  })();
 
   // Summary per user for selected month
+  // attByUser now derived from attFiltered — same filter for both tables
   const attByUser={};
-  attend.forEach(a=>{
-    let matchMonth=true;
-    const isoSrc2=a.checkInISO||a.dateISO||"";
-    if(isoSrc2){
-      const [y,m]=isoSrc2.split("-").map(Number);
-      matchMonth=y===selY&&m===selM;
-    } else {
-      try{const d=new Date(a.checkIn);matchMonth=d.getFullYear()===selY&&d.getMonth()+1===selM;}catch{}
-    }
-    if(!matchMonth) return;
+  attFiltered.forEach(a=>{
     const key=a.userId;
     if(!attByUser[key])attByUser[key]={userId:a.userId,name:a.name,role:a.role,days:0,totalMinutes:0,records:[]};
     attByUser[key].days++;
@@ -1953,11 +1941,11 @@ export default function App() {
             </div>
           </div>
 
-          {/* Filter */}
+          {/* Filter — satu filter untuk ringkasan & detail */}
           <Card style={{padding:"12px 14px"}}>
-            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,alignItems:"end",marginBottom:10}}>
-              <div>
-                <div style={{fontSize:9.5,fontWeight:700,color:C.t2,textTransform:"uppercase",letterSpacing:.5,marginBottom:5}}>Filter Pegawai</div>
+            <div style={{display:"flex",gap:7,flexWrap:"wrap",alignItems:"flex-end"}}>
+              <div style={{flex:"1 1 180px",minWidth:160}}>
+                <div style={{fontSize:9.5,fontWeight:700,color:C.t2,textTransform:"uppercase",letterSpacing:.5,marginBottom:5}}>Pegawai</div>
                 <select value={selUser} onChange={e=>setSelUser(e.target.value)}
                   style={{width:"100%",padding:"10px 12px",background:C.bg3,border:`1.5px solid ${C.b0}`,
                     borderRadius:10,color:C.t0,fontSize:13,fontFamily:F.sans,cursor:"pointer"}}>
@@ -1965,31 +1953,29 @@ export default function App() {
                   {users.filter(u=>u.role!=="admin").map(u=><option key={u.id} value={String(u.id)}>{u.avatar} {u.name}</option>)}
                 </select>
               </div>
-              <div>
-                <div style={{fontSize:9.5,fontWeight:700,color:C.t2,textTransform:"uppercase",letterSpacing:.5,marginBottom:5}}>Bulan (Ringkasan)</div>
-                <input type="month" value={selMonth} onChange={e=>setSelMonth(e.target.value)}
-                  style={{width:"100%",padding:"10px 12px",background:C.bg3,border:`1.5px solid ${C.b0}`,
-                    borderRadius:10,color:C.t0,fontSize:13,cursor:"pointer",fontFamily:F.sans}}/>
+              <div style={{flex:"2 1 300px"}}>
+                <div style={{fontSize:9.5,fontWeight:700,color:C.t2,textTransform:"uppercase",letterSpacing:.5,marginBottom:5}}>Rentang Waktu</div>
+                <div style={{display:"flex",gap:6,flexWrap:"wrap",alignItems:"center"}}>
+                  {[["all","Semua"],["today","Hari Ini"],["week","7 Hari"],["month","Bulan Ini"],["custom","Rentang"]].map(([v,l])=>(
+                    <button key={v} onClick={()=>setAttRange(v)} className="press"
+                      style={{padding:"8px 13px",borderRadius:8,fontSize:12,fontWeight:600,cursor:"pointer",
+                        background:attRange===v?C.g1:"transparent",border:`1.5px solid ${attRange===v?C.g:C.b0}`,
+                        color:attRange===v?C.g:C.t2,fontFamily:F.sans}}>{l}</button>
+                  ))}
+                  {attRange==="custom"&&<>
+                    <input type="date" value={attFrom} onChange={e=>setAttFrom(e.target.value)}
+                      style={{padding:"8px 10px",background:C.bg3,border:`1.5px solid ${C.b1}`,borderRadius:8,color:C.t0,fontSize:12,fontFamily:F.sans}}/>
+                    <span style={{color:C.t2,fontSize:12,fontWeight:600}}>s/d</span>
+                    <input type="date" value={attTo} onChange={e=>setAttTo(e.target.value)}
+                      style={{padding:"8px 10px",background:C.bg3,border:`1.5px solid ${C.b1}`,borderRadius:8,color:C.t0,fontSize:12,fontFamily:F.sans}}/>
+                  </>}
+                </div>
               </div>
             </div>
-            {/* Quick range for detail */}
-            <div style={{borderTop:`1px solid ${C.b0}`,paddingTop:10}}>
-              <div style={{fontSize:9.5,fontWeight:700,color:C.t2,textTransform:"uppercase",letterSpacing:.5,marginBottom:8}}>Rentang Detail Absensi</div>
-              <div style={{display:"flex",gap:7,flexWrap:"wrap",alignItems:"center"}}>
-                {[["all","Semua"],["today","Hari Ini"],["week","7 Hari"],["month","Bulan Ini"],["custom","Rentang"]].map(([v,l])=>(
-                  <button key={v} onClick={()=>setAttRange(v)} className="press"
-                    style={{padding:"5px 11px",borderRadius:7,fontSize:11.5,fontWeight:600,cursor:"pointer",
-                      background:attRange===v?C.b1:"transparent",border:`1.5px solid ${attRange===v?C.b:C.b0}`,
-                      color:attRange===v?C.b:C.t2,fontFamily:F.sans}}>{l}</button>
-                ))}
-                {attRange==="custom"&&<div style={{display:"flex",gap:6,alignItems:"center",flexWrap:"wrap"}}>
-                  <input type="date" value={attFrom} onChange={e=>setAttFrom(e.target.value)}
-                    style={{padding:"5px 9px",background:C.bg3,border:`1.5px solid ${C.b1}`,borderRadius:8,color:C.t0,fontSize:12,fontFamily:F.sans}}/>
-                  <span style={{color:C.t2,fontSize:12}}>s/d</span>
-                  <input type="date" value={attTo} onChange={e=>setAttTo(e.target.value)}
-                    style={{padding:"5px 9px",background:C.bg3,border:`1.5px solid ${C.b1}`,borderRadius:8,color:C.t0,fontSize:12,fontFamily:F.sans}}/>
-                </div>}
-              </div>
+            <div style={{marginTop:10,padding:"7px 11px",background:C.bg3,borderRadius:8,
+              fontSize:11,color:C.t2,border:`1px solid ${C.b0}`}}>
+              Filter berlaku untuk <b style={{color:C.t0}}>ringkasan</b> dan <b style={{color:C.t0}}>detail absensi</b> sekaligus
+              <span style={{float:"right",fontFamily:"'JetBrains Mono',monospace",color:C.g,fontWeight:700}}>{attFiltered.length} record</span>
             </div>
           </Card>
 
@@ -1997,11 +1983,11 @@ export default function App() {
           <Card noPad style={{overflow:"hidden"}}>
             <div style={{padding:"15px 14px",borderBottom:`1px solid ${C.b0}`}}>
               <span style={{fontSize:10,fontWeight:700,color:C.t2,textTransform:"uppercase",letterSpacing:1}}>
-                Ringkasan Kehadiran — {new Date(selMonth+"-01").toLocaleDateString("id-ID",{month:"long",year:"numeric"})}
+                Ringkasan Kehadiran ({Object.keys(attByUser).length} pegawai · {attFiltered.length} record)
               </span>
             </div>
             {Object.keys(attByUser).length===0
-              ?<div style={{padding:"24px",textAlign:"center",color:C.t3,fontSize:12}}>Belum ada data bulan ini</div>
+              ?<div style={{padding:"24px",textAlign:"center",color:C.t3,fontSize:12}}>Belum ada data untuk periode ini</div>
               :<div style={{overflowX:"auto"}}>
                 <table style={{width:"100%",borderCollapse:"collapse",fontSize:12}}>
                   <THead cols={["Pegawai","Role","Hadir (Hari)","Total Jam Kerja","Rata-rata/Hari","Terakhir Masuk"]}/>
