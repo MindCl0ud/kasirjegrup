@@ -1620,7 +1620,7 @@ export default function App() {
                 </td>
               </tr>)}</tbody>
             </table>
-          </div>
+          </TableWrap>
         </Card>
 
         {/* Log masuk */}
@@ -1643,7 +1643,7 @@ export default function App() {
                   </tr>
                 ))}</tbody>
               </table>
-            </div>}
+            </TableWrap>}
         </Card>
       </div>
     </div>;
@@ -2059,12 +2059,12 @@ export default function App() {
                   </tr>;})}
                 </tbody>
               </table>
-              <div style={{padding:"14px 13px",borderTop:`1px solid ${C.b0}`,display:"flex",gap:16,fontSize:11,flexWrap:"wrap"}}>
-                <span style={{color:C.t2}}>Pendapatan: <b className="mn" style={{color:C.g}}>{rp(totalRev)}</b></span>
-                <span style={{color:C.t2}}>HPP: <b className="mn" style={{color:C.a}}>{rp(totalHppAll)}</b></span>
-                <span style={{color:C.t2}}>Laba: <b className="mn" style={{color:C.cy}}>{rp(grossProfit)}</b></span>
-                <span style={{color:C.t2}}>Margin: <b className="mn" style={{color:C.b}}>{margin}</b> <span className="mn" style={{color:C.cy}}>({rp(grossProfit)})</span></span>
-              </div>
+            </TableWrap>
+            <div style={{padding:"14px 13px",borderTop:`1px solid ${C.b0}`,display:"flex",gap:16,fontSize:11,flexWrap:"wrap"}}>
+              <span style={{color:C.t2}}>Pendapatan: <b className="mn" style={{color:C.g}}>{rp(totalRev)}</b></span>
+              <span style={{color:C.t2}}>HPP: <b className="mn" style={{color:C.a}}>{rp(totalHppAll)}</b></span>
+              <span style={{color:C.t2}}>Laba: <b className="mn" style={{color:C.cy}}>{rp(grossProfit)}</b></span>
+              <span style={{color:C.t2}}>Margin: <b className="mn" style={{color:C.b}}>{margin}</b> <span className="mn" style={{color:C.cy}}>({rp(grossProfit)})</span></span>
             </div>
           </Card>}
 
@@ -2088,7 +2088,7 @@ export default function App() {
                   <td style={{padding:"14px 13px",fontFamily:F.mono,fontSize:10}}>{t.items?.length||0}</td>
                 </tr>)}</tbody>
               </table>
-            </div>}
+            </TableWrap>}
           </Card>
         </div>}
 
