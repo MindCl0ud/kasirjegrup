@@ -88,21 +88,34 @@ const F = { sans:"'Plus Jakarta Sans',system-ui,sans-serif", mono:"'JetBrains Mo
 
 
 // ─────────────────────────────────────────────────────────────
-//  EXCEL / CSV DOWNLOAD
+//  XLSX DOWNLOAD (SheetJS via CDN)
 // ─────────────────────────────────────────────────────────────
-const downloadCSV = (rows, cols, filename) => {
-  const BOM = "\uFEFF";
-  const headers = cols.map(c => c.label);
-  const lines = rows.map(r => cols.map(col => {
-    let v = col.fn ? col.fn(r) : (r[col.key] ?? "");
-    v = String(v).replace(/"/g, '""');
-    return `"${v}"`;
-  }).join(","));
-  const csv = BOM + [headers.join(","), ...lines].join("\n");
-  const a = document.createElement("a");
-  a.href = URL.createObjectURL(new Blob([csv], {type:"text/csv;charset=utf-8"}));
-  a.download = filename + "_" + new Date().toLocaleDateString("id-ID").replace(/\//g,"-") + ".csv";
-  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+const loadSheetJS = () => new Promise((res,rej)=>{
+  if(window.XLSX){res(window.XLSX);return;}
+  const s=document.createElement("script");
+  s.src="https://cdn.sheetjs.com/xlsx-0.20.2/package/dist/xlsx.full.min.js";
+  s.onload=()=>res(window.XLSX);s.onerror=rej;
+  document.head.appendChild(s);
+});
+
+const downloadXLSX = async (rows, cols, sheetName, filename) => {
+  const XLSX = await loadSheetJS();
+  // Header row with bold style
+  const header = cols.map(col => col.label);
+  const data = rows.map(r => cols.map(col => {
+    const v = col.fn ? col.fn(r) : (r[col.key] ?? "");
+    // Keep numbers as numbers
+    if(col.num && !isNaN(+v) && v !== "") return +v;
+    return String(v);
+  }));
+  const ws = XLSX.utils.aoa_to_sheet([header, ...data]);
+  // Column widths
+  ws["!cols"] = cols.map(col => ({wch: Math.max(col.label.length, col.w || 18)}));
+  // Style header row (bold, background) — xlsx-style not available in free, skip style
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, sheetName);
+  const dateStr = new Date().toLocaleDateString("id-ID").replace(/\//g,"-");
+  XLSX.writeFile(wb, `${filename}_${dateStr}.xlsx`);
 };
 // ─────────────────────────────────────────────────────────────
 //  GLOBAL CSS
@@ -284,11 +297,18 @@ function Stat({icon,label,value,color=C.g,sub,style:s={}}) {
 }
 
 function THead({cols}) {
-  return <thead><tr style={{background:C.bg0}}>
-    {cols.map((c,i)=><th key={i} style={{padding:"14px 13px",textAlign:"left",color:C.t3,
-      fontWeight:700,fontSize:9.5,textTransform:"uppercase",letterSpacing:1,
-      whiteSpace:"nowrap",borderBottom:`1px solid ${C.b0}`}}>{c}</th>)}
+  return <thead><tr style={{background:C.bg0,position:"sticky",top:0,zIndex:2}}>
+    {cols.map((c,i)=><th key={i} style={{padding:"11px 14px",textAlign:"left",color:C.t3,
+      fontWeight:700,fontSize:10,textTransform:"uppercase",letterSpacing:1,
+      whiteSpace:"nowrap",borderBottom:`1px solid ${C.b0}`,background:C.bg0}}>{c}</th>)}
   </tr></thead>;
+}
+
+function TableWrap({children,maxH="58vh"}) {
+  return <div style={{overflowX:"auto",overflowY:"auto",maxHeight:maxH,
+    WebkitOverflowScrolling:"touch",position:"relative"}}>
+    {children}
+  </div>;
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -618,6 +638,185 @@ function syncSheet(sh,rows,headers){
 }
 `;
 
+
+// ─────────────────────────────────────────────────────────────
+//  INVOICE (print-ready)
+// ─────────────────────────────────────────────────────────────
+function Invoice({receipt,biz,onClose,onNew}) {
+  const b=BIZ[biz];
+  const printInvoice=()=>{
+    const w=window.open("","_blank","width=420,height=700");
+    w.document.write(`<!DOCTYPE html><html><head>
+      <meta charset="utf-8"/><title>Invoice ${receipt.id}</title>
+      <style>
+        *{margin:0;padding:0;box-sizing:border-box;}
+        body{font-family:Arial,sans-serif;font-size:12px;color:#000;padding:16px;max-width:320px;}
+        .center{text-align:center;} .bold{font-weight:bold;} .mono{font-family:monospace;}
+        .line{border-top:1px dashed #999;margin:8px 0;}
+        .row{display:flex;justify-content:space-between;margin-bottom:4px;}
+        .total{font-size:16px;font-weight:bold;}
+        table{width:100%;border-collapse:collapse;}
+        td{padding:3px 0;vertical-align:top;}
+        td:last-child{text-align:right;white-space:nowrap;}
+        .footer{text-align:center;font-size:10px;color:#666;margin-top:8px;}
+      </style></head><body>
+      <div class="center bold" style="font-size:16px">JE GRUP</div>
+      <div class="center" style="font-size:11px">${b?.name} — ${b?.desc}</div>
+      <div class="line"></div>
+      <div class="row"><span>No. Invoice</span><span class="mono bold">${receipt.id}</span></div>
+      <div class="row"><span>Tanggal</span><span>${receipt.date}</span></div>
+      <div class="row"><span>Kasir</span><span>${receipt.kasir}</span></div>
+      <div class="line"></div>
+      <table><tbody>
+        ${receipt.items.map(item=>`<tr>
+          <td>${item.name}<br/><span style="font-size:10px;color:#666">${item.qty} × Rp ${Number(item.price).toLocaleString("id-ID")}</span></td>
+          <td>Rp ${Number(item.price*item.qty).toLocaleString("id-ID")}</td>
+        </tr>`).join("")}
+      </tbody></table>
+      <div class="line"></div>
+      <div class="row total"><span>TOTAL</span><span>Rp ${Number(receipt.total).toLocaleString("id-ID")}</span></div>
+      <div class="line"></div>
+      <div class="footer">Terima kasih telah berbelanja!<br/>Barang yang sudah dibeli tidak dapat dikembalikan.</div>
+    </body></html>`);
+    w.document.close();
+    setTimeout(()=>{w.print();},400);
+  };
+
+  return <div style={{position:"fixed",inset:0,background:"rgba(2,8,24,.9)",zIndex:600,
+    display:"flex",alignItems:"flex-end",justifyContent:"center",fontFamily:"'Plus Jakarta Sans',sans-serif"}}
+    onClick={onClose}>
+    <div style={{width:"100%",maxWidth:420,background:C.bg2,borderRadius:"22px 22px 0 0",
+      border:`1px solid ${C.b1}`,borderBottom:"none",animation:"slideUp .3s ease",
+      maxHeight:"92vh",overflowY:"auto",paddingBottom:24}} onClick={e=>e.stopPropagation()}>
+      <div style={{width:36,height:4,background:C.b1,borderRadius:2,margin:"16px auto 0"}}/>
+
+      {/* Invoice header */}
+      <div style={{textAlign:"center",padding:"14px 20px 10px"}}>
+        <div style={{fontSize:22,marginBottom:4}}>🧾</div>
+        <div style={{fontSize:13,fontWeight:800,letterSpacing:2,color:C.g}}>INVOICE</div>
+        <div className="mn" style={{fontSize:10,color:C.t2,marginTop:2}}>{receipt.id}</div>
+        <div style={{marginTop:6,display:"flex",justifyContent:"center"}}><BizChip biz={biz}/></div>
+      </div>
+
+      <div style={{margin:"0 16px",background:C.bg3,borderRadius:12,border:`1px solid ${C.b0}`,overflow:"hidden"}}>
+        {/* Meta */}
+        <div style={{padding:"10px 14px",borderBottom:`1px solid ${C.b0}`}}>
+          {[["Tanggal",receipt.date],["Kasir",receipt.kasir],["No. Invoice",receipt.id]].map(([l,v])=>(
+            <div key={l} style={{display:"flex",justifyContent:"space-between",fontSize:12,marginBottom:4}}>
+              <span style={{color:C.t2}}>{l}</span>
+              <span className="mn" style={{fontWeight:600,fontSize:11}}>{v}</span>
+            </div>
+          ))}
+        </div>
+        {/* Items */}
+        <div style={{padding:"10px 14px"}}>
+          <div style={{fontSize:9.5,fontWeight:700,color:C.t3,textTransform:"uppercase",letterSpacing:1,marginBottom:8}}>Daftar Barang</div>
+          {receipt.items.map((item,i)=>(
+            <div key={i} style={{display:"flex",alignItems:"flex-start",gap:8,marginBottom:8,
+              paddingBottom:8,borderBottom:`1px solid ${C.b0}`}}>
+              <div style={{flex:1,minWidth:0}}>
+                <div style={{fontSize:12.5,fontWeight:600,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{item.name}</div>
+                <div className="mn" style={{fontSize:10.5,color:C.t2,marginTop:1}}>
+                  {item.qty} × {rp(item.price)}
+                </div>
+              </div>
+              <div className="mn" style={{fontSize:13,fontWeight:700,color:C.t0,flexShrink:0}}>{rp(item.price*item.qty)}</div>
+            </div>
+          ))}
+        </div>
+        {/* Totals */}
+        <div style={{padding:"10px 14px",background:C.bg4,borderTop:`1px solid ${C.b0}`}}>
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"baseline"}}>
+            <span style={{fontSize:13,fontWeight:700}}>TOTAL PEMBAYARAN</span>
+            <span className="mn" style={{fontSize:22,fontWeight:800,color:C.g}}>{rp(receipt.total)}</span>
+          </div>
+          <div style={{display:"flex",justifyContent:"space-between",fontSize:11,color:C.t2,marginTop:4}}>
+            <span>{receipt.items.reduce((s,i)=>s+i.qty,0)} item · {receipt.items.length} produk</span>
+          </div>
+        </div>
+      </div>
+
+      {/* Footer */}
+      <div style={{textAlign:"center",padding:"10px 20px 0",fontSize:11,color:C.t3}}>
+        Terima kasih telah berbelanja di {b?.name}!
+      </div>
+
+      {/* Buttons */}
+      <div style={{display:"flex",gap:8,padding:"14px 16px 0"}}>
+        <button onClick={printInvoice} className="press"
+          style={{flex:1,padding:"13px",background:`linear-gradient(90deg,${C.g},${C.b})`,
+            border:"none",borderRadius:11,color:C.bg1,fontSize:13,fontWeight:800,fontFamily:"inherit"}}>
+          🖨️ Cetak Invoice
+        </button>
+        <button onClick={onNew} className="press"
+          style={{flex:1,padding:"13px",background:C.bg3,border:`1px solid ${C.b1}`,
+            borderRadius:11,color:C.t0,fontSize:13,fontWeight:700,fontFamily:"inherit"}}>
+          Transaksi Baru →
+        </button>
+      </div>
+      <div style={{padding:"8px 16px 0"}}>
+        <button onClick={onClose} style={{width:"100%",padding:"9px",background:"transparent",
+          border:`1px solid ${C.b0}`,borderRadius:9,color:C.t3,fontSize:12,fontFamily:"inherit"}}>
+          Tutup
+        </button>
+      </div>
+    </div>
+  </div>;
+}
+
+// ─────────────────────────────────────────────────────────────
+//  STOCK CHECK MODAL (for kasir)
+// ─────────────────────────────────────────────────────────────
+function StockCheckModal({prods,biz,onClose}) {
+  const [q,setQ]=useState("");
+  const list=prods.filter(p=>!q||p.name.toLowerCase().includes(q.toLowerCase())||p.barcode.includes(q));
+  return <div style={{position:"fixed",inset:0,background:"rgba(2,8,24,.88)",zIndex:550,
+    display:"flex",alignItems:"flex-end",justifyContent:"center",fontFamily:"'Plus Jakarta Sans',sans-serif"}}
+    onClick={onClose}>
+    <div style={{width:"100%",maxWidth:480,background:C.bg2,borderRadius:"22px 22px 0 0",
+      border:`1px solid ${C.b1}`,borderBottom:"none",animation:"slideUp .3s ease",
+      maxHeight:"85vh",display:"flex",flexDirection:"column"}} onClick={e=>e.stopPropagation()}>
+      <div style={{width:36,height:4,background:C.b1,borderRadius:2,margin:"14px auto 0"}}/>
+      <div style={{padding:"10px 16px 12px",borderBottom:`1px solid ${C.b0}`,flexShrink:0}}>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
+          <div style={{fontSize:14,fontWeight:800}}>📦 Cek Stok Barang</div>
+          <BizChip biz={biz}/>
+        </div>
+        <div style={{position:"relative"}}>
+          <span style={{position:"absolute",left:11,top:"50%",transform:"translateY(-50%)",color:C.t2,fontSize:14,pointerEvents:"none"}}>🔍</span>
+          <input value={q} onChange={e=>setQ(e.target.value)} autoFocus
+            placeholder="Cari nama atau barcode..."
+            style={{width:"100%",padding:"10px 12px 10px 36px",background:C.bg3,
+              border:`1.5px solid ${C.b1}`,borderRadius:10,color:C.t0,fontSize:13}}/>
+        </div>
+      </div>
+      <div style={{overflowY:"auto",flex:1}}>
+        {list.length===0?<div style={{padding:"32px",textAlign:"center",color:C.t3,fontSize:13}}>Produk tidak ditemukan</div>
+        :list.map((p,i)=>(
+          <div key={p.id} style={{display:"flex",alignItems:"center",gap:12,
+            padding:"12px 16px",borderTop:i>0?`1px solid ${C.b0}`:undefined}}>
+            <div style={{flex:1,minWidth:0}}>
+              <div style={{fontWeight:600,fontSize:13,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{p.name}</div>
+              <div className="mn" style={{fontSize:10,color:C.t2,marginTop:1}}>{p.barcode} · {p.category}</div>
+            </div>
+            <div style={{textAlign:"right",flexShrink:0}}>
+              <div className="mn" style={{fontSize:16,fontWeight:800,
+                color:p.stock===0?C.r:p.stock<10?C.a:C.g}}>{p.stock}</div>
+              <div style={{fontSize:9.5,color:C.t2}}>{p.stock===0?"HABIS":p.stock<10?"MENIPIS":"tersedia"}</div>
+            </div>
+          </div>
+        ))}
+      </div>
+      <div style={{padding:"12px 16px",borderTop:`1px solid ${C.b0}`,flexShrink:0,
+        display:"flex",justifyContent:"space-between",alignItems:"center",fontSize:12}}>
+        <span style={{color:C.t2}}>{list.length} produk · {list.reduce((s,p)=>s+p.stock,0)} total stok</span>
+        <button onClick={onClose} style={{padding:"7px 16px",background:C.bg3,border:`1px solid ${C.b1}`,
+          borderRadius:8,color:C.t1,fontSize:12,fontWeight:600,fontFamily:"inherit"}}>Tutup</button>
+      </div>
+    </div>
+  </div>;
+}
+
 // ─────────────────────────────────────────────────────────────
 //  MAIN APP
 // ─────────────────────────────────────────────────────────────
@@ -765,6 +964,7 @@ export default function App() {
   const [cart,    setCart]    = useState([]);
   const [scanIn,  setScanIn]  = useState("");
   const [receipt, setReceipt] = useState(null);
+  const [showStock, setShowStock] = useState(false);
   const scanRef=useRef(null);
   useEffect(()=>{if(screen==="kasir"&&!receipt)setTimeout(()=>scanRef.current?.focus(),100);},[screen,receipt]);
 
@@ -1182,42 +1382,12 @@ export default function App() {
         onSwitchBiz={user?.access?.length>1?()=>{setCart([]);setScreen("bizselect");}:null}
         onAbsenPulang={handlePulang} hasCheckedIn={hasCheckedIn} onToggleTheme={toggleTheme} isDark={isDark}/>
 
-      {/* Receipt bottom sheet */}
-      {receipt&&<div style={{position:"fixed",inset:0,background:"rgba(2,8,24,.85)",zIndex:500,
-        display:"flex",alignItems:"flex-end",justifyContent:"center"}} onClick={()=>{setReceipt(null);scanRef.current?.focus();}}>
-        <div style={{width:"100%",maxWidth:400,background:C.bg2,borderRadius:"22px 22px 0 0",
-          padding:"20px 20px 32px",border:`1px solid ${C.b1}`,borderBottom:"none",
-          animation:"slideUp .3s ease",maxHeight:"85vh",overflowY:"auto"}} onClick={e=>e.stopPropagation()}>
-          <div style={{width:36,height:4,background:C.b1,borderRadius:2,margin:"0 auto 16px"}}/>
-          <div style={{textAlign:"center",marginBottom:14}}>
-            <div style={{fontSize:40,marginBottom:8}}>🎉</div>
-            <div className="mn" style={{fontSize:10.5,color:C.g,fontWeight:700,letterSpacing:2,marginBottom:3}}>TRANSAKSI BERHASIL</div>
-            <div className="mn" style={{fontSize:10,color:C.t2}}>{receipt.id}</div>
-            <div className="mn" style={{fontSize:10,color:C.t2}}>{receipt.date}</div>
-            <div style={{marginTop:6}}><BizChip biz={biz}/></div>
-          </div>
-          <div style={{background:C.bg3,borderRadius:10,padding:"12px 14px",marginBottom:12,border:`1px solid ${C.b0}`}}>
-            {receipt.items.map(item=><div key={item.barcode} style={{display:"flex",justifyContent:"space-between",
-              fontSize:12.5,marginBottom:7,gap:8}}>
-              <span style={{color:C.t1,flex:1,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{item.name} ×{item.qty}</span>
-              <span className="mn" style={{flexShrink:0}}>{rp(item.price*item.qty)}</span>
-            </div>)}
-          </div>
-          <div style={{display:"flex",justifyContent:"space-between",alignItems:"baseline",marginBottom:6}}>
-            <span style={{fontSize:13,color:C.t1}}>Total Pembayaran</span>
-            <span className="mn" style={{fontSize:22,fontWeight:700,color:C.g}}>{rp(receipt.total)}</span>
-          </div>
-          <div style={{display:"flex",justifyContent:"space-between",fontSize:11.5,color:C.t2,marginBottom:18}}>
-            <span>Est. Laba Kotor</span>
-            <span className="mn" style={{color:C.cy}}>+{rp(receipt.profit)}</span>
-          </div>
-          <button onClick={()=>{setReceipt(null);scanRef.current?.focus();}} className="press"
-            style={{width:"100%",padding:"14px",background:`linear-gradient(90deg,${C.g},${C.b})`,
-              border:"none",borderRadius:12,color:C.bg1,fontSize:14,fontWeight:800}}>
-            Transaksi Baru →
-          </button>
-        </div>
-      </div>}
+      {/* Invoice */}
+      {receipt&&<Invoice receipt={receipt} biz={biz}
+        onClose={()=>{setReceipt(null);scanRef.current?.focus();}}
+        onNew={()=>{setReceipt(null);setCart([]);scanRef.current?.focus();}}/>}
+      {/* Stock check modal */}
+      {showStock&&<StockCheckModal prods={bizProds()} biz={biz} onClose={()=>setShowStock(false)}/>}
 
       {/* Layout: side-by-side on tablet */}
       <div style={{flex:1,display:"flex",overflow:"hidden"}}>
@@ -1237,6 +1407,9 @@ export default function App() {
               <button onClick={()=>kasirScan(scanIn)} className="press"
                 style={{padding:"12px 16px",background:bc,border:"none",borderRadius:12,
                   color:"#fff",fontWeight:800,fontSize:14,flexShrink:0}}>+</button>
+              <button onClick={()=>setShowStock(true)} className="press" title="Cek Stok"
+                style={{padding:"12px 14px",background:C.bg3,border:`1.5px solid ${C.b1}`,borderRadius:12,
+                  color:C.t1,fontSize:14,flexShrink:0}}>📦</button>
             </div>
           </div>
 
@@ -1306,6 +1479,11 @@ export default function App() {
             </button>
           </div>
           <Divider my={8}/>
+          <button onClick={()=>setShowStock(true)} className="press"
+            style={{width:"100%",padding:"8px",background:C.bg3,border:`1px solid ${C.b1}`,
+              borderRadius:9,color:C.t1,fontSize:11,fontWeight:700,marginBottom:8,fontFamily:F.sans}}>
+            📦 Cek Stok ({bizProds().length} produk)
+          </button>
           <div style={{fontSize:10,color:C.t3,textTransform:"uppercase",letterSpacing:1,marginBottom:6,fontWeight:700}}>Terbaru</div>
           {trxs.filter(t=>t.business===biz).slice(0,5).map(t=><div key={t.id}
             style={{display:"flex",justifyContent:"space-between",marginBottom:4,fontSize:11}}>
@@ -1318,7 +1496,10 @@ export default function App() {
       {/* Mobile bottom bar */}
       <div style={{background:`${C.bg2}f8`,backdropFilter:"blur(16px)",borderTop:`1px solid ${C.b0}`,
         padding:"10px 12px",paddingBottom:`calc(10px + var(--safe-b))`,flexShrink:0,
-        display:"flex",alignItems:"center",gap:10}}>
+        display:"flex",alignItems:"center",gap:8}}>
+        <button onClick={()=>setShowStock(true)} className="press"
+          style={{padding:"11px 12px",background:C.bg3,border:`1.5px solid ${C.b1}`,borderRadius:11,
+            color:C.t1,fontSize:16,flexShrink:0}}>📦</button>
         <div style={{flex:1}}>
           <div style={{fontSize:10,color:C.t2,fontWeight:600}}>Total</div>
           <div className="mn" style={{fontSize:20,fontWeight:700,color:C.g,lineHeight:1.2}}>{rp(total)}</div>
@@ -1423,7 +1604,7 @@ export default function App() {
             <input value={stokSearch} onChange={e=>setStokSearch(e.target.value)} placeholder="Cari..."
               style={{padding:"7px 11px",background:C.bg3,border:`1px solid ${C.b0}`,borderRadius:8,color:C.t0,fontSize:12,width:140,fontFamily:F.sans}}/>
           </div>
-          <div style={{overflowX:"auto"}}>
+          <TableWrap maxH="50vh">
             <table style={{width:"100%",borderCollapse:"collapse",fontSize:13,minWidth:460}}>
               <THead cols={["Barcode","Nama","Kategori","Harga Jual","Stok",""]}/>
               <tbody>{filtered.map((p,i)=><tr key={p.id} className="hrow" style={{borderTop:`1px solid ${C.b0}`,background:i%2===0?"transparent":C.bg0}}>
@@ -1449,7 +1630,7 @@ export default function App() {
           </div>
           {slogs.filter(l=>l.business===biz&&l.type==="masuk").length===0
             ?<div style={{padding:"24px",textAlign:"center",color:C.t3,fontSize:12}}>Belum ada log penerimaan</div>
-            :<div style={{overflowX:"auto"}}>
+            :<TableWrap>
               <table style={{width:"100%",borderCollapse:"collapse",fontSize:13,minWidth:400}}>
                 <THead cols={["Waktu","Produk","Qty","Sblm→Ssdh","Oleh"]}/>
                 <tbody>{slogs.filter(l=>l.business===biz&&l.type==="masuk").slice(0,30).map((l,i)=>(
@@ -1618,7 +1799,7 @@ export default function App() {
             <Btn onClick={openAddU} size="sm">+ Tambah</Btn>
           </div>
           <Card noPad style={{overflow:"hidden"}}>
-            <div style={{overflowX:"auto"}}>
+            <TableWrap>
               <table style={{width:"100%",borderCollapse:"collapse",fontSize:13,minWidth:580}}>
                 <THead cols={["#","Username","Nama","Role","Akses","Wajah","Status","Aksi"]}/>
                 <tbody>{users.map((u,i)=><tr key={u.id} className="hrow" style={{borderTop:`1px solid ${C.b0}`,background:i%2===0?"transparent":C.bg0}}>
@@ -1645,7 +1826,7 @@ export default function App() {
                   </td>
                 </tr>)}</tbody>
               </table>
-            </div>
+            </TableWrap>
           </Card>
         </div>}
 
@@ -1660,13 +1841,13 @@ export default function App() {
                 {b2.icon} {b2.name}</button>;})}
             <input value={searchQ} onChange={e=>setSearchQ(e.target.value)} placeholder="Cari produk..."
               style={{padding:"7px 11px",background:C.bg2,border:`1px solid ${C.b0}`,borderRadius:8,color:C.t0,fontSize:12,width:140,fontFamily:F.sans}}/>
-            <button onClick={()=>downloadCSV(adminPs,[
-              {key:"barcode",label:"Barcode"},{key:"name",label:"Nama Produk"},
-              {key:"category",label:"Kategori"},{key:"hpp",label:"HPP",fn:r=>r.hpp||0},
-              {key:"price",label:"Harga Jual"},{key:"stock",label:"Stok"},
-              {key:"business",label:"Bisnis",fn:r=>BIZ[r.business]?.name||r.business},
-              {key:"margin",label:"Margin %",fn:r=>r.price>0?(((r.price-(r.hpp||0))/r.price)*100).toFixed(1)+"%":"0%"},
-            ],"produk_"+adminBiz)} className="press"
+            <button onClick={()=>downloadXLSX(adminPs,[
+              {key:"barcode",label:"Barcode",w:14},{key:"name",label:"Nama Produk",w:28},
+              {key:"category",label:"Kategori",w:16},{key:"hpp",label:"HPP (Rp)",fn:r=>r.hpp||0,num:true,w:16},
+              {key:"price",label:"Harga Jual (Rp)",fn:r=>r.price,num:true,w:18},{key:"stock",label:"Stok",fn:r=>r.stock,num:true,w:10},
+              {key:"business",label:"Bisnis",fn:r=>BIZ[r.business]?.name||r.business,w:14},
+              {key:"margin",label:"Margin %",fn:r=>r.price>0?(((r.price-(r.hpp||0))/r.price)*100).toFixed(1)+"%":"0%",w:12},
+            ],"Produk","produk_"+adminBiz)} className="press"
               style={{padding:"7px 12px",background:C.g1,border:`1px solid ${C.g}33`,borderRadius:8,
                 color:C.g,fontSize:12,fontWeight:700,fontFamily:F.sans}}>
               ⬇ Excel
@@ -1735,7 +1916,7 @@ export default function App() {
           </Card>}
 
           <Card noPad style={{overflow:"hidden"}}>
-            <div style={{overflowX:"auto"}}>
+            <TableWrap>
               <table style={{width:"100%",borderCollapse:"collapse",fontSize:12,minWidth:560}}>
                 <THead cols={["Barcode","Nama","Kategori","HPP","Harga Jual","Margin","Stok","Aksi"]}/>
                 <tbody>{adminPs.map((p,i)=>{
@@ -1755,7 +1936,7 @@ export default function App() {
                   </tr>;})}
                 </tbody>
               </table>
-            </div>
+            </TableWrap>
           </Card>
         </div>}
 
@@ -1767,24 +1948,24 @@ export default function App() {
               <h2 style={{fontSize:15,fontWeight:800}}>Laporan Keuangan</h2>
               <p style={{fontSize:11.5,color:C.t2,marginTop:2}}>Analisis pendapatan, HPP & laba per periode</p>
             </div>
-            <button onClick={()=>downloadCSV(filtTrx,[
-              {key:"id",label:"ID Transaksi"},{key:"date",label:"Tanggal"},
-              {key:"kasir",label:"Kasir"},{key:"business",label:"Bisnis",fn:r=>BIZ[r.business]?.name||r.business},
-              {key:"total",label:"Total (Rp)"},{key:"totalHpp",label:"HPP (Rp)",fn:r=>r.totalHpp||0},
-              {key:"profit",label:"Laba (Rp)",fn:r=>r.profit||0},
-              {key:"margin",label:"Margin %",fn:r=>r.total>0?(((r.profit||0)/r.total)*100).toFixed(1)+"%":"0%"},
-              {key:"items",label:"Jumlah Item",fn:r=>r.items?.length||0},
-            ],"laporan_keuangan")} className="press"
+            <button onClick={()=>downloadXLSX(filtTrx,[
+              {key:"id",label:"ID Transaksi",w:22},{key:"date",label:"Tanggal",w:22},
+              {key:"kasir",label:"Kasir",w:20},{key:"business",label:"Bisnis",fn:r=>BIZ[r.business]?.name||r.business,w:14},
+              {key:"total",label:"Total (Rp)",fn:r=>r.total,num:true,w:18},{key:"totalHpp",label:"HPP (Rp)",fn:r=>r.totalHpp||0,num:true,w:16},
+              {key:"profit",label:"Laba (Rp)",fn:r=>r.profit||0,num:true,w:16},
+              {key:"margin",label:"Margin %",fn:r=>r.total>0?(((r.profit||0)/r.total)*100).toFixed(1)+"%":"0%",w:12},
+              {key:"items",label:"Jumlah Item",fn:r=>r.items?.length||0,num:true,w:14},
+            ],"Transaksi","laporan_keuangan")} className="press"
               style={{padding:"8px 14px",background:C.g1,border:`1px solid ${C.g}33`,borderRadius:9,
                 color:C.g,fontSize:12,fontWeight:700,fontFamily:F.sans}}>
               ⬇ Excel Transaksi
             </button>
-            <button onClick={()=>downloadCSV(prodPerf,[
-              {key:"barcode",label:"Barcode"},{key:"name",label:"Nama Produk"},
-              {key:"qty",label:"Qty Terjual"},{key:"rev",label:"Pendapatan (Rp)"},
-              {key:"hpp",label:"HPP (Rp)"},{key:"laba",label:"Laba (Rp)",fn:r=>r.rev-r.hpp},
-              {key:"margin",label:"Margin %",fn:r=>r.rev>0?(((r.rev-r.hpp)/r.rev)*100).toFixed(1)+"%":"0%"},
-            ],"laporan_produk")} className="press"
+            <button onClick={()=>downloadXLSX(prodPerf,[
+              {key:"barcode",label:"Barcode",w:14},{key:"name",label:"Nama Produk",w:28},
+              {key:"qty",label:"Qty Terjual",fn:r=>r.qty,num:true,w:14},{key:"rev",label:"Pendapatan (Rp)",fn:r=>r.rev,num:true,w:18},
+              {key:"hpp",label:"HPP (Rp)",fn:r=>r.hpp,num:true,w:16},{key:"laba",label:"Laba (Rp)",fn:r=>r.rev-r.hpp,num:true,w:16},
+              {key:"margin",label:"Margin %",fn:r=>r.rev>0?(((r.rev-r.hpp)/r.rev)*100).toFixed(1)+"%":"0%",w:12},
+            ],"Produk Terlaris","laporan_produk")} className="press"
               style={{padding:"8px 14px",background:C.cy1,border:`1px solid ${C.cy}33`,borderRadius:9,
                 color:C.cy,fontSize:12,fontWeight:700,fontFamily:F.sans}}>
               ⬇ Excel Produk
@@ -1860,7 +2041,7 @@ export default function App() {
             <div style={{padding:"15px 14px",borderBottom:`1px solid ${C.b0}`,display:"flex",alignItems:"center",justifyContent:"space-between"}}>
               <span style={{fontSize:10,fontWeight:700,color:C.t2,textTransform:"uppercase",letterSpacing:1}}>Performa Produk (Top {Math.min(prodPerf.length,20)})</span>
             </div>
-            <div style={{overflowX:"auto"}}>
+            <TableWrap>
               <table style={{width:"100%",borderCollapse:"collapse",fontSize:13,minWidth:480}}>
                 <THead cols={["Produk","Qty Terjual","Pendapatan","HPP","Laba","Margin"]}/>
                 <tbody>{prodPerf.slice(0,20).map((p,i)=>{
@@ -1893,7 +2074,7 @@ export default function App() {
               <span style={{fontSize:10,fontWeight:700,color:C.t2,textTransform:"uppercase",letterSpacing:1}}>Riwayat Transaksi ({filtTrx.length})</span>
             </div>
             {filtTrx.length===0?<div style={{padding:"24px",textAlign:"center",color:C.t3,fontSize:12}}>Belum ada transaksi</div>
-            :<div style={{overflowX:"auto"}}>
+            :<TableWrap>
               <table style={{width:"100%",borderCollapse:"collapse",fontSize:13,minWidth:500}}>
                 <THead cols={["ID","Tanggal","Kasir","Bisnis","Total","HPP","Laba","Item"]}/>
                 <tbody>{filtTrx.slice(0,50).map((t,i)=><tr key={t.id} className="hrow" style={{borderTop:`1px solid ${C.b0}`,background:i%2===0?"transparent":C.bg0}}>
@@ -1916,16 +2097,16 @@ export default function App() {
           <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",flexWrap:"wrap",gap:8}}>
             <h2 style={{fontSize:15,fontWeight:800}}>Laporan Absensi</h2>
             <div style={{display:"flex",gap:7,flexWrap:"wrap"}}>
-            <button onClick={()=>downloadCSV(attFiltered.sort((a,b)=>{try{return new Date(b.checkInISO||b.checkIn)-new Date(a.checkInISO||a.checkIn);}catch{return 0;}}),[
-              {key:"date",label:"Tanggal"},{key:"name",label:"Nama Pegawai"},
-              {key:"role",label:"Role"},{key:"business",label:"Bisnis",fn:r=>BIZ[r.business]?.name||r.business},
-              {key:"checkIn",label:"Jam Masuk"},{key:"checkOut",label:"Jam Pulang",fn:r=>r.checkOut||"-"},
-              {key:"durasi",label:"Durasi",fn:r=>{
+            <button onClick={()=>downloadXLSX([...attFiltered].sort((a,b)=>{try{return new Date(b.checkInISO||b.checkIn)-new Date(a.checkInISO||a.checkIn);}catch{return 0;}}),[
+              {key:"date",label:"Tanggal",w:18},{key:"name",label:"Nama Pegawai",w:22},
+              {key:"role",label:"Role",w:10},{key:"business",label:"Bisnis",fn:r=>BIZ[r.business]?.name||r.business,w:14},
+              {key:"checkIn",label:"Jam Masuk",w:24},{key:"checkOut",label:"Jam Pulang",fn:r=>r.checkOut||"-",w:24},
+              {key:"durasi",label:"Durasi Kerja",fn:r=>{
                 const ci=r.checkInISO||r.checkIn,co=r.checkOutISO||r.checkOut;
                 if(!ci||!co) return "-";
                 try{const ms=new Date(co)-new Date(ci);return Math.floor(ms/3600000)+"j "+Math.floor((ms%3600000)/60000)+"m";}catch{return "-";}
-              }},
-            ],"absensi")} className="press"
+              },w:16},
+            ],"Absensi","absensi")} className="press"
               style={{padding:"7px 14px",background:C.g1,border:`1px solid ${C.g}33`,borderRadius:8,
                 color:C.g,fontSize:12,fontWeight:700,fontFamily:F.sans}}>
               ⬇ Excel
@@ -1988,7 +2169,7 @@ export default function App() {
             </div>
             {Object.keys(attByUser).length===0
               ?<div style={{padding:"24px",textAlign:"center",color:C.t3,fontSize:12}}>Belum ada data untuk periode ini</div>
-              :<div style={{overflowX:"auto"}}>
+              :<TableWrap>
                 <table style={{width:"100%",borderCollapse:"collapse",fontSize:12}}>
                   <THead cols={["Pegawai","Role","Hadir (Hari)","Total Jam Kerja","Rata-rata/Hari","Terakhir Masuk"]}/>
                   <tbody>{Object.values(attByUser).map((au,i)=>{
@@ -2007,7 +2188,7 @@ export default function App() {
                     </tr>;})}
                   </tbody>
                 </table>
-              </div>}
+              </TableWrap>}
           </Card>
 
           {/* Detail records */}
@@ -2019,7 +2200,7 @@ export default function App() {
             </div>
             {attFiltered.length===0
               ?<div style={{padding:"24px",textAlign:"center",color:C.t3,fontSize:12}}>Tidak ada data untuk filter ini</div>
-              :<div style={{overflowX:"auto"}}>
+              :<TableWrap>
                 <table style={{width:"100%",borderCollapse:"collapse",fontSize:13,minWidth:520}}>
                   <THead cols={["Tanggal","Pegawai","Role","Bisnis","Jam Masuk","Jam Pulang","Durasi"]}/>
                   <tbody>{attFiltered.sort((a,b)=>{try{return new Date(b.checkIn)-new Date(a.checkIn);}catch{return 0;}}).map((a,i)=>(
@@ -2040,7 +2221,7 @@ export default function App() {
                     </tr>
                   ))}</tbody>
                 </table>
-              </div>}
+              </TableWrap>}
           </Card>
         </div>}
 
@@ -2070,13 +2251,13 @@ export default function App() {
           return <div style={{display:"flex",flexDirection:"column",gap:10}}>
           <div style={{display:"flex",alignItems:"center",gap:8,flexWrap:"wrap"}}>
             <h2 style={{fontSize:15,fontWeight:800,flex:1}}>Log Stok <span style={{color:C.t2,fontWeight:500,fontSize:13}}>({slogsFiltered.length}/{slogs.length})</span></h2>
-            <button onClick={()=>downloadCSV(slogsFiltered,[
-              {key:"date",label:"Waktu"},{key:"barcode",label:"Barcode"},
-              {key:"name",label:"Nama Produk"},{key:"business",label:"Bisnis",fn:r=>BIZ[r.business]?.name||r.business},
-              {key:"type",label:"Tipe"},{key:"qty",label:"Qty"},
-              {key:"before",label:"Stok Sebelum"},{key:"after",label:"Stok Sesudah"},
-              {key:"by",label:"Oleh"},
-            ],"log_stok")} className="press"
+            <button onClick={()=>downloadXLSX(slogsFiltered,[
+              {key:"date",label:"Waktu",w:24},{key:"barcode",label:"Barcode",w:14},
+              {key:"name",label:"Nama Produk",w:28},{key:"business",label:"Bisnis",fn:r=>BIZ[r.business]?.name||r.business,w:14},
+              {key:"type",label:"Tipe",w:10},{key:"qty",label:"Qty",fn:r=>r.qty,num:true,w:8},
+              {key:"before",label:"Stok Sebelum",fn:r=>r.before,num:true,w:14},{key:"after",label:"Stok Sesudah",fn:r=>r.after,num:true,w:14},
+              {key:"by",label:"Oleh",w:20},
+            ],"Log Stok","log_stok")} className="press"
               style={{padding:"7px 14px",background:C.g1,border:`1px solid ${C.g}33`,borderRadius:8,
                 color:C.g,fontSize:12,fontWeight:700,fontFamily:F.sans}}>
               ⬇ Excel
@@ -2120,7 +2301,7 @@ export default function App() {
           {slogsFiltered.length===0
             ?<div style={{textAlign:"center",padding:"48px",color:C.t3}}><div style={{fontSize:40,opacity:.08,marginBottom:10}}>📋</div><p>Tidak ada data untuk filter ini</p></div>
             :<Card noPad style={{overflow:"hidden"}}>
-              <div style={{overflowX:"auto"}}>
+              <TableWrap>
                 <table style={{width:"100%",borderCollapse:"collapse",fontSize:11.5,minWidth:540}}>
                   <THead cols={["Waktu","Produk","Bisnis","Tipe","Qty","Sblm","Ssdh","Oleh"]}/>
                   <tbody>{slogsFiltered.map((l,i)=><tr key={l.id||i} className="hrow" style={{borderTop:`1px solid ${C.b0}`,background:i%2===0?"transparent":C.bg0}}>
@@ -2137,7 +2318,7 @@ export default function App() {
                     <td style={{padding:"14px 13px",color:C.t2,fontSize:11}}>{l.by}</td>
                   </tr>)}</tbody>
                 </table>
-              </div>
+              </TableWrap>
             </Card>}
         </div>;})()}
 
