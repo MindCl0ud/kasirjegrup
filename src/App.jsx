@@ -870,29 +870,6 @@ function AppInner() {
       setFbReady(true);setFbLoad(false);
     });
   },[]);
-  // ─── Restore session on refresh ───
-  useEffect(()=>{
-    if(!fbReady) return;
-    const saved=sessionStorage.getItem("je_session");
-    if(!saved) return;
-    try{
-      const s=JSON.parse(saved);
-      if(!s.userId||!s.biz||!s.screen) return;
-      // Session valid max 8 hours
-      if(Date.now()-s.t > SESSION_TTL){sessionStorage.removeItem("je_session");return;}
-      // Wait for users to load
-      const tryRestore=()=>{
-        const u=users.find(x=>x.id===s.userId&&x.active);
-        if(!u){setTimeout(tryRestore,500);return;}
-        setUser(u);setBiz(s.biz);setSessionStart(s.t);
-        if(s.screen==="admin") setAdminTab("dashboard");
-        setScreen(s.screen);
-      };
-      if(users.length>0) tryRestore();
-      else setTimeout(tryRestore,1000);
-    }catch{sessionStorage.removeItem("je_session");}
-  },[fbReady,users]);
-
   // ─── Firestore data ───
   const [users,setUsers]=useState([]);
   const [prods,setProds]=useState([]);
@@ -916,6 +893,25 @@ function AppInner() {
     ];
     return()=>uns.forEach(u=>u());
   },[fbReady]);
+  // ─── Restore session on refresh (after users loaded) ───
+  useEffect(()=>{
+    if(!fbReady||!users.length) return;
+    const saved=sessionStorage.getItem("je_session");
+    if(!saved) return;
+    // Don't restore if already logged in
+    if(user) return;
+    try{
+      const s=JSON.parse(saved);
+      if(!s.userId||!s.biz||!s.screen) return;
+      if(Date.now()-s.t > SESSION_TTL){sessionStorage.removeItem("je_session");return;}
+      const u=users.find(x=>x.id===s.userId&&x.active);
+      if(!u){sessionStorage.removeItem("je_session");return;}
+      setUser(u);setBiz(s.biz);setSessionStart(s.t);
+      if(s.screen==="admin") setAdminTab("dashboard");
+      setScreen(s.screen);
+    }catch{sessionStorage.removeItem("je_session");}
+  },[fbReady,users]);
+
   // ─── Toast ───
   const [notif,setNotif]=useState(null);
   const nRef=useRef(null);
