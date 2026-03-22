@@ -1767,11 +1767,11 @@ function AppInner() {
             <Stat icon="🕐" label="Hadir Hari Ini" color={C.a} value={attend.filter(a=>a.date===todayDate()).length}/>
           </div>
           {/* Targets */}
-          {Object.values(BIZ).some(b2=>currentTarget(b2.id))&&<Card>
+          {targets.filter(t=>t.period===currMonth).length>0&&<Card>
             <div style={{fontSize:10,fontWeight:700,color:C.t2,textTransform:"uppercase",letterSpacing:1,marginBottom:12}}>🎯 Target Penjualan Bulan Ini</div>
             {Object.values(BIZ).map(b2=>{
-              const tgt=currentTarget(b2.id);if(!tgt) return null;
-              const rev=monthRevBiz(b2.id);const isJ=b2.id==="JS_CLOTHING";
+              const tgt=targets.find(t=>t.business===b2.id&&t.period===currMonth);if(!tgt) return null;
+              const rev=monthRevByBiz[b2.id]||0;const isJ=b2.id==="JS_CLOTHING";
               return <div key={b2.id} style={{marginBottom:12}}>
                 <div style={{display:"flex",justifyContent:"space-between",fontSize:12,marginBottom:6}}>
                   <span style={{fontWeight:600}}>{b2.icon} {b2.name}</span>
