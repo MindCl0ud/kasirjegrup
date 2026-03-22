@@ -300,6 +300,9 @@ function Header({title,biz,user,onLogout,onSwitchBiz,onAbsenPulang,hasCheckedIn,
       {onToggleTheme&&<button onClick={onToggleTheme} className="press"
         style={{padding:"5px 9px",background:C.bg3,border:`1px solid ${C.bo1}`,borderRadius:8,color:C.t2,fontSize:13,lineHeight:1}}>
         {isDark?"☀️":"🌙"}</button>}
+      <button onClick={()=>window.location.reload()} className="press" title="Refresh"
+        style={{padding:"5px 9px",background:C.bg3,border:`1px solid ${C.bo1}`,
+          borderRadius:8,color:C.t2,fontSize:13,lineHeight:1}}>↻</button>
       <button onClick={onLogout} className="press" style={{padding:"5px 9px",background:C.bg3,
         border:`1px solid ${C.bo1}`,borderRadius:8,color:C.t2,fontSize:11,fontWeight:600}}>Keluar</button>
     </div>
@@ -867,6 +870,29 @@ function AppInner() {
       setFbReady(true);setFbLoad(false);
     });
   },[]);
+  // ─── Restore session on refresh ───
+  useEffect(()=>{
+    if(!fbReady) return;
+    const saved=sessionStorage.getItem("je_session");
+    if(!saved) return;
+    try{
+      const s=JSON.parse(saved);
+      if(!s.userId||!s.biz||!s.screen) return;
+      // Session valid max 8 hours
+      if(Date.now()-s.t > SESSION_TTL){sessionStorage.removeItem("je_session");return;}
+      // Wait for users to load
+      const tryRestore=()=>{
+        const u=users.find(x=>x.id===s.userId&&x.active);
+        if(!u){setTimeout(tryRestore,500);return;}
+        setUser(u);setBiz(s.biz);setSessionStart(s.t);
+        if(s.screen==="admin") setAdminTab("dashboard");
+        setScreen(s.screen);
+      };
+      if(users.length>0) tryRestore();
+      else setTimeout(tryRestore,1000);
+    }catch{sessionStorage.removeItem("je_session");}
+  },[fbReady,users]);
+
   // ─── Firestore data ───
   const [users,setUsers]=useState([]);
   const [prods,setProds]=useState([]);
@@ -947,17 +973,25 @@ function AppInner() {
     if(rememberMe) localStorage.setItem("je_remember",JSON.stringify({u:lf.u,p:lf.p}));
     else localStorage.removeItem("je_remember");
     setSessionStart(Date.now());
-    if(u.role==="admin"){setUser(u);setBiz(u.access[0]);setAdminTab("dashboard");setScreen("admin");}
+    if(u.role==="admin"){
+      setUser(u);setBiz(u.access[0]);setAdminTab("dashboard");setScreen("admin");
+      sessionStorage.setItem("je_session",JSON.stringify({userId:u.id,biz:u.access[0],screen:"admin",t:Date.now()}));
+    }
     else{setPending(u);setScreen("facescan");}
   };
   const afterFace=async(u)=>{
     setUser(u);setPending(null);
-    if(u.access.length===1){const b=u.access[0];setBiz(b);await doCheckIn(u,b);setScreen(u.role==="kasir"?"kasir":"stok");}
-    else setScreen("bizselect");
+    if(u.access.length===1){
+      const b=u.access[0];setBiz(b);await doCheckIn(u,b);
+      const sc=u.role==="kasir"?"kasir":"stok";
+      setScreen(sc);
+      sessionStorage.setItem("je_session",JSON.stringify({userId:u.id,biz:b,screen:sc,t:Date.now()}));
+    } else setScreen("bizselect");
   };
   const doLogout=()=>{
     setUser(null);setBiz(null);setScreen("login");setSessionStart(null);
     setCart([]);setScanIn("");setStokTarget(null);setReceipt(null);
+    sessionStorage.removeItem("je_session");
   };
   const handlePulang=async()=>{await doCheckOut();setTimeout(doLogout,1500);};
 
@@ -2102,7 +2136,7 @@ function AppInner() {
                   <td style={{padding:"12px 13px",fontSize:10,color:C.t2}}>{t.payment||"Tunai"}</td>
                   <td style={{padding:"12px 13px"}}>
                     {t.returned?<span style={{fontSize:10,color:C.a,fontWeight:600}}>✓ Retur</span>
-                    :<button onClick={()=>{if(window.confirm(`Retur transaksi ${t.id}?\nStok akan dikembalikan.`))doReturn(t);}} className="press"
+                    :<button onClick={()=>{if(window.confirm(`Retur transaksi ${t.id}?\nStok akan dikembalikan.`))doRetur(t);}} className="press"
                       style={{padding:"3px 9px",background:C.a1,border:`1px solid ${C.a}22`,borderRadius:6,color:C.a,fontSize:10,fontWeight:700}}>Retur</button>}
                   </td>
                 </tr>)}</tbody>

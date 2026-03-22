@@ -1,128 +1,61 @@
-// ═══════════════════════════════════════════════
-//  KASIR JE GRUP — Service Worker
-//  Caches everything for 100% offline use
-// ═══════════════════════════════════════════════
-
+// KASIR JE GRUP — Service Worker v6
 const CACHE_NAME = "kasir-je-grup-v6";
-const OFFLINE_URLS = [
-  "/",
-  "/index.html",
-  "/manifest.json",
-];
 
-// Face-API model files to pre-cache (downloaded by setup script)
-const MODEL_FILES = [
-  "/models/tiny_face_detector_model-weights_manifest.json",
-  "/models/tiny_face_detector_model-shard1",
-  "/models/face_landmark_68_tiny_model-weights_manifest.json",
-  "/models/face_landmark_68_tiny_model-shard1",
-  "/models/face_recognition_model-weights_manifest.json",
-  "/models/face_recognition_model-shard1",
-  "/models/face_recognition_model-shard2",
-  "/models/face-api.js",
-];
+// On install: skip waiting immediately so new SW activates right away
+self.addEventListener("install", (e) => {
+  e.waitUntil(self.skipWaiting());
+});
 
-// ── Install: cache core assets ───────────────
-self.addEventListener("install", (event) => {
-  event.waitUntil(
-    caches.open(CACHE_NAME).then(async (cache) => {
-      // Cache offline URLs (non-fatal)
-      await cache.addAll(OFFLINE_URLS).catch(() => {});
-      // Try to cache model files (may not exist yet)
-      for (const url of MODEL_FILES) {
-        await cache.add(url).catch(() => {});
-      }
-      return self.skipWaiting();
-    })
+// On activate: delete ALL old caches, then claim clients
+self.addEventListener("activate", (e) => {
+  e.waitUntil(
+    caches.keys()
+      .then(keys => Promise.all(keys.map(k => caches.delete(k))))
+      .then(() => self.clients.claim())
   );
 });
 
-// ── Activate: clean old caches ───────────────
-self.addEventListener("activate", (event) => {
-  event.waitUntil(
-    caches.keys().then((keys) =>
-      Promise.all(
-        keys
-          .filter((k) => k !== CACHE_NAME)
-          .map((k) => caches.delete(k))
-      )
-    ).then(() => self.clients.claim())
-  );
-});
+// Fetch: network-first for JS/CSS (always fresh), cache for static assets
+self.addEventListener("fetch", (e) => {
+  if (e.request.method !== "GET") return;
+  if (e.request.url.startsWith("chrome-extension")) return;
+  if (e.request.url.includes("firestore.googleapis.com")) return;
+  if (e.request.url.includes("firebase")) return;
+  if (e.request.url.includes("googleapis.com")) return;
 
-// ── Fetch: cache-first strategy ──────────────
-self.addEventListener("fetch", (event) => {
-  // Skip non-GET and chrome-extension requests
-  if (event.request.method !== "GET") return;
-  if (event.request.url.startsWith("chrome-extension")) return;
-
-  // For Google Sheets API calls — network only (graceful fail)
-  if (event.request.url.includes("script.google.com")) {
-    event.respondWith(
-      fetch(event.request).catch(() =>
-        new Response(JSON.stringify({ error: "offline" }), {
-          headers: { "Content-Type": "application/json" },
-        })
-      )
+  // JS/CSS: always from network (never stale)
+  const url = new URL(e.request.url);
+  if (url.pathname.endsWith(".js") || url.pathname.endsWith(".css")) {
+    e.respondWith(
+      fetch(e.request)
+        .catch(() => caches.match(e.request))
     );
     return;
   }
 
-  // For Google Fonts / CDN (cache if available, skip if offline)
-  if (
-    event.request.url.includes("fonts.googleapis.com") ||
-    event.request.url.includes("fonts.gstatic.com")
-  ) {
-    event.respondWith(
-      caches.open(CACHE_NAME).then((cache) =>
-        cache.match(event.request).then((cached) => {
-          if (cached) return cached;
-          return fetch(event.request)
-            .then((response) => {
-              cache.put(event.request, response.clone());
-              return response;
-            })
-            .catch(() => new Response("", { status: 503 }));
-        })
-      )
+  // HTML: network-first
+  if (e.request.mode === "navigate") {
+    e.respondWith(
+      fetch(e.request).catch(() => caches.match("/index.html"))
     );
     return;
   }
 
-  // Default: Cache-first, fallback to network
-  event.respondWith(
-    caches.match(event.request).then((cached) => {
+  // Everything else: cache-first
+  e.respondWith(
+    caches.match(e.request).then(cached => {
       if (cached) return cached;
-      return fetch(event.request)
-        .then((response) => {
-          if (!response || response.status !== 200 || response.type === "opaque") {
-            return response;
-          }
-          const toCache = response.clone();
-          caches.open(CACHE_NAME).then((cache) => {
-            cache.put(event.request, toCache);
-          });
-          return response;
-        })
-        .catch(() => {
-          // Offline fallback
-          if (event.request.mode === "navigate") {
-            return caches.match("/index.html");
-          }
-          return new Response("Offline", { status: 503 });
-        });
+      return fetch(e.request).then(res => {
+        if (res && res.status === 200 && res.type !== "opaque") {
+          const clone = res.clone();
+          caches.open(CACHE_NAME).then(c => c.put(e.request, clone));
+        }
+        return res;
+      }).catch(() => new Response("Offline", {status:503}));
     })
   );
 });
 
-// ── Background sync (optional) ───────────────
-self.addEventListener("message", (event) => {
-  if (event.data?.type === "SKIP_WAITING") {
-    self.skipWaiting();
-  }
-  if (event.data?.type === "CACHE_MODEL_FILES") {
-    caches.open(CACHE_NAME).then((cache) => {
-      MODEL_FILES.forEach((url) => cache.add(url).catch(() => {}));
-    });
-  }
+self.addEventListener("message", (e) => {
+  if (e.data?.type === "SKIP_WAITING") self.skipWaiting();
 });
