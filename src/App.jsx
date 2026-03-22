@@ -263,7 +263,7 @@ function ProgressBar({value,max,color=C.g,label}) {
 // ─────────────────────────────────────────────────────────────
 //  HEADER
 // ─────────────────────────────────────────────────────────────
-function Header({title,biz,user,onLogout,onSwitchBiz,onAbsenPulang,hasCheckedIn,online,onToggleTheme,isDark,lowStockCount=0}) {
+function Header({title,biz,user,onLogout,onSwitchBiz,onAbsenPulang,hasCheckedIn,online,onToggleTheme,isDark,lowStockCount=0,onLowStockClick}) {
   const b=BIZ[biz];
   return <header style={{background:`${C.bg2}ee`,backdropFilter:"blur(20px)",WebkitBackdropFilter:"blur(20px)",
     borderBottom:`1px solid ${C.bo0}`,padding:"0 12px",height:52,
@@ -283,8 +283,9 @@ function Header({title,biz,user,onLogout,onSwitchBiz,onAbsenPulang,hasCheckedIn,
     </div>
     <div style={{display:"flex",alignItems:"center",gap:5,flexShrink:0}}>
       <div className="hide-mobile"><OnlineDot online={online}/></div>
-      {lowStockCount>0&&<div style={{padding:"3px 8px",borderRadius:20,background:C.a1,
-        border:`1px solid ${C.a}33`,color:C.a,fontSize:10,fontWeight:700}}>⚠ {lowStockCount} menipis</div>}
+      {lowStockCount>0&&<button onClick={onLowStockClick} className="press"
+        style={{padding:"3px 8px",borderRadius:20,background:C.a1,
+        border:`1px solid ${C.a}33`,color:C.a,fontSize:10,fontWeight:700,cursor:"pointer"}}>⚠ {lowStockCount} menipis</button>}
       {onSwitchBiz&&user?.access?.length>1&&(
         <button onClick={onSwitchBiz} className="press" style={{padding:"5px 9px",background:C.bg3,
           border:`1px solid ${C.bo1}`,borderRadius:8,color:C.t1,fontSize:11,fontWeight:600}}>⇄</button>)}
@@ -753,6 +754,66 @@ function SimplePieChart({data}) {
   );
 }
 
+
+// ─────────────────────────────────────────────────────────────
+//  LOW STOCK POPUP
+// ─────────────────────────────────────────────────────────────
+function LowStockPopup({prods,onClose}) {
+  const list = prods.filter(p=>p.stock<10).sort((a,b)=>a.stock-b.stock);
+  return <div style={{position:"fixed",inset:0,background:"rgba(2,8,24,.85)",zIndex:800,
+    display:"flex",alignItems:"flex-end",justifyContent:"center",fontFamily:F.sans}}
+    onClick={onClose}>
+    <div style={{width:"100%",maxWidth:460,background:C.bg2,borderRadius:"22px 22px 0 0",
+      border:`1px solid ${C.r}44`,borderBottom:"none",animation:"slideUp .25s ease",
+      maxHeight:"80vh",display:"flex",flexDirection:"column"}}
+      onClick={e=>e.stopPropagation()}>
+      <div style={{width:36,height:4,background:C.bo1,borderRadius:2,margin:"14px auto 0"}}/>
+      <div style={{padding:"10px 16px 12px",borderBottom:`1px solid ${C.bo0}`,flexShrink:0}}>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+          <div>
+            <div style={{fontSize:14,fontWeight:800,color:C.r}}>⚠ Stok Menipis</div>
+            <div style={{fontSize:11,color:C.t2,marginTop:2}}>{list.length} produk perlu ditambah stok</div>
+          </div>
+          <button onClick={onClose} style={{background:"transparent",border:"none",color:C.t2,fontSize:20,cursor:"pointer",lineHeight:1}}>×</button>
+        </div>
+      </div>
+      <div style={{overflowY:"auto",flex:1}}>
+        {list.length===0
+          ?<div style={{padding:"32px",textAlign:"center",color:C.t3,fontSize:13}}>Semua stok aman ✅</div>
+          :list.map((p,i)=>(
+          <div key={p.id} style={{display:"flex",alignItems:"center",gap:12,padding:"12px 16px",
+            borderTop:i>0?`1px solid ${C.bo0}`:undefined}}>
+            <div style={{width:36,height:36,borderRadius:10,flexShrink:0,display:"flex",alignItems:"center",
+              justifyContent:"center",fontSize:20,
+              background:p.stock===0?C.r1:C.a1,border:`1px solid ${p.stock===0?C.r:C.a}33`}}>
+              {p.stock===0?"✕":"!"}
+            </div>
+            <div style={{flex:1,minWidth:0}}>
+              <div style={{fontWeight:600,fontSize:13,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{p.name}</div>
+              <div style={{display:"flex",gap:6,marginTop:2,flexWrap:"wrap",alignItems:"center"}}>
+                <span className="mn" style={{fontSize:10,color:C.t2}}>{p.barcode}</span>
+                <BizChip biz={p.business} sm/>
+                <span style={{fontSize:10,color:C.t2}}>{p.category}</span>
+              </div>
+            </div>
+            <div style={{textAlign:"right",flexShrink:0}}>
+              <div className="mn" style={{fontSize:22,fontWeight:800,
+                color:p.stock===0?C.r:C.a,lineHeight:1}}>{p.stock}</div>
+              <div style={{fontSize:10,color:C.t2,marginTop:2}}>{p.stock===0?"HABIS":"tersisa"}</div>
+            </div>
+          </div>
+        ))}
+      </div>
+      <div style={{padding:"12px 16px",borderTop:`1px solid ${C.bo0}`,flexShrink:0,fontSize:11,color:C.t2,
+        display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+        <span>Total: <b style={{color:C.r}}>{list.filter(p=>p.stock===0).length} habis</b> · <b style={{color:C.a}}>{list.filter(p=>p.stock>0).length} menipis</b></span>
+        <button onClick={onClose} style={{padding:"6px 16px",background:C.bg3,border:`1px solid ${C.bo1}`,
+          borderRadius:8,color:C.t1,fontSize:12,fontWeight:600,cursor:"pointer",fontFamily:F.sans}}>Tutup</button>
+      </div>
+    </div>
+  </div>;
+}
+
 // ─────────────────────────────────────────────────────────────
 //  CHART BOUNDARY
 // ─────────────────────────────────────────────────────────────
@@ -996,6 +1057,7 @@ function AppInner() {
   const [scanIn,setScanIn]=useState("");
   const [receipt,setReceipt]=useState(null);
   const [showStock,setShowStock]=useState(false);
+  const [showLowStock,setShowLowStock]=useState(false);
   const [discount,setDiscount]=useState({type:"pct",value:""});
   const [payMethod,setPayMethod]=useState("Tunai");
   const [showCheckout,setShowCheckout]=useState(false);
@@ -1401,14 +1463,15 @@ function AppInner() {
       <Header biz={biz} user={user} online={online} onLogout={doLogout}
         onSwitchBiz={user?.access?.length>1?()=>{setCart([]);setScreen("bizselect");}:null}
         onAbsenPulang={handlePulang} hasCheckedIn={hasCheckedIn}
-        onToggleTheme={toggleTheme} isDark={isDark} lowStockCount={lowStockCount}/>
+        onToggleTheme={toggleTheme} isDark={isDark} lowStockCount={lowStockCount} onLowStockClick={()=>setShowLowStock(true)}/>
 
       {/* Invoice */}
       {receipt&&<Invoice receipt={receipt} biz={biz}
         onClose={()=>{setReceipt(null);scanRef.current?.focus();}}
         onNew={()=>{setReceipt(null);setCart([]);scanRef.current?.focus();}}/>}
       {/* Stock check */}
-      {showStock&&<StockCheckModal prods={bizProds()} biz={biz} onClose={()=>setShowStock(false)}/>}
+      {showStock&&<StockCheckModal prods={bizProds()} biz={biz} onClose={()=>setShowStock(false)}/> }
+      {showLowStock&&<LowStockPopup prods={prods} onClose={()=>setShowLowStock(false)}/>}
 
       {/* Checkout modal */}
       {showCheckout&&<div style={{position:"fixed",inset:0,background:"rgba(2,8,24,.88)",zIndex:500,display:"flex",alignItems:"flex-end",justifyContent:"center"}} onClick={()=>setShowCheckout(false)}>
@@ -1573,9 +1636,10 @@ function AppInner() {
     const filtered=bizProds().filter(p=>!stokSearch||p.name.toLowerCase().includes(stokSearch.toLowerCase())||p.barcode.includes(stokSearch));
     return <div style={{fontFamily:F.sans,background:C.bg1,color:C.t0,height:"100vh",display:"flex",flexDirection:"column"}}>
       <style>{CSS}</style><Toast n={notif}/>
+      {showLowStock&&<LowStockPopup prods={prods} onClose={()=>setShowLowStock(false)}/>}
       <Header biz={biz} user={user} online={online} onLogout={doLogout}
         onSwitchBiz={user?.access?.length>1?()=>{setStokTarget(null);setScreen("bizselect");}:null}
-        onAbsenPulang={handlePulang} hasCheckedIn={hasCheckedIn} onToggleTheme={toggleTheme} isDark={isDark}/>
+        onAbsenPulang={handlePulang} hasCheckedIn={hasCheckedIn} onToggleTheme={toggleTheme} isDark={isDark} onLowStockClick={()=>setShowLowStock(true)}/>
       <div style={{flex:1,overflowY:"auto",padding:10,display:"flex",flexDirection:"column",gap:10,minHeight:0}}>
         <Card noPad style={{overflow:"hidden"}}>
           <div style={{padding:"10px 13px",borderBottom:`1px solid ${C.bo0}`,display:"flex",alignItems:"center",gap:8}}>
@@ -1696,7 +1760,7 @@ function AppInner() {
 
     return <div style={{fontFamily:F.sans,background:C.bg1,color:C.t0,height:"100vh",display:"flex",flexDirection:"column"}}>
       <style>{CSS}</style><Toast n={notif}/>
-      <Header title="Admin Panel" user={user} online={online} onLogout={doLogout} lowStockCount={lowStockCount} onToggleTheme={toggleTheme} isDark={isDark}/>
+      <Header title="Admin Panel" user={user} online={online} onLogout={doLogout} lowStockCount={lowStockCount} onToggleTheme={toggleTheme} isDark={isDark} onLowStockClick={()=>setShowLowStock(true)}/>
 
       {/* Change password modal */}
       {cpwdModal&&<div style={{position:"fixed",inset:0,background:"rgba(2,8,24,.85)",zIndex:500,display:"flex",alignItems:"flex-end",justifyContent:"center"}} onClick={()=>setCpwdModal(null)}>
@@ -1776,6 +1840,7 @@ function AppInner() {
         </div>
       </div>}
 
+      {showLowStock&&<LowStockPopup prods={prods} onClose={()=>setShowLowStock(false)}/>}
       {/* Tab bar */}
       <div style={{background:C.bg2,borderBottom:`1px solid ${C.bo0}`,display:"flex",overflowX:"auto",flexShrink:0,gap:0,padding:"0 4px"}}>
         {TABS.map(t=><button key={t.id} onClick={()=>{setAdminTab(t.id);setSearchQ("");setPModal(false);}}
@@ -2311,27 +2376,58 @@ function AppInner() {
 
         {/* ── RETUR ── */}
         {adminTab==="returns"&&<div style={{display:"flex",flexDirection:"column",gap:10}}>
-          <h2 style={{fontSize:15,fontWeight:800}}>Riwayat Retur <span style={{color:C.t2,fontWeight:500,fontSize:13}}>({returns.length})</span></h2>
-          {returns.length===0?<div style={{textAlign:"center",padding:"48px",color:C.t3}}>
-            <div style={{fontSize:40,opacity:.08,marginBottom:10}}>↩</div>
-            <p>Belum ada retur</p>
-            <p style={{fontSize:12,marginTop:8,color:C.t3}}>Retur dilakukan dari tab Laporan → kolom Retur di tabel transaksi</p>
-          </div>:<Card noPad style={{overflow:"hidden"}}>
-            <TableWrap>
-              <table style={{width:"100%",borderCollapse:"collapse",fontSize:12,minWidth:520}}>
-                <THead cols={["ID Retur","Tanggal","Kasir","Bisnis","TRX Asal","Total","Item"]}/>
-                <tbody>{returns.map((r,i)=><tr key={r.id} className="hrow" style={{borderTop:`1px solid ${C.bo0}`,background:i%2===0?"transparent":C.bg0}}>
-                  <td style={{padding:"14px 13px",fontFamily:F.mono,fontSize:10,color:C.a}}>{r.id}</td>
-                  <td style={{padding:"14px 13px",fontSize:10,color:C.t2,whiteSpace:"nowrap"}}>{r.date}</td>
-                  <td style={{padding:"14px 13px",fontWeight:500}}>{r.kasir}</td>
-                  <td style={{padding:"14px 13px"}}><BizChip biz={r.business} sm/></td>
-                  <td style={{padding:"14px 13px",fontFamily:F.mono,fontSize:10,color:C.t3}}>{r.originalTrxId?.slice(-12)}</td>
-                  <td style={{padding:"14px 13px",fontFamily:F.mono,color:C.r,fontSize:11,fontWeight:700}}>{rp(r.total)}</td>
-                  <td style={{padding:"14px 13px",fontFamily:F.mono,fontSize:11}}>{r.items?.length||0}</td>
-                </tr>)}</tbody>
-              </table>
-            </TableWrap>
-          </Card>}
+          <div style={{display:"flex",alignItems:"center",gap:8,flexWrap:"wrap"}}>
+            <div style={{flex:1}}><h2 style={{fontSize:15,fontWeight:800}}>Laporan Retur</h2><p style={{fontSize:11.5,color:C.t2,marginTop:2}}>Transaksi yang dibatalkan & stok dikembalikan</p></div>
+            <button onClick={()=>downloadXLSX(returns,[
+              {key:"id",label:"ID Retur",w:24},{key:"date",label:"Tanggal",w:22},
+              {key:"kasir",label:"Kasir",w:20},{key:"business",label:"Bisnis",fn:r=>BIZ[r.business]?.name||r.business,w:14},
+              {key:"originalTrxId",label:"ID Transaksi Asal",w:26},{key:"total",label:"Nilai Retur (Rp)",fn:r=>r.total,num:true,w:20},
+              {key:"items",label:"Jumlah Item",fn:r=>r.items?.length||0,num:true,w:14},
+            ],"Retur","laporan_retur")} className="press"
+              style={{padding:"8px 14px",background:C.g1,border:`1px solid ${C.g}33`,borderRadius:9,color:C.g,fontSize:12,fontWeight:700,fontFamily:F.sans}}>⬇ Excel</button>
+          </div>
+          {/* Summary stats */}
+          {returns.length>0&&<div className="stat-grid-4" style={{display:"grid",gap:8}}>
+            <Stat icon="↩" label="Total Retur" value={returns.length} color={C.r}/>
+            <Stat icon="💸" label="Nilai Diretur" value={rp(returns.reduce((s,r)=>s+r.total,0))} color={C.a}/>
+            <Stat icon="📦" label="Item Diretur" value={returns.reduce((s,r)=>s+(r.items?.length||0),0)} color={C.cy}/>
+            <Stat icon="🧑" label="Oleh Kasir" value={[...new Set(returns.map(r=>r.kasir))].length+" orang"} color={C.vi}/>
+          </div>}
+          {returns.length===0
+            ?<div style={{textAlign:"center",padding:"48px",color:C.t3}}>
+              <div style={{fontSize:40,opacity:.08,marginBottom:10}}>↩</div>
+              <p>Belum ada retur</p>
+              <p style={{fontSize:12,marginTop:8}}>Retur dari tab Laporan → klik tombol ↩ di tabel transaksi</p>
+            </div>
+            :<Card noPad style={{overflow:"hidden"}}>
+              <TableWrap>
+                <table style={{width:"100%",borderCollapse:"collapse",fontSize:12,minWidth:520}}>
+                  <THead cols={["ID Retur","Tanggal","Kasir","Bisnis","TRX Asal","Nilai","Item","Detail"]}/>
+                  <tbody>{returns.map((r,i)=><tr key={r.id} className="hrow" style={{borderTop:`1px solid ${C.bo0}`,background:i%2===0?"transparent":C.bg0}}>
+                    <td style={{padding:"12px 13px",fontFamily:F.mono,fontSize:10,color:C.a}}>{r.id?.slice(-12)}</td>
+                    <td style={{padding:"12px 13px",fontSize:10,color:C.t2,whiteSpace:"nowrap"}}>{r.date}</td>
+                    <td style={{padding:"12px 13px",fontWeight:500,fontSize:12}}>{r.kasir}</td>
+                    <td style={{padding:"12px 13px"}}><BizChip biz={r.business} sm/></td>
+                    <td style={{padding:"12px 13px",fontFamily:F.mono,fontSize:10,color:C.t3}}>{r.originalTrxId?.slice(-12)}</td>
+                    <td style={{padding:"12px 13px",fontFamily:F.mono,color:C.r,fontSize:11,fontWeight:700}}>{rp(r.total)}</td>
+                    <td style={{padding:"12px 13px",fontFamily:F.mono,fontSize:11}}>{r.items?.length||0}</td>
+                    <td style={{padding:"12px 13px"}}>
+                      <details style={{cursor:"pointer"}}>
+                        <summary style={{fontSize:10,color:C.b,fontWeight:700,userSelect:"none",listStyle:"none"}}>Lihat ▾</summary>
+                        <div style={{marginTop:6,padding:"6px 0"}}>
+                          {r.items?.map((item,ii)=>(
+                            <div key={ii} style={{fontSize:10.5,color:C.t1,display:"flex",justifyContent:"space-between",gap:8,marginBottom:3}}>
+                              <span style={{overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",flex:1}}>{item.name} ×{item.qty}</span>
+                              <span className="mn" style={{flexShrink:0,color:C.r}}>−{rp(item.price*item.qty)}</span>
+                            </div>
+                          ))}
+                        </div>
+                      </details>
+                    </td>
+                  </tr>)}</tbody>
+                </table>
+              </TableWrap>
+            </Card>}
         </div>}
 
         {/* ── AKTIVITAS ── */}
