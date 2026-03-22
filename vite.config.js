@@ -8,7 +8,7 @@ export default defineConfig({
       output: {
         manualChunks: {
           "react-vendor": ["react", "react-dom"],
-          "chart-vendor": ["recharts"],
+          "firebase-vendor": ["firebase"],
         },
       },
     },
