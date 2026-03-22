@@ -1,254 +1,199 @@
 // ═══════════════════════════════════════════════════════════════
-//  KASIR JE GRUP — Firebase Service Layer
-//  Handles all Firestore operations + offline persistence
+//  KASIR JE GRUP — Firebase Service Layer v5
 // ═══════════════════════════════════════════════════════════════
-
 import { initializeApp, getApps } from "firebase/app";
 import {
-  initializeFirestore,
-  persistentLocalCache,
-  persistentMultipleTabManager,
-  CACHE_SIZE_UNLIMITED,
-  collection, doc,
-  setDoc, addDoc, getDoc, getDocs,
-  updateDoc, deleteDoc,
-  onSnapshot, query, orderBy, limit,
+  initializeFirestore, persistentLocalCache, persistentMultipleTabManager,
+  CACHE_SIZE_UNLIMITED, collection, doc, setDoc, addDoc, getDoc, getDocs,
+  updateDoc, deleteDoc, onSnapshot, query, orderBy, limit,
   serverTimestamp, writeBatch,
 } from "firebase/firestore";
 
-// ── Config storage (localStorage) ───────────────────────────
+// ── Config ─────────────────────────────────────────────────────
 const CONFIG_KEY = "je_grup_fb_config";
-
-export const loadConfig = () => {
-  try { return JSON.parse(localStorage.getItem(CONFIG_KEY)); }
-  catch { return null; }
-};
-
-export const saveConfig = (cfg) =>
-  localStorage.setItem(CONFIG_KEY, JSON.stringify(cfg));
-
+export const loadConfig  = () => { try { return JSON.parse(localStorage.getItem(CONFIG_KEY)); } catch { return null; } };
+export const saveConfig  = (c) => localStorage.setItem(CONFIG_KEY, JSON.stringify(c));
 export const clearConfig = () => localStorage.removeItem(CONFIG_KEY);
 
-// ── Firebase instance ────────────────────────────────────────
-let _db = null;
+// ── Password hashing (SHA-256) ─────────────────────────────────
+export const hashPassword = async (plain) => {
+  const buf = await crypto.subtle.digest("SHA-256",
+    new TextEncoder().encode(plain + "je_grup_salt_2024"));
+  return Array.from(new Uint8Array(buf)).map(b=>b.toString(16).padStart(2,"0")).join("");
+};
+export const verifyPassword = async (plain, stored) => {
+  if (!stored) return false;
+  if (stored.length !== 64) return plain === stored; // legacy plain
+  return (await hashPassword(plain)) === stored;
+};
 
+// ── Firebase instance ──────────────────────────────────────────
+let _db = null;
 export const getDB = () => _db;
 
 export const initFirebase = async (config) => {
   try {
-    // Prevent double-init
     const existing = getApps();
-    const app = existing.length > 0
-      ? existing[0]
-      : initializeApp(config);
-
-    // Enable offline persistence with multi-tab support
+    const app = existing.length > 0 ? existing[0] : initializeApp(config);
     _db = initializeFirestore(app, {
       localCache: persistentLocalCache({
         tabManager: persistentMultipleTabManager(),
         cacheSizeBytes: CACHE_SIZE_UNLIMITED,
       }),
     });
-
     saveConfig(config);
-    return { ok: true, db: _db };
+    return { ok:true, db:_db };
   } catch (err) {
-    // If already initialized with different settings, try getFirestore
-    if (err.code === "failed-precondition" || err.message?.includes("already")) {
+    if (err.code==="failed-precondition" || err.message?.includes("already")) {
       const { getFirestore } = await import("firebase/firestore");
       _db = getFirestore();
-      return { ok: true, db: _db };
+      return { ok:true, db:_db };
     }
-    return { ok: false, error: err.message };
+    return { ok:false, error:err.message };
   }
 };
 
-// ── Seed check ───────────────────────────────────────────────
+// ── Seed ────────────────────────────────────────────────────────
 export const isSeeded = async () => {
-  try {
-    const snap = await getDoc(doc(_db, "meta", "seeded"));
-    return snap.exists();
-  } catch { return false; }
+  try { return (await getDoc(doc(_db,"meta","seeded"))).exists(); } catch { return false; }
 };
-
 export const seedDatabase = async (users, products) => {
   try {
     const batch = writeBatch(_db);
-
-    // Users
-    users.forEach(u => {
-      const data = { ...u };
-      // Convert faceDescriptor (Float32Array → plain array for Firestore)
+    for (const u of users) {
+      const data = { ...u, passwordHash: await hashPassword(u.password) };
       if (data.faceDescriptor) data.faceDescriptor = Array.from(data.faceDescriptor);
-      batch.set(doc(_db, "users", String(u.id)), data);
+      batch.set(doc(_db,"users",String(u.id)), data);
+    }
+    products.forEach(p => batch.set(doc(_db,"products",String(p.id)), p));
+    batch.set(doc(_db,"meta","seeded"), { seeded:true, at:serverTimestamp(), version:5 });
+    await batch.commit(); return true;
+  } catch(e) { console.error("Seed:",e); return false; }
+};
+
+// ── Subscriptions ──────────────────────────────────────────────
+export const subscribeUsers        = (cb) => onSnapshot(collection(_db,"users"), s=>cb(s.docs.map(d=>({...d.data(),_docId:d.id}))), console.warn);
+export const subscribeProducts     = (cb) => onSnapshot(collection(_db,"products"), s=>cb(s.docs.map(d=>({...d.data(),_docId:d.id}))), console.warn);
+export const subscribeTransactions = (cb,n=300) => onSnapshot(query(collection(_db,"transactions"),orderBy("createdAt","desc"),limit(n)), s=>cb(s.docs.map(d=>({...d.data(),_docId:d.id}))), console.warn);
+export const subscribeStockLogs    = (cb,n=300) => onSnapshot(query(collection(_db,"stockLogs"),orderBy("createdAt","desc"),limit(n)), s=>cb(s.docs.map(d=>({...d.data(),_docId:d.id}))), console.warn);
+export const subscribeAttendance   = (cb,n=500) => onSnapshot(query(collection(_db,"attendance"),orderBy("createdAt","desc"),limit(n)), s=>cb(s.docs.map(d=>({...d.data(),_docId:d.id}))), console.warn);
+export const subscribeReturns      = (cb,n=200) => onSnapshot(query(collection(_db,"returns"),orderBy("createdAt","desc"),limit(n)), s=>cb(s.docs.map(d=>({...d.data(),_docId:d.id}))), console.warn);
+export const subscribeActivityLogs = (cb,n=200) => onSnapshot(query(collection(_db,"activityLogs"),orderBy("createdAt","desc"),limit(n)), s=>cb(s.docs.map(d=>({...d.data(),_docId:d.id}))), console.warn);
+export const subscribeTargets      = (cb) => onSnapshot(collection(_db,"targets"), s=>cb(s.docs.map(d=>({...d.data(),_docId:d.id}))), console.warn);
+
+// ── Activity log ────────────────────────────────────────────────
+export const fbLogActivity = async (actor, action, detail, business="") => {
+  try {
+    await addDoc(collection(_db,"activityLogs"), {
+      actor, action, detail, business,
+      date: new Date().toLocaleString("id-ID"),
+      dateISO: new Date().toISOString(),
+      createdAt: serverTimestamp(),
     });
-
-    // Products
-    products.forEach(p => {
-      batch.set(doc(_db, "products", String(p.id)), p);
-    });
-
-    // Mark seeded
-    batch.set(doc(_db, "meta", "seeded"), {
-      seeded: true, at: serverTimestamp(), version: 3
-    });
-
-    await batch.commit();
-    return true;
-  } catch (err) {
-    console.error("Seed error:", err);
-    return false;
-  }
+  } catch {}
 };
 
-// ── Real-time Subscriptions ──────────────────────────────────
-export const subscribeUsers = (cb) => {
-  return onSnapshot(
-    collection(_db, "users"),
-    (snap) => cb(snap.docs.map(d => ({ ...d.data(), _docId: d.id }))),
-    (err) => console.warn("Users listener error:", err)
-  );
-};
-
-export const subscribeProducts = (cb) => {
-  return onSnapshot(
-    collection(_db, "products"),
-    (snap) => cb(snap.docs.map(d => ({ ...d.data(), _docId: d.id }))),
-    (err) => console.warn("Products listener error:", err)
-  );
-};
-
-export const subscribeTransactions = (cb, limitN = 200) => {
-  return onSnapshot(
-    query(collection(_db, "transactions"), orderBy("createdAt", "desc"), limit(limitN)),
-    (snap) => cb(snap.docs.map(d => ({ ...d.data(), _docId: d.id }))),
-    (err) => console.warn("Transactions listener error:", err)
-  );
-};
-
-export const subscribeStockLogs = (cb, limitN = 300) => {
-  return onSnapshot(
-    query(collection(_db, "stockLogs"), orderBy("createdAt", "desc"), limit(limitN)),
-    (snap) => cb(snap.docs.map(d => ({ ...d.data(), _docId: d.id }))),
-    (err) => console.warn("StockLogs listener error:", err)
-  );
-};
-
-export const subscribeAttendance = (cb, limitN = 500) => {
-  return onSnapshot(
-    query(collection(_db, "attendance"), orderBy("createdAt", "desc"), limit(limitN)),
-    (snap) => cb(snap.docs.map(d => ({ ...d.data(), _docId: d.id }))),
-    (err) => console.warn("Attendance listener error:", err)
-  );
-};
-
-// ── User Operations ──────────────────────────────────────────
-export const fbAddUser = async (user) => {
-  const data = { ...user };
+// ── Users ───────────────────────────────────────────────────────
+export const fbAddUser = async (user, actor) => {
+  const data = { ...user, passwordHash: await hashPassword(user.password) };
   if (data.faceDescriptor) data.faceDescriptor = Array.from(data.faceDescriptor);
-  await setDoc(doc(_db, "users", String(user.id)), data);
+  await setDoc(doc(_db,"users",String(user.id)), data);
+  await fbLogActivity(actor,"Tambah Pengguna",`${user.name} (${user.role})`);
+};
+export const fbUpdateUser = async (id, data, actor) => {
+  const upd = { ...data };
+  if (upd.faceDescriptor) upd.faceDescriptor = Array.from(upd.faceDescriptor);
+  if (upd.password && upd.password.length !== 64) upd.passwordHash = await hashPassword(upd.password);
+  await setDoc(doc(_db,"users",String(id)), upd);
+  if (actor) await fbLogActivity(actor,"Edit Pengguna",`Edit: ${data.name}`);
+};
+export const fbDeleteUser = async (id, name, actor) => {
+  await deleteDoc(doc(_db,"users",String(id)));
+  await fbLogActivity(actor,"Hapus Pengguna",`Hapus: ${name}`);
+};
+export const fbChangePassword = async (userId, newPass, actor) => {
+  const hash = await hashPassword(newPass);
+  await updateDoc(doc(_db,"users",String(userId)), { password:newPass, passwordHash:hash });
+  await fbLogActivity(actor,"Ganti Password","Password diperbarui");
 };
 
-export const fbUpdateUser = async (id, data) => {
-  const update = { ...data };
-  if (update.faceDescriptor) update.faceDescriptor = Array.from(update.faceDescriptor);
-  await setDoc(doc(_db, "users", String(id)), update);
+// ── Products ────────────────────────────────────────────────────
+export const fbAddProduct = async (p, actor) => {
+  await setDoc(doc(_db,"products",String(p.id)), p);
+  await fbLogActivity(actor,"Tambah Produk",`${p.name} (${p.barcode})`,p.business);
+};
+export const fbUpdateProduct = async (id, data, actor) => {
+  await updateDoc(doc(_db,"products",String(id)), data);
+  if (actor) await fbLogActivity(actor,"Edit Produk",`Edit: ${data.name}`,data.business);
+};
+export const fbDeleteProduct = async (id, name, biz, actor) => {
+  await deleteDoc(doc(_db,"products",String(id)));
+  await fbLogActivity(actor,"Hapus Produk",`Hapus: ${name}`,biz);
 };
 
-export const fbDeleteUser = async (id) => {
-  await deleteDoc(doc(_db, "users", String(id)));
-};
-
-// ── Product Operations ───────────────────────────────────────
-export const fbAddProduct = async (product) => {
-  await setDoc(doc(_db, "products", String(product.id)), product);
-};
-
-export const fbUpdateProduct = async (id, data) => {
-  await updateDoc(doc(_db, "products", String(id)), data);
-};
-
-export const fbDeleteProduct = async (id) => {
-  await deleteDoc(doc(_db, "products", String(id)));
-};
-
-// ── Transaction (checkout) ───────────────────────────────────
+// ── Transaction ─────────────────────────────────────────────────
 export const fbAddTransaction = async (trx, stockUpdates, logs) => {
   const batch = writeBatch(_db);
-
-  // Add transaction
-  batch.set(doc(_db, "transactions", trx.id), {
-    ...trx, createdAt: serverTimestamp()
-  });
-
-  // Update stock for each product
-  stockUpdates.forEach(({ productId, newStock }) => {
-    batch.update(doc(_db, "products", String(productId)), { stock: newStock });
-  });
-
-  // Add stock logs
-  logs.forEach(log => {
-    batch.set(doc(_db, "stockLogs", log.id), {
-      ...log, createdAt: serverTimestamp()
-    });
-  });
-
+  batch.set(doc(_db,"transactions",trx.id), { ...trx, createdAt:serverTimestamp() });
+  stockUpdates.forEach(({productId,newStock}) =>
+    batch.update(doc(_db,"products",String(productId)), {stock:newStock}));
+  logs.forEach(log =>
+    batch.set(doc(_db,"stockLogs",log.id), { ...log, createdAt:serverTimestamp() }));
   await batch.commit();
+  await fbLogActivity(trx.kasir,"Transaksi",`${trx.id} — Rp ${trx.total.toLocaleString("id-ID")}`,trx.business);
 };
 
-// ── Stock Update (stok role) ─────────────────────────────────
-export const fbUpdateStock = async (productId, newStock, newPrice, log) => {
+// ── Retur ───────────────────────────────────────────────────────
+export const fbAddReturn = async (ret, stockUpdates, logs) => {
   const batch = writeBatch(_db);
+  batch.set(doc(_db,"returns",ret.id), { ...ret, createdAt:serverTimestamp() });
+  batch.update(doc(_db,"transactions",ret.originalTrxId), { returned:true, returnId:ret.id });
+  stockUpdates.forEach(({productId,newStock}) =>
+    batch.update(doc(_db,"products",String(productId)), {stock:newStock}));
+  logs.forEach(log =>
+    batch.set(doc(_db,"stockLogs",log.id), { ...log, createdAt:serverTimestamp() }));
+  await batch.commit();
+  await fbLogActivity(ret.kasir,"Retur",`${ret.id} dari ${ret.originalTrxId}`,ret.business);
+};
 
-  const update = { stock: newStock };
-  if (newPrice !== undefined && newPrice > 0) update.price = newPrice;
-  batch.update(doc(_db, "products", String(productId)), update);
+// ── Stock ────────────────────────────────────────────────────────
+export const fbUpdateStock = async (productId, newStock, newPrice, log, actor) => {
+  const batch = writeBatch(_db);
+  const upd = { stock:newStock };
+  if (newPrice !== undefined && newPrice > 0) upd.price = newPrice;
+  batch.update(doc(_db,"products",String(productId)), upd);
+  if (log) batch.set(doc(_db,"stockLogs",log.id), { ...log, createdAt:serverTimestamp() });
+  await batch.commit();
+  if (actor) await fbLogActivity(actor,"Update Stok",`${log?.name}: ${log?.before}→${newStock}`,log?.business);
+};
 
-  if (log) {
-    batch.set(doc(_db, "stockLogs", log.id), {
-      ...log, createdAt: serverTimestamp()
-    });
-  }
-
+// ── Attendance ──────────────────────────────────────────────────
+export const fbCheckIn = async (rec) =>
+  setDoc(doc(_db,"attendance",rec.id), { ...rec, createdAt:serverTimestamp() });
+export const fbCheckOut = async (docId, t) =>
+  updateDoc(doc(_db,"attendance",docId), { checkOut:t, checkOutISO:new Date().toISOString(), updatedAt:serverTimestamp() });
+export const fbDeleteAttendance = async (id) => deleteDoc(doc(_db,"attendance",id));
+export const fbClearAttendanceByDate = async (dateStr) => {
+  const snap = await getDocs(collection(_db,"attendance"));
+  const batch = writeBatch(_db);
+  snap.docs.forEach(d => { if(d.data().date===dateStr) batch.delete(d.ref); });
   await batch.commit();
 };
 
-// ── Attendance ───────────────────────────────────────────────
-export const fbCheckIn = async (record) => {
-  await setDoc(doc(_db, "attendance", record.id), {
-    ...record, createdAt: serverTimestamp()
-  });
-};
+// ── Targets ─────────────────────────────────────────────────────
+export const fbSetTarget = async (t) =>
+  setDoc(doc(_db,"targets",t.id), { ...t, updatedAt:serverTimestamp() });
+export const fbDeleteTarget = async (id) => deleteDoc(doc(_db,"targets",id));
 
-export const fbCheckOut = async (docId, checkOutTime) => {
-  await updateDoc(doc(_db, "attendance", docId), {
-    checkOut: checkOutTime, updatedAt: serverTimestamp()
-  });
-};
-
-// ── Full sync to Google Sheets (optional) ───────────────────
-export const syncToSheets = async (gsUrl, users, products, transactions, stockLogs, attendance) => {
-  const r = await fetch(gsUrl, {
-    method: "POST",
+// ── Google Sheets ────────────────────────────────────────────────
+export const syncToSheets = async (url, users, products, transactions, stockLogs, attendance) => {
+  const r = await fetch(url, {
+    method:"POST",
     body: JSON.stringify({
-      action: "syncAll",
-      users: users.map(u => ({ ...u, faceDescriptor: null })), // don't send biometric
-      products, transactions, stockLogs, attendance
+      action:"syncAll",
+      users: users.map(u=>({...u,faceDescriptor:null,password:"***",passwordHash:"***"})),
+      products, transactions, stockLogs, attendance,
     })
   });
   return r.ok;
-};
-
-// ── Attendance delete/clear ───────────────────────────────────
-export const fbDeleteAttendance = async (docId) => {
-  await deleteDoc(doc(_db, "attendance", docId));
-};
-
-export const fbClearAttendanceByDate = async (dateStr) => {
-  const snap = await getDocs(collection(_db, "attendance"));
-  const batch = writeBatch(_db);
-  snap.docs.forEach(d => {
-    if (d.data().date === dateStr) batch.delete(d.ref);
-  });
-  await batch.commit();
 };
