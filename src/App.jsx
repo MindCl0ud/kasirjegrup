@@ -1,22 +1,19 @@
-import { useState, useEffect, useRef, useCallback, Component } from "react";
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } from "recharts";
+import { useState, useEffect, useRef, useCallback } from "react";
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line, PieChart, Pie, Cell, Legend } from "recharts";
 import {
   loadConfig, saveConfig, clearConfig, initFirebase, isSeeded, seedDatabase,
-  subscribeUsers, subscribeProducts, subscribeTransactions, subscribeStockLogs,
-  subscribeAttendance, subscribeReturns, subscribeActivityLogs, subscribeTargets,
+  subscribeUsers, subscribeProducts, subscribeTransactions, subscribeStockLogs, subscribeAttendance,
   fbAddUser, fbUpdateUser, fbDeleteUser, fbAddProduct, fbUpdateProduct, fbDeleteProduct,
-  fbAddTransaction, fbAddReturn, fbUpdateStock, fbCheckIn, fbCheckOut,
-  fbDeleteAttendance, fbClearAttendanceByDate,
-  fbSetTarget, fbDeleteTarget, fbChangePassword,
-  fbLogActivity, verifyPassword, syncToSheets,
+  fbAddTransaction, fbUpdateStock, fbCheckIn, fbCheckOut,
+  fbDeleteAttendance, fbClearAttendanceByDate, syncToSheets,
 } from "./firebase.js";
 
 // ─────────────────────────────────────────────────────────────
 //  CONSTANTS
 // ─────────────────────────────────────────────────────────────
 const BIZ = {
-  JS_CLOTHING:{ id:"JS_CLOTHING", name:"JS Clothing", desc:"Usaha Konveksi", icon:"👕", color:"#38bdf8" },
-  JB_STORE:   { id:"JB_STORE",    name:"JB Store",    desc:"Toko Skincare",  icon:"✨", color:"#f472b6" },
+  JS_CLOTHING: { id:"JS_CLOTHING", name:"JS Clothing", desc:"Usaha Konveksi", icon:"👕", color:"#38bdf8" },
+  JB_STORE:    { id:"JB_STORE",    name:"JB Store",    desc:"Toko Skincare",  icon:"✨", color:"#f472b6" },
 };
 const SEED_USERS = [
   { id:1, username:"admin",    password:"admin123", name:"Administrator",  role:"admin", access:["JS_CLOTHING","JB_STORE"], avatar:"👑", active:true, faceDescriptor:null },
@@ -45,7 +42,6 @@ const SEED_PRODUCTS = [
   { id:17, barcode:"JBS007", name:"Azarine Sunscreen SPF45",price:48000,  hpp:28000,  stock:55,  category:"Sunscreen",   business:"JB_STORE" },
   { id:18, barcode:"JBS008", name:"Scarlett Brightening",   price:98000,  hpp:58000,  stock:30,  category:"Brightening", business:"JB_STORE" },
 ];
-const PAYMENT_METHODS = ["Tunai","Transfer","QRIS","Debit","Kredit"];
 let NEXT_ID = 200;
 
 // ─────────────────────────────────────────────────────────────
@@ -54,74 +50,39 @@ let NEXT_ID = 200;
 const rp  = n => "Rp " + Number(n).toLocaleString("id-ID");
 const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2,5);
 const euclidean = (d1,d2) => Math.sqrt(d1.reduce((s,v,i)=>s+(v-d2[i])**2,0));
-const nowStr    = () => new Date().toLocaleString("id-ID");
+const nowStr = () => new Date().toLocaleString("id-ID");
 const todayDate = () => new Date().toLocaleDateString("id-ID");
 const todayISO8601 = () => new Date().toISOString().slice(0,10);
-const SESSION_TTL = 8 * 60 * 60 * 1000; // 8 hours
+const parseAttDate = (iso) => { try { return new Date(iso); } catch { return new Date(0); } };
+const todayISO  = () => new Date().toISOString().slice(0,10);
 
 // ─────────────────────────────────────────────────────────────
 //  DESIGN TOKENS
 // ─────────────────────────────────────────────────────────────
-const DARK_C = {
-  bg0:"#020817",bg1:"#060e1e",bg2:"#0a1628",bg3:"#0f1e36",bg4:"#152440",
-  bo0:"rgba(255,255,255,0.06)",bo1:"rgba(255,255,255,0.1)",bo2:"rgba(255,255,255,0.16)",
-  t0:"#e8f4ff",t1:"#8aaac8",t2:"#4a6480",t3:"#253347",
-  g:"#00e5a0",g1:"rgba(0,229,160,0.12)",g2:"rgba(0,229,160,0.06)",
-  a:"#fbbf24",a1:"rgba(251,191,36,0.13)",
-  r:"#fb7185",r1:"rgba(251,113,133,0.13)",
-  b:"#38bdf8",b1:"rgba(56,189,248,0.12)",
-  p:"#f472b6",p1:"rgba(244,114,182,0.12)",
-  cy:"#22d3ee",cy1:"rgba(34,211,238,0.12)",
-  vi:"#a78bfa",vi1:"rgba(167,139,250,0.12)",
+const C = {
+  bg0:"#020817", bg1:"#060e1e", bg2:"#0a1628", bg3:"#0f1e36", bg4:"#152440",
+  b0:"rgba(255,255,255,0.06)", b1:"rgba(255,255,255,0.1)", b2:"rgba(255,255,255,0.16)",
+  t0:"#e8f4ff", t1:"#8aaac8", t2:"#4a6480", t3:"#253347",
+  g:"#00e5a0", g1:"rgba(0,229,160,0.12)", g2:"rgba(0,229,160,0.06)",
+  a:"#fbbf24", a1:"rgba(251,191,36,0.13)",
+  r:"#fb7185", r1:"rgba(251,113,133,0.13)",
+  b:"#38bdf8", b1:"rgba(56,189,248,0.12)",
+  p:"#f472b6", p1:"rgba(244,114,182,0.12)",
+  cy:"#22d3ee", cy1:"rgba(34,211,238,0.12)",
+  vi:"#a78bfa", vi1:"rgba(167,139,250,0.12)",
 };
-const LIGHT_C = {
-  bg0:"#e8edf2",bg1:"#f0f4f8",bg2:"#ffffff",bg3:"#f4f7fa",bg4:"#e2e8ef",
-  bo0:"rgba(0,0,0,0.08)",bo1:"rgba(0,0,0,0.12)",bo2:"rgba(0,0,0,0.18)",
-  t0:"#0f172a",t1:"#334155",t2:"#64748b",t3:"#94a3b8",
-  g:"#059669",g1:"rgba(5,150,105,0.1)",g2:"rgba(5,150,105,0.05)",
-  a:"#b45309",a1:"rgba(180,83,9,0.1)",
-  r:"#e11d48",r1:"rgba(225,29,72,0.1)",
-  b:"#0284c7",b1:"rgba(2,132,199,0.1)",
-  p:"#be185d",p1:"rgba(190,24,93,0.1)",
-  cy:"#0e7490",cy1:"rgba(14,116,144,0.1)",
-  vi:"#6d28d9",vi1:"rgba(109,40,217,0.1)",
-};
-let C = { ...(localStorage.getItem("je_theme")==="light" ? LIGHT_C : DARK_C) };
 const F = { sans:"'Plus Jakarta Sans',system-ui,sans-serif", mono:"'JetBrains Mono',monospace" };
-
-// ─────────────────────────────────────────────────────────────
-//  XLSX DOWNLOAD
-// ─────────────────────────────────────────────────────────────
-const loadSheetJS = () => new Promise((res,rej)=>{
-  if(window.XLSX){res(window.XLSX);return;}
-  const s=document.createElement("script");
-  s.src="https://cdn.sheetjs.com/xlsx-0.20.2/package/dist/xlsx.full.min.js";
-  s.onload=()=>res(window.XLSX); s.onerror=rej;
-  document.head.appendChild(s);
-});
-const downloadXLSX = async (rows, cols, sheetName, filename) => {
-  const XLSX = await loadSheetJS();
-  const header = cols.map(c=>c.label);
-  const data = rows.map(r=>cols.map(col=>{
-    const v = col.fn ? col.fn(r) : (r[col.key]??"");
-    return (col.num && !isNaN(+v) && v!=="") ? +v : String(v);
-  }));
-  const ws = XLSX.utils.aoa_to_sheet([header,...data]);
-  ws["!cols"] = cols.map(col=>({wch:Math.max(col.label.length, col.w||18)}));
-  const wb = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb, ws, sheetName);
-  XLSX.writeFile(wb, `${filename}_${new Date().toLocaleDateString("id-ID").replace(/\//g,"-")}.xlsx`);
-};
 
 // ─────────────────────────────────────────────────────────────
 //  GLOBAL CSS
 // ─────────────────────────────────────────────────────────────
-const makeCSS = () => `
+const CSS = `
   @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap');
   *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
-  :root{color-scheme:${C.bg0==="#020817"?"dark":"light"};--safe-b:env(safe-area-inset-bottom,0px);}
+  :root{color-scheme:dark;--safe-b:env(safe-area-inset-bottom,0px);}
   html{height:100%;-webkit-tap-highlight-color:transparent;}
-  body{font-family:${F.sans};background:${C.bg1};color:${C.t0};height:100%;-webkit-font-smoothing:antialiased;overscroll-behavior:none;}
+  body{font-family:${F.sans};background:${C.bg1};color:${C.t0};height:100%;
+    -webkit-font-smoothing:antialiased;overscroll-behavior:none;}
   #root{height:100%;display:flex;flex-direction:column;}
   input,button,select,textarea{font-family:inherit;}
   input:focus,textarea:focus,select:focus{outline:none;}
@@ -134,25 +95,54 @@ const makeCSS = () => `
   @keyframes fadeUp{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:translateY(0)}}
   @keyframes fadeIn{from{opacity:0}to{opacity:1}}
   @keyframes slideUp{from{opacity:0;transform:translateY(100%)}to{opacity:1;transform:translateY(0)}}
+  @keyframes popIn{from{opacity:0;transform:scale(.93)}to{opacity:1;transform:scale(1)}}
   @keyframes spin{to{transform:rotate(360deg)}}
   @keyframes scanLine{0%,100%{top:8%}50%{top:88%}}
   @keyframes pulse{0%,100%{opacity:.5;transform:scale(1)}50%{opacity:1;transform:scale(1.2)}}
   @keyframes glow{0%,100%{box-shadow:0 0 8px ${C.g}55}50%{box-shadow:0 0 20px ${C.g}99}}
-  .press{transition:transform .1s;}.press:active{transform:scale(.96);}
-  .hrow:hover{background:${C.bg4}!important;}.hrow{transition:background .1s;}
+  .press{transition:transform .1s;}
+  .press:active{transform:scale(.96);}
+  .hrow:hover{background:${C.bg4}!important;}
   .mn{font-family:${F.mono};font-variant-numeric:tabular-nums;}
   .atab{padding:10px 14px;background:transparent;border:none;border-bottom:2px solid transparent;
-    color:${C.t2};font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap;letter-spacing:.2px;transition:.15s;font-family:${F.sans};}
-  .atab.on{border-bottom-color:${C.g};color:${C.g};background:${C.g2};}
-  .atab:hover:not(.on){color:${C.t0};background:${C.bg3};}
-  @media(max-width:640px){.hide-mobile{display:none!important;}.atab{padding:8px 10px;font-size:11px;}}
-  @media(min-width:641px){.hide-desktop{display:none!important;}
-    .stat-grid-4{grid-template-columns:repeat(4,1fr)!important;}
-    .stat-grid-3{grid-template-columns:repeat(3,1fr)!important;}}
-  @media(max-width:640px){.stat-grid-4{grid-template-columns:repeat(2,1fr)!important;}
-    .stat-grid-3{grid-template-columns:repeat(2,1fr)!important;}}
+    color:${C.t2};font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap;
+    letter-spacing:.2px;transition:.15s;font-family:${F.sans};}
+  .atab.on{border-bottom-color:${C.g};color:${C.g};}
+  .atab:hover:not(.on){color:${C.t0};}
+  @media(max-width:640px){
+    .hide-mobile{display:none!important;}
+    .atab{padding:8px 10px;font-size:11px;}
+  }
+  @media(min-width:641px){
+    .hide-desktop{display:none!important;}
+  }
 `;
-let CSS = makeCSS();
+
+// ─────────────────────────────────────────────────────────────
+//  FACE API
+// ─────────────────────────────────────────────────────────────
+let faceReady = false;
+const loadScript = url => new Promise((res,rej)=>{
+  if(document.querySelector(`script[src="${url}"]`)){setTimeout(res,200);return;}
+  const s=document.createElement("script");s.src=url;s.onload=res;s.onerror=rej;
+  document.head.appendChild(s);
+});
+const initFaceAPI = async (onProg) => {
+  if(faceReady) return true;
+  try {
+    onProg("Memuat library...");
+    const local = await fetch("/models/face-api.js",{method:"HEAD"}).then(r=>r.ok).catch(()=>false);
+    await loadScript(local?"/models/face-api.js":"https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/dist/face-api.min.js");
+    const base = local?"/models":"https://cdn.jsdelivr.net/gh/justadudewhohacks/face-api.js@0.22.2/weights";
+    onProg("Model deteksi wajah... (1/3)");
+    await window.faceapi.nets.tinyFaceDetector.loadFromUri(base);
+    onProg("Model landmark... (2/3)");
+    await window.faceapi.nets.faceLandmark68TinyNet.loadFromUri(base);
+    onProg("Model rekognisi... (3/3)");
+    await window.faceapi.nets.faceRecognitionNet.loadFromUri(base);
+    faceReady = true; return true;
+  } catch { return false; }
+};
 
 // ─────────────────────────────────────────────────────────────
 //  PRIMITIVE UI
@@ -162,13 +152,14 @@ function Toast({n}) {
   const m={ok:[C.g1,C.g,"✓"],err:[C.r1,C.r,"✕"],warn:[C.a1,C.a,"⚠"],info:[C.cy1,C.cy,"ℹ"]};
   const [bg,cl,ic]=m[n.type]||m.ok;
   return <div style={{position:"fixed",top:16,left:"50%",transform:"translateX(-50%)",zIndex:9999,
-    padding:"11px 18px",borderRadius:12,maxWidth:"min(92vw,380px)",width:"max-content",
+    padding:"11px 18px",borderRadius:12,maxWidth:"min(92vw,360px)",width:"max-content",
     background:bg,border:`1px solid ${cl}44`,color:cl,fontSize:13,fontWeight:600,
-    boxShadow:"0 12px 40px rgba(0,0,0,.8)",animation:"fadeUp .2s ease",
+    boxShadow:`0 12px 40px rgba(0,0,0,.8)`,animation:"fadeUp .2s ease",
     display:"flex",alignItems:"center",gap:8,backdropFilter:"blur(20px)"}}>
     <span>{ic}</span>{n.msg}
   </div>;
 }
+
 function Btn({onClick,children,color=C.g,outline,ghost,danger,disabled,full,size="md",style:s={}}) {
   const sz={sm:{p:"7px 13px",f:11},md:{p:"10px 18px",f:13},lg:{p:"14px 22px",f:14}}[size];
   const bg=disabled?"#1a2e45":danger?C.r:outline||ghost?"transparent":color;
@@ -177,8 +168,11 @@ function Btn({onClick,children,color=C.g,outline,ghost,danger,disabled,full,size
   return <button onClick={onClick} disabled={disabled} className="press"
     style={{padding:sz.p,background:bg,border:`1.5px solid ${bd}`,borderRadius:10,
       color:cl,fontWeight:700,fontSize:sz.f,transition:"opacity .15s",
-      width:full?"100%":undefined,letterSpacing:.2,...s}}>{children}</button>;
+      width:full?"100%":undefined,letterSpacing:.2,...s}}>
+    {children}
+  </button>;
 }
+
 function Inp({value,onChange,type="text",placeholder,disabled,mono,onKeyDown,fref,icon,suffix,label,style:s={}}) {
   return <div style={{position:"relative"}}>
     {label&&<div style={{fontSize:10,fontWeight:700,color:C.t2,textTransform:"uppercase",letterSpacing:1,marginBottom:5}}>{label}</div>}
@@ -187,89 +181,84 @@ function Inp({value,onChange,type="text",placeholder,disabled,mono,onKeyDown,fre
       <input ref={fref} type={type} value={value} onChange={onChange} onKeyDown={onKeyDown}
         placeholder={placeholder} disabled={disabled}
         style={{width:"100%",padding:`12px ${suffix?"40px":"13px"} 12px ${icon?"40px":"13px"}`,
-          background:C.bg3,border:`1.5px solid ${C.bo0}`,borderRadius:10,
+          background:C.bg3,border:`1.5px solid ${C.b0}`,borderRadius:10,
           color:disabled?C.t2:C.t0,fontSize:14,fontFamily:mono?F.mono:F.sans,transition:"border-color .15s",...s}}
         onFocus={e=>{if(!disabled)e.target.style.borderColor=C.g+"88";}}
-        onBlur={e=>e.target.style.borderColor=C.bo0}/>
+        onBlur={e=>e.target.style.borderColor=C.b0}/>
       {suffix&&<span style={{position:"absolute",right:12,color:C.t2,fontSize:12,pointerEvents:"none",fontFamily:F.mono}}>{suffix}</span>}
     </div>
   </div>;
 }
+
 function Card({children,style:s={},onClick,accent,noPad}) {
-  return <div onClick={onClick} style={{background:C.bg2,borderRadius:14,
-    border:`1px solid ${accent?accent+"33":C.bo0}`,padding:noPad?0:"14px 16px",
-    boxShadow:"0 4px 20px rgba(0,0,0,.45)",cursor:onClick?"pointer":undefined,...s}}>
-    {children}</div>;
+  return <div onClick={onClick}
+    style={{background:C.bg2,borderRadius:14,border:`1px solid ${accent?accent+"33":C.b0}`,
+      padding:noPad?0:"14px 16px",boxShadow:`0 4px 20px rgba(0,0,0,.45)`,
+      cursor:onClick?"pointer":undefined,...s}}>
+    {children}
+  </div>;
 }
-function Divider({my=10}) { return <div style={{height:1,background:C.bo0,margin:`${my}px 0`}}/>; }
+
+function Divider({my=10}) { return <div style={{height:1,background:C.b0,margin:`${my}px 0`}}/>; }
+
 function RoleTag({role}) {
   const m={kasir:[C.cy1,C.cy,"Kasir"],stok:[C.a1,C.a,"Stok"],admin:[C.vi1,C.vi,"Admin"]};
   const [bg,cl,l]=m[role]||m.kasir;
   return <span style={{padding:"2px 8px",borderRadius:20,fontSize:9.5,fontWeight:700,
     letterSpacing:.5,background:bg,color:cl,textTransform:"uppercase"}}>{l}</span>;
 }
+
 function BizChip({biz,sm}) {
   if(!biz||!BIZ[biz]) return null;
   const b=BIZ[biz],isJ=biz==="JS_CLOTHING";
   return <span style={{display:"inline-flex",alignItems:"center",gap:4,
     padding:sm?"1px 7px":"3px 9px",borderRadius:20,fontSize:sm?10:11,fontWeight:600,
     background:isJ?C.b1:C.p1,color:isJ?C.b:C.p,border:`1px solid ${(isJ?C.b:C.p)}22`}}>
-    {b.icon} {b.name}</span>;
+    {b.icon} {b.name}
+  </span>;
 }
+
 function StockBadge({s}) {
   if(s===0) return <span className="mn" style={{color:C.r,fontWeight:700,fontSize:12}}>0 ✕</span>;
   if(s<10)  return <span className="mn" style={{color:C.a,fontWeight:700,fontSize:12}}>{s} !</span>;
   return <span className="mn" style={{fontSize:12,color:C.t0}}>{s}</span>;
 }
+
 function OnlineDot({online}) {
   return <div style={{display:"flex",alignItems:"center",gap:5,fontSize:11,fontWeight:600,color:online?C.g:C.a}}>
     <span style={{width:6,height:6,borderRadius:"50%",background:online?C.g:C.a,flexShrink:0,
       animation:online?"glow 2s ease infinite":undefined}}/>
-    {online?"Online":"Offline"}</div>;
+    {online?"Online":"Offline"}
+  </div>;
 }
+
 function Stat({icon,label,value,color=C.g,sub,style:s={}}) {
-  return <Card style={{padding:"10px 14px",...s}}>
-    <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:4}}>
-      <span style={{fontSize:16}}>{icon}</span>
-      <div className="mn" style={{fontSize:18,fontWeight:700,color,lineHeight:1}}>{value}</div>
-    </div>
-    <div style={{fontSize:11,color:C.t2}}>{label}</div>
-    {sub&&<div style={{fontSize:10,color:C.t3,marginTop:1}}>{sub}</div>}
+  return <Card style={{padding:"14px 16px",...s}}>
+    <div style={{fontSize:20,marginBottom:8}}>{icon}</div>
+    <div className="mn" style={{fontSize:20,fontWeight:700,color,lineHeight:1.2}}>{value}</div>
+    <div style={{fontSize:11.5,color:C.t2,marginTop:3}}>{label}</div>
+    {sub&&<div style={{fontSize:10.5,color:C.t3,marginTop:2}}>{sub}</div>}
   </Card>;
 }
+
 function THead({cols}) {
-  return <thead><tr style={{background:C.bg0,position:"sticky",top:0,zIndex:2}}>
-    {cols.map((c,i)=><th key={i} style={{padding:"11px 14px",textAlign:"left",color:C.t3,
-      fontWeight:700,fontSize:10,textTransform:"uppercase",letterSpacing:1,
-      whiteSpace:"nowrap",borderBottom:`1px solid ${C.bo0}`,background:C.bg0}}>{c}</th>)}
+  return <thead><tr style={{background:C.bg0}}>
+    {cols.map((c,i)=><th key={i} style={{padding:"12px 13px",textAlign:"left",color:C.t3,
+      fontWeight:700,fontSize:9.5,textTransform:"uppercase",letterSpacing:1,
+      whiteSpace:"nowrap",borderBottom:`1px solid ${C.b0}`}}>{c}</th>)}
   </tr></thead>;
-}
-function TableWrap({children,maxH="58vh"}) {
-  return <div style={{overflowX:"auto",overflowY:"auto",maxHeight:maxH,WebkitOverflowScrolling:"touch",position:"relative"}}>
-    {children}</div>;
-}
-function ProgressBar({value,max,color=C.g,label}) {
-  const pct = max>0 ? Math.min((value/max)*100,100) : 0;
-  return <div>
-    {label&&<div style={{display:"flex",justifyContent:"space-between",fontSize:11,marginBottom:4}}>
-      <span style={{color:C.t2}}>{label}</span>
-      <span className="mn" style={{color,fontWeight:700}}>{pct.toFixed(0)}%</span>
-    </div>}
-    <div style={{height:6,background:C.bg4,borderRadius:3,overflow:"hidden"}}>
-      <div style={{height:"100%",width:`${pct}%`,background:color,borderRadius:3,transition:"width .5s ease"}}/>
-    </div>
-  </div>;
 }
 
 // ─────────────────────────────────────────────────────────────
 //  HEADER
 // ─────────────────────────────────────────────────────────────
-function Header({title,biz,user,onLogout,onSwitchBiz,onAbsenPulang,hasCheckedIn,online,onToggleTheme,isDark,lowStockCount=0}) {
-  const b=BIZ[biz];
+function Header({title,biz,user,onLogout,onSwitchBiz,onAbsenPulang,hasCheckedIn,online}) {
+  const b = BIZ[biz];
   return <header style={{background:`${C.bg2}ee`,backdropFilter:"blur(20px)",WebkitBackdropFilter:"blur(20px)",
-    borderBottom:`1px solid ${C.bo0}`,padding:"0 12px",height:52,
+    borderBottom:`1px solid ${C.b0}`,padding:"0 12px",height:52,
     display:"flex",alignItems:"center",justifyContent:"space-between",
     position:"sticky",top:0,zIndex:200,flexShrink:0,gap:8}}>
+    {/* Left */}
     <div style={{display:"flex",alignItems:"center",gap:8,minWidth:0}}>
       <div style={{width:28,height:28,borderRadius:8,flexShrink:0,
         background:"linear-gradient(135deg,#00e5a0,#38bdf8)",
@@ -277,32 +266,34 @@ function Header({title,biz,user,onLogout,onSwitchBiz,onAbsenPulang,hasCheckedIn,
       <div style={{minWidth:0}}>
         <div className="mn" style={{fontSize:11,fontWeight:700,letterSpacing:2,
           background:"linear-gradient(90deg,#00e5a0,#38bdf8)",
-          WebkitBackgroundClip:"text",WebkitTextFillColor:"transparent",lineHeight:1.2}}>JE GRUP</div>
+          WebkitBackgroundClip:"text",WebkitTextFillColor:"transparent",lineHeight:1.2}}>
+          JE GRUP
+        </div>
         <div style={{fontSize:10,color:C.t2,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",maxWidth:130}}>
-          {b?`${b.icon} ${b.name}`:title}</div>
+          {b?`${b.icon} ${b.name}`:title}
+        </div>
       </div>
     </div>
-    <div style={{display:"flex",alignItems:"center",gap:5,flexShrink:0}}>
+    {/* Right */}
+    <div style={{display:"flex",alignItems:"center",gap:5,flexShrink:0,flexWrap:"nowrap"}}>
       <div className="hide-mobile"><OnlineDot online={online}/></div>
-      {lowStockCount>0&&<div style={{padding:"3px 8px",borderRadius:20,background:C.a1,
-        border:`1px solid ${C.a}33`,color:C.a,fontSize:10,fontWeight:700}}>⚠ {lowStockCount} menipis</div>}
       {onSwitchBiz&&user?.access?.length>1&&(
         <button onClick={onSwitchBiz} className="press" style={{padding:"5px 9px",background:C.bg3,
-          border:`1px solid ${C.bo1}`,borderRadius:8,color:C.t1,fontSize:11,fontWeight:600}}>⇄</button>)}
+          border:`1px solid ${C.b1}`,borderRadius:8,color:C.t1,fontSize:11,fontWeight:600}}>⇄</button>
+      )}
       {onAbsenPulang&&hasCheckedIn&&(
         <button onClick={onAbsenPulang} className="press" style={{padding:"5px 9px",background:C.a1,
-          border:`1px solid ${C.a}33`,borderRadius:8,color:C.a,fontSize:11,fontWeight:600}}>🏠 Pulang</button>)}
+          border:`1px solid ${C.a}33`,borderRadius:8,color:C.a,fontSize:11,fontWeight:600}}>🏠 Pulang</button>
+      )}
       <div style={{display:"flex",alignItems:"center",gap:5,padding:"4px 9px",
-        borderRadius:20,background:C.bg3,border:`1px solid ${C.bo0}`}}>
+        borderRadius:20,background:C.bg3,border:`1px solid ${C.b0}`}}>
         <span style={{fontSize:13}}>{user?.avatar}</span>
-        <span style={{fontSize:11,fontWeight:600,maxWidth:70,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{user?.name?.split(" ")[0]}</span>
+        <span style={{fontSize:11,fontWeight:600,maxWidth:70,
+          overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{user?.name?.split(" ")[0]}</span>
         <div className="hide-mobile"><RoleTag role={user?.role}/></div>
       </div>
-      {onToggleTheme&&<button onClick={onToggleTheme} className="press"
-        style={{padding:"5px 9px",background:C.bg3,border:`1px solid ${C.bo1}`,borderRadius:8,color:C.t2,fontSize:13,lineHeight:1}}>
-        {isDark?"☀️":"🌙"}</button>}
       <button onClick={onLogout} className="press" style={{padding:"5px 9px",background:C.bg3,
-        border:`1px solid ${C.bo1}`,borderRadius:8,color:C.t2,fontSize:11,fontWeight:600}}>Keluar</button>
+        border:`1px solid ${C.b1}`,borderRadius:8,color:C.t2,fontSize:11,fontWeight:600}}>Keluar</button>
     </div>
   </header>;
 }
@@ -310,36 +301,16 @@ function Header({title,biz,user,onLogout,onSwitchBiz,onAbsenPulang,hasCheckedIn,
 // ─────────────────────────────────────────────────────────────
 //  FACE SCAN
 // ─────────────────────────────────────────────────────────────
-let faceReady=false;
-const loadScript = url => new Promise((res,rej)=>{
-  if(document.querySelector(`script[src="${url}"]`)){setTimeout(res,200);return;}
-  const s=document.createElement("script");s.src=url;s.onload=res;s.onerror=rej;document.head.appendChild(s);
-});
-const initFaceAPI = async (onProg) => {
-  if(faceReady) return true;
-  try {
-    onProg("Memuat library...");
-    const local = await fetch("/models/face-api.js",{method:"HEAD"}).then(r=>r.ok).catch(()=>false);
-    await loadScript(local?"/models/face-api.js":"https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/dist/face-api.min.js");
-    const base=local?"/models":"https://cdn.jsdelivr.net/gh/justadudewhohacks/face-api.js@0.22.2/weights";
-    onProg("Model deteksi wajah... (1/3)");
-    await window.faceapi.nets.tinyFaceDetector.loadFromUri(base);
-    onProg("Model landmark... (2/3)");
-    await window.faceapi.nets.faceLandmark68TinyNet.loadFromUri(base);
-    onProg("Model rekognisi... (3/3)");
-    await window.faceapi.nets.faceRecognitionNet.loadFromUri(base);
-    faceReady=true; return true;
-  } catch { return false; }
-};
-
 function FaceScan({user,mode="verify",onSuccess,onCancel}) {
   const vidRef=useRef(null),canRef=useRef(null),streamRef=useRef(null),loopRef=useRef(null);
   const stableRef=useRef(0);
   const [phase,setPhase]=useState("init");
   const [msg,setMsg]=useState("");
   const [stable,setStable]=useState(0);
+
   const cleanup=useCallback(()=>{clearInterval(loopRef.current);streamRef.current?.getTracks().forEach(t=>t.stop());},[]);
   useEffect(()=>{start();return cleanup;},[]);
+
   const start=async()=>{
     setPhase("loading");
     const ok=await initFaceAPI(m=>setMsg(m));
@@ -352,10 +323,11 @@ function FaceScan({user,mode="verify",onSuccess,onCancel}) {
       setPhase("scanning");
       setMsg(mode==="register"?"Posisikan wajah, tahan diam 2 detik":"Posisikan wajah untuk verifikasi");
       startLoop();
-    }catch{setPhase("no_camera");setMsg("Izin kamera ditolak.");}
+    }catch{setPhase("no_camera");setMsg("Izin kamera ditolak. Aktifkan izin di browser.");}
   };
+
   const startLoop=()=>{
-    stableRef.current=0;setStable(0);
+    stableRef.current=0; setStable(0);
     loopRef.current=setInterval(async()=>{
       if(!vidRef.current||!window.faceapi) return;
       const r=await window.faceapi.detectSingleFace(vidRef.current,
@@ -363,65 +335,92 @@ function FaceScan({user,mode="verify",onSuccess,onCancel}) {
         .withFaceLandmarks(true).withFaceDescriptor();
       draw(r);
       if(!r){stableRef.current=0;setStable(0);return;}
-      stableRef.current++;setStable(stableRef.current);
-      if(stableRef.current>=4){clearInterval(loopRef.current);setPhase("verifying");
-        await new Promise(r=>setTimeout(r,800));verify(Array.from(r.descriptor));}
+      stableRef.current++; setStable(stableRef.current);
+      if(stableRef.current>=4){
+        clearInterval(loopRef.current);setPhase("verifying");
+        await new Promise(r=>setTimeout(r,800));
+        verify(Array.from(r.descriptor));
+      }
     },500);
   };
+
   const draw=(r)=>{
-    const v=vidRef.current,c=canRef.current;if(!v||!c||!window.faceapi) return;
+    const v=vidRef.current,c=canRef.current;
+    if(!v||!c||!window.faceapi) return;
     c.width=v.videoWidth||480;c.height=v.videoHeight||360;
     const ctx=c.getContext("2d");ctx.clearRect(0,0,c.width,c.height);
-    if(r){const {x,y,width:w,height:h}=r.detection.box,pad=12,cl=18;
+    if(r){
+      const {x,y,width:w,height:h}=r.detection.box,pad=12,cl=18;
       ctx.strokeStyle=C.g;ctx.lineWidth=2;ctx.shadowColor=C.g;ctx.shadowBlur=8;
       [[x-pad,y-pad,1,1],[x+w+pad,y-pad,-1,1],[x-pad,y+h+pad,1,-1],[x+w+pad,y+h+pad,-1,-1]].forEach(([cx,cy,sx,sy])=>{
-        ctx.beginPath();ctx.moveTo(cx+sx*cl,cy);ctx.lineTo(cx,cy);ctx.lineTo(cx,cy+sy*cl);ctx.stroke();});}
+        ctx.beginPath();ctx.moveTo(cx+sx*cl,cy);ctx.lineTo(cx,cy);ctx.lineTo(cx,cy+sy*cl);ctx.stroke();
+      });
+    }
   };
+
   const verify=(desc)=>{
     if(mode==="register"){onSuccess(desc);return;}
     if(!user.faceDescriptor){setPhase("success");setMsg("Wajah belum terdaftar. Masuk langsung.");setTimeout(()=>{cleanup();onSuccess(null);},1500);return;}
     const dist=euclidean(desc,user.faceDescriptor);
     if(dist<0.52){setPhase("success");setMsg(`✓ Selamat datang, ${user.name}!`);setTimeout(()=>{cleanup();onSuccess(desc);},1500);}
-    else{setPhase("fail");setMsg("Wajah tidak dikenali. Coba lagi.");}
+    else{setPhase("fail");setMsg("Wajah tidak dikenali. Coba lagi dengan pencahayaan cukup.");}
   };
+
   const sc={scanning:C.b,verifying:C.a,success:C.g,fail:C.r,error:C.r,no_camera:C.r}[phase]||C.t2;
   const sl={init:"Mempersiapkan...",loading:msg,scanning:"Mendeteksi wajah...",verifying:"Memverifikasi...",
-    success:"✓ Berhasil",fail:"✗ Tidak dikenali",error:"Error",no_camera:"Kamera tidak tersedia"}[phase];
+    success:"✓ Berhasil",fail:"✗ Tidak dikenali",error:"Error memuat model",no_camera:"Kamera tidak tersedia"}[phase];
+
   return <div style={{position:"fixed",inset:0,zIndex:1000,background:`${C.bg0}f0`,
-    display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",padding:16,animation:"fadeIn .2s ease"}}>
+    display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",
+    padding:16,animation:"fadeIn .2s ease"}}>
     <div style={{width:"100%",maxWidth:420,animation:"fadeUp .3s ease"}}>
       <div style={{display:"flex",justifyContent:"center",marginBottom:16}}>
-        <div style={{display:"inline-flex",alignItems:"center",gap:10,padding:"8px 16px",borderRadius:24,background:C.bg2,border:`1px solid ${C.bo1}`}}>
+        <div style={{display:"inline-flex",alignItems:"center",gap:10,padding:"8px 16px",
+          borderRadius:24,background:C.bg2,border:`1px solid ${C.b1}`}}>
           <span style={{fontSize:18}}>{user.avatar}</span>
           <div><div style={{fontSize:13,fontWeight:700}}>{user.name}</div><div style={{marginTop:2}}><RoleTag role={user.role}/></div></div>
         </div>
       </div>
-      <h2 style={{textAlign:"center",fontSize:17,fontWeight:800,marginBottom:4}}>{mode==="register"?"Daftarkan Wajah":"Verifikasi Wajah"}</h2>
+      <h2 style={{textAlign:"center",fontSize:17,fontWeight:800,marginBottom:4}}>
+        {mode==="register"?"Daftarkan Wajah":"Verifikasi Wajah"}
+      </h2>
       <p style={{textAlign:"center",fontSize:12,color:C.t2,marginBottom:14}}>{msg||"Mempersiapkan kamera..."}</p>
-      <div style={{position:"relative",borderRadius:18,overflow:"hidden",border:`2px solid ${sc}55`,background:"#000",aspectRatio:"4/3",marginBottom:12}}>
+
+      <div style={{position:"relative",borderRadius:18,overflow:"hidden",
+        border:`2px solid ${sc}55`,background:"#000",aspectRatio:"4/3",marginBottom:12}}>
         <video ref={vidRef} autoPlay muted playsInline style={{width:"100%",height:"100%",objectFit:"cover",transform:"scaleX(-1)"}}/>
         <canvas ref={canRef} style={{position:"absolute",inset:0,width:"100%",height:"100%",transform:"scaleX(-1)"}}/>
         {phase==="scanning"&&<div style={{position:"absolute",inset:0,pointerEvents:"none"}}>
           <div style={{position:"absolute",left:"8%",right:"8%",height:2,
             background:`linear-gradient(90deg,transparent,${C.g},transparent)`,
-            animation:"scanLine 2.5s ease-in-out infinite",boxShadow:`0 0 10px ${C.g}`}}/></div>}
+            animation:"scanLine 2.5s ease-in-out infinite",boxShadow:`0 0 10px ${C.g}`}}/>
+        </div>}
         {(phase==="init"||phase==="loading")&&<div style={{position:"absolute",inset:0,background:"rgba(2,8,24,.9)",
           display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:12}}>
           <div style={{width:32,height:32,border:`2.5px solid ${C.bg4}`,borderTopColor:C.g,borderRadius:"50%",animation:"spin 1s linear infinite"}}/>
-          <p style={{fontSize:12,color:C.t1,textAlign:"center",padding:"0 20px"}}>{msg}</p></div>}
+          <p style={{fontSize:12,color:C.t1,textAlign:"center",padding:"0 20px"}}>{msg}</p>
+        </div>}
         {phase==="verifying"&&<div style={{position:"absolute",inset:0,background:"rgba(2,8,24,.75)",
           display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:10}}>
           <div style={{width:40,height:40,border:`2.5px solid ${C.a}44`,borderTopColor:C.a,borderRadius:"50%",animation:"spin .7s linear infinite"}}/>
-          <p style={{fontSize:13,color:C.a,fontWeight:700}}>Memverifikasi...</p></div>}
+          <p style={{fontSize:13,color:C.a,fontWeight:700}}>Memverifikasi...</p>
+        </div>}
         {phase==="success"&&<div style={{position:"absolute",inset:0,background:`${C.g}08`,display:"flex",alignItems:"center",justifyContent:"center"}}><span style={{fontSize:52}}>✅</span></div>}
         {(phase==="fail"||phase==="error"||phase==="no_camera")&&<div style={{position:"absolute",inset:0,background:`${C.r}06`,display:"flex",alignItems:"center",justifyContent:"center"}}><span style={{fontSize:52}}>❌</span></div>}
       </div>
+
       {phase==="scanning"&&<div style={{height:3,background:C.bg4,borderRadius:2,marginBottom:10,overflow:"hidden"}}>
-        <div style={{height:"100%",width:`${Math.min(stable/4*100,100)}%`,background:`linear-gradient(90deg,${C.b},${C.g})`,borderRadius:2,transition:"width .4s ease"}}/></div>}
+        <div style={{height:"100%",width:`${Math.min(stable/4*100,100)}%`,
+          background:`linear-gradient(90deg,${C.b},${C.g})`,borderRadius:2,transition:"width .4s ease"}}/>
+      </div>}
+
       <div style={{padding:"9px 12px",borderRadius:10,background:C.bg3,border:`1px solid ${sc}22`,
         display:"flex",alignItems:"center",gap:8,marginBottom:12}}>
-        <span style={{width:7,height:7,borderRadius:"50%",background:sc,flexShrink:0,animation:phase==="scanning"?"pulse 1.5s ease infinite":undefined}}/>
-        <span style={{fontSize:12,color:sc,fontWeight:600}}>{sl}</span></div>
+        <span style={{width:7,height:7,borderRadius:"50%",background:sc,flexShrink:0,
+          animation:phase==="scanning"?"pulse 1.5s ease infinite":undefined}}/>
+        <span style={{fontSize:12,color:sc,fontWeight:600}}>{sl}</span>
+      </div>
+
       <div style={{display:"flex",gap:8,justifyContent:"center"}}>
         {phase==="fail"&&<Btn onClick={()=>{setPhase("scanning");stableRef.current=0;setStable(0);startLoop();}} full>Coba Lagi</Btn>}
         {(phase==="error"||phase==="no_camera")&&<Btn onClick={()=>{cleanup();onSuccess(null);}} color={C.a}>Lewati</Btn>}
@@ -439,7 +438,10 @@ function FirebaseSetup({onDone}) {
   const [form,setForm]=useState({apiKey:"",authDomain:"",projectId:"",storageBucket:"",messagingSenderId:"",appId:""});
   const [loading,setLoading]=useState(false);
   const [err,setErr]=useState("");
-  const IS={width:"100%",padding:"12px 13px",background:C.bg3,border:`1.5px solid ${C.bo0}`,borderRadius:10,color:C.t0,fontSize:13,fontFamily:F.mono,transition:"border-color .15s"};
+
+  const IS={width:"100%",padding:"12px 13px",background:C.bg3,border:`1.5px solid ${C.b0}`,
+    borderRadius:10,color:C.t0,fontSize:13,fontFamily:F.mono,transition:"border-color .15s"};
+
   const connect=async()=>{
     if(!form.apiKey||!form.projectId){setErr("API Key dan Project ID wajib diisi.");return;}
     setLoading(true);setErr("");
@@ -449,39 +451,52 @@ function FirebaseSetup({onDone}) {
     if(!seeded) await seedDatabase(SEED_USERS,SEED_PRODUCTS);
     setLoading(false);onDone();
   };
-  return <div style={{fontFamily:F.sans,background:C.bg1,color:C.t0,minHeight:"100vh",display:"flex",alignItems:"center",justifyContent:"center",padding:16}}>
+
+  return <div style={{fontFamily:F.sans,background:C.bg1,color:C.t0,minHeight:"100vh",
+    display:"flex",alignItems:"center",justifyContent:"center",padding:16}}>
     <style>{CSS}</style>
+    {/* Ambient BG */}
     <div style={{position:"fixed",inset:0,pointerEvents:"none",overflow:"hidden"}}>
       <div style={{position:"absolute",top:"-15%",right:"-10%",width:"50%",paddingBottom:"50%",borderRadius:"50%",background:`radial-gradient(circle,${C.g}07,transparent 70%)`}}/>
       <div style={{position:"absolute",bottom:"-10%",left:"-5%",width:"45%",paddingBottom:"45%",borderRadius:"50%",background:`radial-gradient(circle,${C.b}05,transparent 70%)`}}/>
+      <div style={{position:"absolute",inset:0,backgroundImage:`linear-gradient(${C.b0} 1px,transparent 1px),linear-gradient(90deg,${C.b0} 1px,transparent 1px)`,backgroundSize:"48px 48px",opacity:.35}}/>
     </div>
+
     <div style={{position:"relative",width:"100%",maxWidth:500,animation:"fadeUp .4s ease"}}>
+      {/* Brand */}
       <div style={{textAlign:"center",marginBottom:24}}>
         <div style={{display:"inline-flex",width:68,height:68,borderRadius:22,marginBottom:14,
           background:`linear-gradient(135deg,${C.g}20,${C.b}18)`,border:`1.5px solid ${C.g}30`,
           alignItems:"center",justifyContent:"center",fontSize:32}}>🏬</div>
         <h1 className="mn" style={{fontSize:22,fontWeight:700,letterSpacing:3,
-          background:`linear-gradient(90deg,${C.g},${C.b})`,WebkitBackgroundClip:"text",WebkitTextFillColor:"transparent",marginBottom:10}}>KASIR JE GRUP</h1>
+          background:`linear-gradient(90deg,${C.g},${C.b})`,WebkitBackgroundClip:"text",WebkitTextFillColor:"transparent",marginBottom:10}}>
+          KASIR JE GRUP
+        </h1>
         <div style={{display:"flex",justifyContent:"center",gap:7,flexWrap:"wrap"}}>
           {Object.values(BIZ).map(b=><span key={b.id} style={{fontSize:11,padding:"3px 11px",borderRadius:20,fontWeight:600,
-            background:b.id==="JS_CLOTHING"?C.b1:C.p1,color:b.id==="JS_CLOTHING"?C.b:C.p,border:`1px solid ${(b.id==="JS_CLOTHING"?C.b:C.p)}22`}}>{b.icon} {b.name}</span>)}
+            background:b.id==="JS_CLOTHING"?C.b1:C.p1,color:b.id==="JS_CLOTHING"?C.b:C.p,
+            border:`1px solid ${(b.id==="JS_CLOTHING"?C.b:C.p)}22`}}>{b.icon} {b.name}</span>)}
         </div>
       </div>
+
       <Card style={{padding:step===1?"22px":"18px 22px"}}>
         {step===1 ? <>
           <h2 style={{fontSize:14,fontWeight:800,marginBottom:4,color:C.g}}>🔥 Hubungkan Firebase</h2>
           <p style={{fontSize:12.5,color:C.t2,marginBottom:18,lineHeight:1.7}}>Database cloud untuk sinkronisasi real-time antar perangkat.</p>
-          {[{n:1,t:"Buat Firebase Project",d:"console.firebase.google.com → Add project → kasir-je-grup"},
-            {n:2,t:"Daftarkan Web App",d:"Klik ikon </> → nickname: Kasir → Register app"},
+          {[
+            {n:1,t:"Buka Firebase Console",d:"console.firebase.google.com → Add project → nama: kasir-je-grup"},
+            {n:2,t:"Daftarkan Web App",d:"Project → klik ikon </> → nickname: Kasir → Register app"},
             {n:3,t:"Salin firebaseConfig",d:"Salin semua isi objek firebaseConfig yang tampil"},
-            {n:4,t:"Aktifkan Firestore",d:"Build → Firestore Database → Create → test mode → asia-southeast1"},
+            {n:4,t:"Aktifkan Firestore",d:"Build → Firestore Database → Create database → test mode → region: asia-southeast1"},
             {n:5,t:"Paste config di sini",d:"Klik tombol di bawah dan isi form"},
           ].map(s=><div key={s.n} style={{display:"flex",gap:10,marginBottom:10,alignItems:"flex-start"}}>
-            <div style={{minWidth:22,height:22,borderRadius:"50%",background:C.g1,border:`1px solid ${C.g}44`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:10,fontWeight:700,color:C.g,flexShrink:0}}>{s.n}</div>
+            <div style={{minWidth:22,height:22,borderRadius:"50%",background:C.g1,border:`1px solid ${C.g}44`,
+              display:"flex",alignItems:"center",justifyContent:"center",fontSize:10,fontWeight:700,color:C.g,flexShrink:0}}>{s.n}</div>
             <div><div style={{fontSize:12.5,fontWeight:600}}>{s.t}</div><div style={{fontSize:11.5,color:C.t2,marginTop:2,lineHeight:1.6}}>{s.d}</div></div>
           </div>)}
           <div style={{marginTop:14,padding:"10px 12px",background:C.g2,borderRadius:8,border:`1px solid ${C.g}22`,fontSize:11.5,color:C.g,marginBottom:16}}>
-            💡 Gratis selamanya — Spark plan</div>
+            💡 Gratis selamanya — 50K baca & 20K tulis per hari (Spark plan)
+          </div>
           <div style={{display:"flex",gap:8}}>
             <Btn onClick={()=>setStep(2)} full>Masukkan Config →</Btn>
             <Btn onClick={()=>window.open("https://console.firebase.google.com","_blank")} outline>Buka ↗</Btn>
@@ -491,16 +506,25 @@ function FirebaseSetup({onDone}) {
             <button onClick={()=>setStep(1)} style={{background:"transparent",border:"none",color:C.t2,fontSize:20,lineHeight:1}}>←</button>
             <h2 style={{fontSize:14,fontWeight:800}}>Firebase Config</h2>
           </div>
+          <div style={{background:C.bg3,borderRadius:8,padding:"10px 12px",marginBottom:16,
+            fontSize:11,fontFamily:F.mono,color:C.t2,lineHeight:1.9,border:`1px solid ${C.b0}`}}>
+            <span style={{color:C.t1}}>const firebaseConfig = {"{"}</span><br/>
+            &nbsp;&nbsp;<span style={{color:C.cy}}>apiKey</span>: <span style={{color:C.a}}>"AIzaSy..."</span>,<br/>
+            &nbsp;&nbsp;<span style={{color:C.cy}}>projectId</span>: <span style={{color:C.a}}>"kasir-je-grup"</span>,<br/>
+            &nbsp;&nbsp;<span style={{color:C.t3}}>...dll</span><br/>
+            <span style={{color:C.t1}}>{"}"}</span>
+          </div>
           <div style={{display:"flex",flexDirection:"column",gap:10}}>
             {[{k:"apiKey",l:"API Key *"},{k:"authDomain",l:"Auth Domain"},{k:"projectId",l:"Project ID *"},
               {k:"storageBucket",l:"Storage Bucket"},{k:"messagingSenderId",l:"Sender ID"},{k:"appId",l:"App ID"}].map(f=>(
               <div key={f.k}>
                 <div style={{fontSize:9.5,fontWeight:700,color:C.t2,textTransform:"uppercase",letterSpacing:1,marginBottom:4}}>{f.l}</div>
                 <input value={form[f.k]} onChange={e=>setForm(x=>({...x,[f.k]:e.target.value}))} style={IS}
-                  onFocus={e=>e.target.style.borderColor=C.g+"88"} onBlur={e=>e.target.style.borderColor=C.bo0}/>
-              </div>))}
+                  onFocus={e=>e.target.style.borderColor=C.g+"88"} onBlur={e=>e.target.style.borderColor=C.b0}/>
+              </div>
+            ))}
           </div>
-          {err&&<div style={{marginTop:10,padding:"10px 13px",background:C.r1,borderRadius:8,border:`1px solid ${C.r}33`,fontSize:12,color:C.r}}>⚠ {err}</div>}
+          {err&&<div style={{marginTop:10,padding:"13px 14px",background:C.r1,borderRadius:8,border:`1px solid ${C.r}33`,fontSize:12,color:C.r}}>⚠ {err}</div>}
           <div style={{marginTop:16}}>
             <Btn onClick={connect} disabled={loading} full size="lg">{loading?"⏳ Menghubungkan...":"🔥 Hubungkan Firebase"}</Btn>
           </div>
@@ -511,208 +535,17 @@ function FirebaseSetup({onDone}) {
 }
 
 // ─────────────────────────────────────────────────────────────
-//  INVOICE
-// ─────────────────────────────────────────────────────────────
-function Invoice({receipt,biz,onClose,onNew}) {
-  const b=BIZ[biz];
-  const printInvoice=()=>{
-    const w=window.open("","_blank","width=420,height=700");
-    w.document.write(`<!DOCTYPE html><html><head><meta charset="utf-8"/><title>Invoice ${receipt.id}</title>
-      <style>*{margin:0;padding:0;box-sizing:border-box;}body{font-family:Arial,sans-serif;font-size:12px;color:#000;padding:16px;max-width:320px;}
-      .center{text-align:center;}.bold{font-weight:bold;}.mono{font-family:monospace;}
-      .line{border-top:1px dashed #999;margin:8px 0;}.row{display:flex;justify-content:space-between;margin-bottom:4px;}
-      .total{font-size:16px;font-weight:bold;}table{width:100%;border-collapse:collapse;}
-      td{padding:3px 0;vertical-align:top;}td:last-child{text-align:right;white-space:nowrap;}
-      .footer{text-align:center;font-size:10px;color:#666;margin-top:8px;}
-      .pay{background:#f0f0f0;padding:4px 8px;border-radius:4px;font-size:11px;}
-      </style></head><body>
-      <div class="center bold" style="font-size:16px">JE GRUP</div>
-      <div class="center" style="font-size:11px">${b?.name} — ${b?.desc}</div>
-      <div class="line"></div>
-      <div class="row"><span>No. Invoice</span><span class="mono bold">${receipt.id}</span></div>
-      <div class="row"><span>Tanggal</span><span>${receipt.date}</span></div>
-      <div class="row"><span>Kasir</span><span>${receipt.kasir}</span></div>
-      <div class="line"></div>
-      <table><tbody>${receipt.items.map(item=>`<tr>
-        <td>${item.name}<br/><span style="font-size:10px;color:#666">${item.qty} × Rp ${Number(item.price).toLocaleString("id-ID")}</span></td>
-        <td>Rp ${Number(item.price*item.qty).toLocaleString("id-ID")}</td></tr>`).join("")}
-      </tbody></table>
-      <div class="line"></div>
-      ${receipt.discount>0?`<div class="row"><span>Diskon</span><span>- Rp ${Number(receipt.discount).toLocaleString("id-ID")}</span></div>`:""}
-      <div class="row total"><span>TOTAL</span><span>Rp ${Number(receipt.total).toLocaleString("id-ID")}</span></div>
-      ${receipt.payment?`<div style="margin-top:6px;text-align:right"><span class="pay">Pembayaran: ${receipt.payment}</span></div>`:""}
-      <div class="line"></div>
-      <div class="footer">Terima kasih telah berbelanja!<br/>Barang yang sudah dibeli tidak dapat dikembalikan.</div>
-      </body></html>`);
-    w.document.close();setTimeout(()=>{w.print();},400);
-  };
-  return <div style={{position:"fixed",inset:0,background:"rgba(2,8,24,.9)",zIndex:600,
-    display:"flex",alignItems:"flex-end",justifyContent:"center",fontFamily:F.sans}} onClick={onClose}>
-    <div style={{width:"100%",maxWidth:420,background:C.bg2,borderRadius:"22px 22px 0 0",
-      border:`1px solid ${C.bo1}`,borderBottom:"none",animation:"slideUp .3s ease",
-      maxHeight:"92vh",overflowY:"auto",paddingBottom:24}} onClick={e=>e.stopPropagation()}>
-      <div style={{width:36,height:4,background:C.b1,borderRadius:2,margin:"16px auto 0"}}/>
-      <div style={{textAlign:"center",padding:"14px 20px 10px"}}>
-        <div style={{fontSize:22,marginBottom:4}}>🧾</div>
-        <div style={{fontSize:13,fontWeight:800,letterSpacing:2,color:C.g}}>INVOICE</div>
-        <div className="mn" style={{fontSize:10,color:C.t2,marginTop:2}}>{receipt.id}</div>
-        <div style={{marginTop:6,display:"flex",justifyContent:"center"}}><BizChip biz={biz}/></div>
-      </div>
-      <div style={{margin:"0 16px",background:C.bg3,borderRadius:12,border:`1px solid ${C.bo0}`,overflow:"hidden"}}>
-        <div style={{padding:"10px 14px",borderBottom:`1px solid ${C.bo0}`}}>
-          {[["Tanggal",receipt.date],["Kasir",receipt.kasir],["Pembayaran",receipt.payment||"Tunai"],["No. Invoice",receipt.id]].map(([l,v])=>(
-            <div key={l} style={{display:"flex",justifyContent:"space-between",fontSize:12,marginBottom:4}}>
-              <span style={{color:C.t2}}>{l}</span>
-              <span className="mn" style={{fontWeight:600,fontSize:11}}>{v}</span>
-            </div>))}
-        </div>
-        <div style={{padding:"10px 14px"}}>
-          <div style={{fontSize:9.5,fontWeight:700,color:C.t3,textTransform:"uppercase",letterSpacing:1,marginBottom:8}}>Daftar Barang</div>
-          {receipt.items.map((item,i)=>(
-            <div key={i} style={{display:"flex",alignItems:"flex-start",gap:8,marginBottom:8,paddingBottom:8,borderBottom:`1px solid ${C.bo0}`}}>
-              <div style={{flex:1,minWidth:0}}>
-                <div style={{fontSize:12.5,fontWeight:600,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{item.name}</div>
-                <div className="mn" style={{fontSize:10.5,color:C.t2,marginTop:1}}>{item.qty} × {rp(item.price)}</div>
-              </div>
-              <div className="mn" style={{fontSize:13,fontWeight:700,color:C.t0,flexShrink:0}}>{rp(item.price*item.qty)}</div>
-            </div>))}
-        </div>
-        <div style={{padding:"10px 14px",background:C.bg4,borderTop:`1px solid ${C.bo0}`}}>
-          {receipt.discount>0&&<div style={{display:"flex",justifyContent:"space-between",fontSize:12,color:C.t2,marginBottom:4}}>
-            <span>Diskon</span><span className="mn" style={{color:C.r}}>− {rp(receipt.discount)}</span></div>}
-          <div style={{display:"flex",justifyContent:"space-between",alignItems:"baseline"}}>
-            <span style={{fontSize:13,fontWeight:700}}>TOTAL PEMBAYARAN</span>
-            <span className="mn" style={{fontSize:22,fontWeight:800,color:C.g}}>{rp(receipt.total)}</span>
-          </div>
-          <div style={{fontSize:11,color:C.t2,marginTop:4}}>{receipt.items.reduce((s,i)=>s+i.qty,0)} item · {receipt.items.length} produk</div>
-        </div>
-      </div>
-      <div style={{textAlign:"center",padding:"10px 20px 0",fontSize:11,color:C.t3}}>Terima kasih telah berbelanja di {b?.name}!</div>
-      <div style={{display:"flex",gap:8,padding:"14px 16px 0"}}>
-        <button onClick={printInvoice} className="press"
-          style={{flex:1,padding:"13px",background:`linear-gradient(90deg,${C.g},${C.b})`,
-            border:"none",borderRadius:11,color:C.bg1,fontSize:13,fontWeight:800,fontFamily:"inherit"}}>
-          🖨️ Cetak Invoice</button>
-        <button onClick={onNew} className="press"
-          style={{flex:1,padding:"13px",background:C.bg3,border:`1px solid ${C.bo1}`,
-            borderRadius:11,color:C.t0,fontSize:13,fontWeight:700,fontFamily:"inherit"}}>
-          Transaksi Baru →</button>
-      </div>
-      <div style={{padding:"8px 16px 0"}}>
-        <button onClick={onClose} style={{width:"100%",padding:"9px",background:"transparent",
-          border:`1px solid ${C.bo0}`,borderRadius:9,color:C.t3,fontSize:12,fontFamily:"inherit"}}>Tutup</button>
-      </div>
-    </div>
-  </div>;
-}
-
-// ─────────────────────────────────────────────────────────────
-//  STOCK CHECK
-// ─────────────────────────────────────────────────────────────
-function StockCheckModal({prods,biz,onClose}) {
-  const [q,setQ]=useState("");
-  const list=prods.filter(p=>!q||p.name.toLowerCase().includes(q.toLowerCase())||p.barcode.includes(q));
-  return <div style={{position:"fixed",inset:0,background:"rgba(2,8,24,.88)",zIndex:550,
-    display:"flex",alignItems:"flex-end",justifyContent:"center",fontFamily:F.sans}} onClick={onClose}>
-    <div style={{width:"100%",maxWidth:480,background:C.bg2,borderRadius:"22px 22px 0 0",
-      border:`1px solid ${C.bo1}`,borderBottom:"none",animation:"slideUp .3s ease",
-      maxHeight:"85vh",display:"flex",flexDirection:"column"}} onClick={e=>e.stopPropagation()}>
-      <div style={{width:36,height:4,background:C.b1,borderRadius:2,margin:"14px auto 0"}}/>
-      <div style={{padding:"10px 16px 12px",borderBottom:`1px solid ${C.bo0}`,flexShrink:0}}>
-        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
-          <div style={{fontSize:14,fontWeight:800}}>📦 Cek Stok Barang</div>
-          <BizChip biz={biz}/>
-        </div>
-        <div style={{position:"relative"}}>
-          <span style={{position:"absolute",left:11,top:"50%",transform:"translateY(-50%)",color:C.t2,fontSize:14,pointerEvents:"none"}}>🔍</span>
-          <input value={q} onChange={e=>setQ(e.target.value)} autoFocus placeholder="Cari nama atau barcode..."
-            style={{width:"100%",padding:"10px 12px 10px 36px",background:C.bg3,border:`1.5px solid ${C.bo1}`,borderRadius:10,color:C.t0,fontSize:13}}/>
-        </div>
-      </div>
-      <div style={{overflowY:"auto",flex:1}}>
-        {list.length===0?<div style={{padding:"32px",textAlign:"center",color:C.t3,fontSize:13}}>Produk tidak ditemukan</div>
-        :list.map((p,i)=>(
-          <div key={p.id} style={{display:"flex",alignItems:"center",gap:12,padding:"12px 16px",borderTop:i>0?`1px solid ${C.bo0}`:undefined}}>
-            <div style={{flex:1,minWidth:0}}>
-              <div style={{fontWeight:600,fontSize:13,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{p.name}</div>
-              <div className="mn" style={{fontSize:10,color:C.t2,marginTop:1}}>{p.barcode} · {p.category}</div>
-            </div>
-            <div style={{textAlign:"right",flexShrink:0}}>
-              <div className="mn" style={{fontSize:16,fontWeight:800,color:p.stock===0?C.r:p.stock<10?C.a:C.g}}>{p.stock}</div>
-              <div style={{fontSize:9.5,color:C.t2}}>{p.stock===0?"HABIS":p.stock<10?"MENIPIS":"tersedia"}</div>
-            </div>
-          </div>))}
-      </div>
-      <div style={{padding:"12px 16px",borderTop:`1px solid ${C.bo0}`,flexShrink:0,display:"flex",justifyContent:"space-between",alignItems:"center",fontSize:12}}>
-        <span style={{color:C.t2}}>{list.length} produk · {list.reduce((s,p)=>s+p.stock,0)} total stok</span>
-        <button onClick={onClose} style={{padding:"7px 16px",background:C.bg3,border:`1px solid ${C.bo1}`,borderRadius:8,color:C.t1,fontSize:12,fontWeight:600,fontFamily:"inherit"}}>Tutup</button>
-      </div>
-    </div>
-  </div>;
-}
-
-
-
-// ─────────────────────────────────────────────────────────────
-//  CHART BOUNDARY
-// ─────────────────────────────────────────────────────────────
-class ChartBoundary extends Component {
-  constructor(p){super(p);this.state={err:false};}
-  static getDerivedStateFromError(){return{err:true};}
-  render(){
-    if(this.state.err) return <div style={{padding:"20px",textAlign:"center",color:DARK_C.t3,fontSize:12}}>Chart tidak tersedia</div>;
-    return this.props.children;
-  }
-}
-
-// ─────────────────────────────────────────────────────────────
-//  ERROR BOUNDARY
-// ─────────────────────────────────────────────────────────────
-class ErrorBoundary extends Component {
-  constructor(props){super(props);this.state={hasError:false,error:null};}
-  static getDerivedStateFromError(err){return{hasError:true,error:err};}
-  componentDidCatch(err,info){console.error("App crash:",err,info);}
-  render(){
-    if(this.state.hasError){
-      return <div style={{fontFamily:"system-ui",background:"#020817",color:"#e8f4ff",
-        height:"100vh",display:"flex",flexDirection:"column",alignItems:"center",
-        justifyContent:"center",gap:16,padding:24,textAlign:"center"}}>
-        <div style={{fontSize:40}}>⚠️</div>
-        <h2 style={{fontSize:18,fontWeight:700}}>Terjadi Error</h2>
-        <p style={{fontSize:13,color:"#4a6480",maxWidth:400,lineHeight:1.6}}>
-          {String(this.state.error?.message||this.state.error)}
-        </p>
-        <div style={{display:"flex",gap:10,flexWrap:"wrap",justifyContent:"center"}}>
-          <button onClick={()=>window.location.reload()}
-            style={{padding:"10px 20px",background:"#00e5a0",border:"none",borderRadius:9,
-              color:"#020817",fontWeight:700,fontSize:13,cursor:"pointer"}}>
-            🔄 Reload
-          </button>
-          <button onClick={()=>{localStorage.clear();window.location.reload();}}
-            style={{padding:"10px 20px",background:"transparent",border:"1px solid #4a6480",
-              borderRadius:9,color:"#8aaac8",fontSize:13,cursor:"pointer"}}>
-            Reset & Reload
-          </button>
-        </div>
-        <p style={{fontSize:11,color:"#253347",marginTop:8}}>
-          Buka DevTools (F12) → Console untuk detail error
-        </p>
-      </div>;
-    }
-    return this.props.children;
-  }
-}
-
-// ─────────────────────────────────────────────────────────────
-//  APPSCRIPT CODE
+//  APPSCRIPT SETUP GUIDE (for Google Sheets)
 // ─────────────────────────────────────────────────────────────
 const APPSCRIPT_CODE = `
 function doPost(e) {
   const data = JSON.parse(e.postData.contents);
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   const sheets = {
-    users: getOrCreate(ss,"Pengguna"), products: getOrCreate(ss,"Barang"),
-    transactions: getOrCreate(ss,"Transaksi"), stocklogs: getOrCreate(ss,"LogStok"),
+    users: getOrCreate(ss,"Pengguna"),
+    products: getOrCreate(ss,"Barang"),
+    transactions: getOrCreate(ss,"Transaksi"),
+    stocklogs: getOrCreate(ss,"LogStok"),
     attendance: getOrCreate(ss,"Absensi")
   };
   if(data.users) syncSheet(sheets.users, data.users,
@@ -720,7 +553,7 @@ function doPost(e) {
   if(data.products) syncSheet(sheets.products, data.products,
     ["ID","Barcode","Nama","Kategori","HPP","Harga Jual","Stok","Bisnis"]);
   if(data.transactions) syncSheet(sheets.transactions, data.transactions,
-    ["ID","Tanggal","Kasir","Bisnis","Total","HPP","Laba","Diskon","Pembayaran","Items"]);
+    ["ID","Tanggal","Kasir","Bisnis","Total","HPP","Laba","Items"]);
   if(data.stocklogs) syncSheet(sheets.stocklogs, data.stocklogs,
     ["ID","Tanggal","Barcode","Produk","Bisnis","Tipe","Qty","Sebelum","Sesudah","Oleh"]);
   if(data.attendance) syncSheet(sheets.attendance, data.attendance,
@@ -728,9 +561,12 @@ function doPost(e) {
   return ContentService.createTextOutput(JSON.stringify({ok:true}))
     .setMimeType(ContentService.MimeType.JSON);
 }
-function getOrCreate(ss,name){ return ss.getSheetByName(name)||ss.insertSheet(name); }
+function getOrCreate(ss,name){
+  return ss.getSheetByName(name) || ss.insertSheet(name);
+}
 function syncSheet(sh,rows,headers){
-  sh.clearContents(); sh.appendRow(headers);
+  sh.clearContents();
+  sh.appendRow(headers);
   rows.forEach(r=>sh.appendRow(Object.values(r)));
 }
 `;
@@ -738,27 +574,20 @@ function syncSheet(sh,rows,headers){
 // ─────────────────────────────────────────────────────────────
 //  MAIN APP
 // ─────────────────────────────────────────────────────────────
-function AppInner() {
+export default function App() {
   // ─── Firebase ───
-  const [fbReady,setFbReady]=useState(false);
-  const [fbSetup,setFbSetup]=useState(false);
-  const [fbLoad,setFbLoad]=useState(true);
-  // ─── Theme ───
-  const [isDark,setIsDark]=useState(()=>localStorage.getItem("je_theme")!=="light");
-  const toggleTheme=()=>{
-    const next=!isDark;
-    Object.assign(C,next?DARK_C:LIGHT_C);
-    CSS=makeCSS();
-    localStorage.setItem("je_theme",next?"dark":"light");
-    setIsDark(next);
-  };
+  const [fbReady,  setFbReady]  = useState(false);
+  const [fbSetup,  setFbSetup]  = useState(false);
+  const [fbLoad,   setFbLoad]   = useState(true);
+
   // ─── Online ───
-  const [online,setOnline]=useState(navigator.onLine);
+  const [online, setOnline] = useState(navigator.onLine);
   useEffect(()=>{
     const on=()=>setOnline(true),off=()=>setOnline(false);
     window.addEventListener("online",on);window.addEventListener("offline",off);
     return()=>{window.removeEventListener("online",on);window.removeEventListener("offline",off);};
   },[]);
+
   // ─── Firebase init ───
   useEffect(()=>{
     const cfg=loadConfig();
@@ -770,15 +599,14 @@ function AppInner() {
       setFbReady(true);setFbLoad(false);
     });
   },[]);
+
   // ─── Firestore data ───
-  const [users,setUsers]=useState([]);
-  const [prods,setProds]=useState([]);
-  const [trxs,setTrxs]=useState([]);
-  const [slogs,setSlogs]=useState([]);
-  const [attend,setAttend]=useState([]);
-  const [returns,setReturns]=useState([]);
-  const [actLogs,setActLogs]=useState([]);
-  const [targets,setTargets]=useState([]);
+  const [users,  setUsers]  = useState([]);
+  const [prods,  setProds]  = useState([]);
+  const [trxs,   setTrxs]   = useState([]);
+  const [slogs,  setSlogs]  = useState([]);
+  const [attend, setAttend] = useState([]);
+
   useEffect(()=>{
     if(!fbReady) return;
     const uns=[
@@ -787,145 +615,132 @@ function AppInner() {
       subscribeTransactions(d=>setTrxs(d)),
       subscribeStockLogs(d=>setSlogs(d)),
       subscribeAttendance(d=>setAttend(d)),
-      subscribeReturns(d=>setReturns(d)),
-      subscribeActivityLogs(d=>setActLogs(d)),
-      subscribeTargets(d=>setTargets(d)),
     ];
     return()=>uns.forEach(u=>u());
   },[fbReady]);
+
   // ─── Toast ───
-  const [notif,setNotif]=useState(null);
+  const [notif, setNotif] = useState(null);
   const nRef=useRef(null);
   const toast=useCallback((msg,type="ok")=>{
     if(nRef.current) clearTimeout(nRef.current);
-    setNotif({msg,type});nRef.current=setTimeout(()=>setNotif(null),3000);
+    setNotif({msg,type}); nRef.current=setTimeout(()=>setNotif(null),3000);
   },[]);
-  // ─── Auth ───
-  const [screen,setScreen]=useState("login");
-  const [user,setUser]=useState(null);
-  const [biz,setBiz]=useState(null);
-  const [pending,setPending]=useState(null);
-  const [faceReg,setFaceReg]=useState(null);
-  const [sessionStart,setSessionStart]=useState(null);
-  // Session timeout
-  useEffect(()=>{
-    if(!user||!sessionStart) return;
-    const t=setTimeout(()=>{toast("⏰ Sesi berakhir, silakan login kembali","warn");doLogout();},SESSION_TTL);
-    return()=>clearTimeout(t);
-  },[user,sessionStart]);
+
+  // ─── Screen & Auth ───
+  const [screen,  setScreen]  = useState("login");
+  const [user,    setUser]    = useState(null);
+  const [biz,     setBiz]     = useState(null);
+  const [pending, setPending] = useState(null);
+  const [faceReg, setFaceReg] = useState(null);
+
   // ─── Remember Me ───
-  const [rememberMe,setRememberMe]=useState(()=>!!localStorage.getItem("je_remember"));
-  const [lf,setLf]=useState(()=>{
-    try{const s=JSON.parse(localStorage.getItem("je_remember")||"null");if(s) return{u:s.u||"",p:s.p||""};}catch{}
-    return{u:"",p:""};
+  const [rememberMe, setRememberMe] = useState(false);
+  const [lf, setLf] = useState(()=>{
+    try{
+      const saved=JSON.parse(localStorage.getItem("je_remember")||"null");
+      if(saved){return {u:saved.u||"",p:saved.p||""};}
+    }catch{}
+    return {u:"",p:""};
   });
-  const [lerr,setLerr]=useState("");
-  // ─── Attendance ───
-  const todayAtt=(uid,b)=>attend.find(a=>a.userId===uid&&a.date===todayDate()&&a.business===(b||biz));
-  const hasCheckedIn=user?!!todayAtt(user.id,biz)&&!todayAtt(user.id,biz)?.checkOut:false;
-  const lowStockCount=prods.filter(p=>p.stock<10).length;
+  const [lerr, setLerr] = useState("");
+
+  // check if remember was set before
+  useEffect(()=>{
+    const saved=localStorage.getItem("je_remember");
+    if(saved) setRememberMe(true);
+  },[]);
+
+  // ─── Attendance helpers ───
+  const todayAtt = (uid,b) => attend.find(a=>a.userId===uid&&a.date===todayDate()&&a.business===(b||biz));
+  const hasCheckedIn = user ? !!todayAtt(user.id,biz)&&!todayAtt(user.id,biz)?.checkOut : false;
+
   const doCheckIn=async(u,b)=>{
+    // Don't double check-in
     const existing=attend.find(a=>a.userId===u.id&&a.date===todayDate()&&a.business===b);
     if(existing) return;
-    const isoNow=new Date().toISOString();
+    const isoNow = new Date().toISOString();
     const rec={id:"ATT-"+uid(),userId:u.id,username:u.username,name:u.name,
       role:u.role,business:b,date:todayDate(),dateISO:todayISO8601(),
       checkIn:nowStr(),checkInISO:isoNow,checkOut:null,checkOutISO:null};
     await fbCheckIn(rec).catch(()=>{});
     toast(`🕐 Absen masuk tercatat — ${u.name}`,"info");
   };
+
   const doCheckOut=async()=>{
-    const rec=todayAtt(user?.id,biz);if(!rec) return;
+    const rec=todayAtt(user?.id,biz);
+    if(!rec) return;
     await fbCheckOut(rec.id,nowStr()).catch(()=>{});
     toast("✅ Absen pulang tercatat!");
   };
+
   // ─── Login ───
-  const doLogin=async()=>{
-    const u=users.find(x=>x.username===lf.u&&x.active);
-    if(!u){setLerr("Username tidak ditemukan atau akun nonaktif.");return;}
-    // verify password (support hashed + legacy)
-    const ok=await verifyPassword(lf.p, u.passwordHash||u.password);
-    if(!ok){setLerr("Password salah.");return;}
+  const doLogin=()=>{
+    const u=users.find(x=>x.username===lf.u&&x.password===lf.p&&x.active);
+    if(!u){setLerr("Username/password salah atau akun nonaktif.");return;}
     setLerr("");
     if(rememberMe) localStorage.setItem("je_remember",JSON.stringify({u:lf.u,p:lf.p}));
     else localStorage.removeItem("je_remember");
-    setSessionStart(Date.now());
-    if(u.role==="admin"){setUser(u);setBiz(u.access[0]);setAdminTab("dashboard");setScreen("admin");}
-    else{setPending(u);setScreen("facescan");}
+
+    if(u.role==="admin"){
+      setUser(u);setBiz(u.access[0]);setAdminTab("dashboard");setScreen("admin");
+    } else {
+      setPending(u);setScreen("facescan");
+    }
   };
+
   const afterFace=async(u)=>{
     setUser(u);setPending(null);
-    if(u.access.length===1){const b=u.access[0];setBiz(b);await doCheckIn(u,b);setScreen(u.role==="kasir"?"kasir":"stok");}
-    else setScreen("bizselect");
+    if(u.access.length===1){
+      const b=u.access[0];setBiz(b);
+      await doCheckIn(u,b);
+      setScreen(u.role==="kasir"?"kasir":"stok");
+    } else setScreen("bizselect");
   };
+
   const doLogout=()=>{
-    setUser(null);setBiz(null);setScreen("login");setSessionStart(null);
-    setCart([]);setScanIn("");setStokTarget(null);setReceipt(null);
+    setUser(null);setBiz(null);setScreen("login");
+    setCart([]);setScanIn("");setStokTarget(null);
   };
   const handlePulang=async()=>{await doCheckOut();setTimeout(doLogout,1500);};
 
   // ─── Kasir state ───
-  const [cart,setCart]=useState([]);
-  const [scanIn,setScanIn]=useState("");
-  const [receipt,setReceipt]=useState(null);
-  const [showStock,setShowStock]=useState(false);
-  const [discount,setDiscount]=useState({type:"pct",value:""});
-  const [payMethod,setPayMethod]=useState("Tunai");
-  const [showCheckout,setShowCheckout]=useState(false);
+  const [cart,    setCart]    = useState([]);
+  const [scanIn,  setScanIn]  = useState("");
+  const [receipt, setReceipt] = useState(null);
   const scanRef=useRef(null);
-  useEffect(()=>{if(screen==="kasir"&&!receipt&&!showCheckout)setTimeout(()=>scanRef.current?.focus(),100);},[screen,receipt,showCheckout]);
+  useEffect(()=>{if(screen==="kasir"&&!receipt)setTimeout(()=>scanRef.current?.focus(),100);},[screen,receipt]);
+
   // ─── Stok state ───
-  const [stokScan,setStokScan]=useState("");
-  const [stokQ,setStokQ]=useState("");
-  const [stokPrice,setStokPrice]=useState("");
-  const [stokTarget,setStokTarget]=useState(null);
-  const [stokSearch,setStokSearch]=useState("");
+  const [stokScan,  setStokScan]  = useState("");
+  const [stokQ,     setStokQ]     = useState("");
+  const [stokPrice, setStokPrice] = useState("");
+  const [stokTarget,setStokTarget]= useState(null);
+  const [stokSearch,setStokSearch]= useState("");
   const stokScanRef=useRef(null),stokQRef=useRef(null);
   useEffect(()=>{if(screen==="stok")setTimeout(()=>stokScanRef.current?.focus(),100);},[screen]);
   useEffect(()=>{if(stokTarget)setTimeout(()=>stokQRef.current?.focus(),100);},[stokTarget]);
-  // ─── Admin state ───
-  const [adminTab,setAdminTab]=useState("dashboard");
-  const [adminScanQ,setAdminScanQ]=useState("");
-  const [adminBiz,setAdminBiz]=useState("JS_CLOTHING");
-  const [searchQ,setSearchQ]=useState("");
-  const [reportBiz,setReportBiz]=useState("ALL");
-  const [reportRange,setReportRange]=useState("month");
-  const [reportKasir,setReportKasir]=useState("ALL");
-  const [lapFrom,setLapFrom]=useState("");
-  const [lapTo,setLapTo]=useState("");
-  const [gsUrl,setGsUrl]=useState(()=>localStorage.getItem("je_gs_url")||"");
-  const [gsLoad,setGsLoad]=useState(false);
-  const [copyDone,setCopyDone]=useState(false);
-  const [uModal,setUModal]=useState(false);
-  const [uForm,setUForm]=useState({});
-  const [editUid,setEditUid]=useState(null);
-  const [pModal,setPModal]=useState(false);
-  const [pForm,setPForm]=useState({});
-  const [editPid,setEditPid]=useState(null);
-  const [cpwdModal,setCpwdModal]=useState(null); // userId
-  const [cpwdForm,setCpwdForm]=useState({old:"",n1:"",n2:""});
-  const [targetModal,setTargetModal]=useState(false);
-  const [targetForm,setTargetForm]=useState({business:"JS_CLOTHING",period:"",amount:""});
-  const [selUser,setSelUser]=useState("ALL");
-  const [attRange,setAttRange]=useState("month");
-  const [attFrom,setAttFrom]=useState("");
-  const [attTo,setAttTo]=useState("");
-  const [slogRange,setSlogRange]=useState("all");
-  const [slogBiz,setSlogBiz]=useState("ALL");
-  const [slogFrom,setSlogFrom]=useState("");
-  const [slogTo,setSlogTo]=useState("");
-  const [slogType,setSlogType]=useState("ALL");
 
-  // ─── Helpers ───
-  const bizProds=(b=biz)=>prods.filter(p=>p.business===b);
-  const parseD=str=>{try{return new Date(str.replace(/(\d+)\/(\d+)\/(\d+),/,"$3-$2-$1 "));}catch{return null;}};
-  const calcDur=a=>{
-    const ci=a.checkInISO||a.checkIn,co=a.checkOutISO||a.checkOut;
-    if(!ci||!co) return "-";
-    try{const ms=new Date(co)-new Date(ci);const h=Math.floor(ms/3600000),m=Math.floor((ms%3600000)/60000);return h>0?`${h}j ${m}m`:`${m}m`;}catch{return "-";}
-  };
+  // ─── Admin state ───
+  const [adminTab, setAdminTab] = useState("dashboard");
+  const [adminBiz, setAdminBiz] = useState("JS_CLOTHING");
+  const [searchQ,  setSearchQ]  = useState("");
+  const [reportBiz,setReportBiz]= useState("ALL");
+  const [reportRange,setReportRange]=useState("all");
+  const [attFilter,setAttFilter]=useState({userId:"ALL",month:new Date().toISOString().slice(0,7)});
+  const [gsUrl,    setGsUrl]    = useState(()=>localStorage.getItem("je_gs_url")||"");
+  const [gsLoad,   setGsLoad]   = useState(false);
+  const [copyDone, setCopyDone] = useState(false);
+  const [uModal,   setUModal]   = useState(false);
+  const [uForm,    setUForm]    = useState({});
+  const [editUid,  setEditUid]  = useState(null);
+  const [pModal,   setPModal]   = useState(false);
+  const [pForm,    setPForm]    = useState({});
+  const [editPid,  setEditPid]  = useState(null);
 
   // ─── Kasir functions ───
+  const bizProds=(b=biz)=>prods.filter(p=>p.business===b);
+
   const kasirScan=useCallback(async(bc)=>{
     bc=bc.trim();if(!bc) return;
     const p=prods.find(x=>x.barcode===bc&&x.business===biz);
@@ -934,35 +749,24 @@ function AppInner() {
     setCart(prev=>{
       const ex=prev.find(c=>c.barcode===bc);
       if(ex){if(ex.qty>=p.stock){toast("Stok tidak cukup","warn");return prev;}
-        return prev.map(c=>c.barcode===bc?{...c,qty:c.qty+1}:c);}
+             return prev.map(c=>c.barcode===bc?{...c,qty:c.qty+1}:c);}
       return [...prev,{id:p.id,barcode:p.barcode,name:p.name,price:p.price,hpp:p.hpp||0,stock:p.stock,qty:1}];
     });
     toast("✓ "+p.name);setScanIn("");scanRef.current?.focus();
   },[prods,biz,toast]);
 
-  const calcDiscount=(subtotal)=>{
-    if(!discount.value||+discount.value<=0) return 0;
-    if(discount.type==="pct") return Math.floor(subtotal*(+discount.value/100));
-    return Math.min(+discount.value,subtotal);
-  };
-
   const doCheckout=useCallback(async()=>{
     if(!cart.length) return;
-    const subtotal=cart.reduce((s,c)=>s+c.price*c.qty,0);
-    const discAmt=calcDiscount(subtotal);
-    const total=subtotal-discAmt;
+    const total=cart.reduce((s,c)=>s+c.price*c.qty,0);
     const totalHpp=cart.reduce((s,c)=>s+(c.hpp||0)*c.qty,0);
-    const trx={id:"TRX-"+uid().toUpperCase(),date:nowStr(),kasir:user.name,kasirId:user.id,business:biz,
-      items:[...cart],subtotal,discount:discAmt,total,totalHpp,profit:total-totalHpp,payment:payMethod,returned:false};
+    const trx={id:"TRX-"+uid().toUpperCase(),date:nowStr(),kasir:user.name,business:biz,
+      items:[...cart],total,totalHpp,profit:total-totalHpp};
     const stockUpdates=cart.map(c=>({productId:c.id,newStock:c.stock-c.qty}));
     const logs=cart.map(c=>({id:"LOG-"+uid(),date:nowStr(),barcode:c.barcode,name:c.name,
       type:"keluar",qty:c.qty,before:c.stock,after:c.stock-c.qty,by:user.name,business:biz}));
-    try{
-      await fbAddTransaction(trx,stockUpdates,logs);
-      setCart([]);setDiscount({type:"pct",value:""});setPayMethod("Tunai");
-      setShowCheckout(false);setReceipt(trx);toast("✅ Transaksi berhasil! "+rp(total));
-    }catch(e){toast("Gagal: "+e.message,"err");}
-  },[cart,user,biz,discount,payMethod,toast]);
+    try{await fbAddTransaction(trx,stockUpdates,logs);setCart([]);setReceipt(trx);toast("✅ Transaksi berhasil! "+rp(total));}
+    catch(e){toast("Gagal: "+e.message,"err");}
+  },[cart,user,biz,toast]);
 
   // ─── Stok functions ───
   const stokScanFn=useCallback((bc)=>{
@@ -980,29 +784,37 @@ function AppInner() {
       type:"masuk",qty:q,before:stokTarget.stock,after:ns,by:user.name,business:biz};
     try{
       const np=stokPrice&&+stokPrice>0?+stokPrice:undefined;
-      await fbUpdateStock(stokTarget.id,ns,np,log,user.name);
+      await fbUpdateStock(stokTarget.id,ns,np,log);
       toast(`✓ Stok ${stokTarget.name}: ${stokTarget.stock} → ${ns}`);
     }catch(e){toast("Gagal: "+e.message,"err");}
     setStokTarget(null);setStokQ("");setStokPrice("");stokScanRef.current?.focus();
   },[stokTarget,stokQ,stokPrice,user,biz,toast]);
 
+  // ─── Face reg ───
+  const handleFaceReg=async(desc)=>{
+    if(!faceReg) return;
+    const u=users.find(x=>x.id===faceReg);if(!u) return;
+    await fbUpdateUser(u.id,{...u,faceDescriptor:Array.from(desc)});
+    setFaceReg(null);toast("✅ Data wajah terdaftar!");
+  };
+
   // ─── Admin: User CRUD ───
   const openAddU=()=>{setUForm({username:"",password:"",name:"",role:"kasir",access:[],avatar:"🧑",active:true});setEditUid(null);setUModal(true);};
   const openEditU=u=>{setUForm({...u,access:[...u.access]});setEditUid(u.id);setUModal(true);};
   const saveUser=async()=>{
-    if(!uForm.username||!uForm.password||!uForm.name){toast("Username, password & nama wajib","warn");return;}
+    if(!uForm.username||!uForm.password||!uForm.name){toast("Username, password & nama wajib diisi","warn");return;}
     if(!uForm.access?.length){toast("Pilih minimal 1 akses bisnis","warn");return;}
     try{
       if(editUid===null){
         if(users.find(u=>u.username===uForm.username)){toast("Username sudah dipakai!","err");return;}
-        await fbAddUser({...uForm,id:NEXT_ID++,faceDescriptor:null},user.name);toast("✓ Pengguna ditambahkan");
-      }else{await fbUpdateUser(editUid,{...uForm,id:editUid},user.name);toast("✓ Pengguna diperbarui");}
+        await fbAddUser({...uForm,id:NEXT_ID++,faceDescriptor:null});toast("✓ Pengguna ditambahkan");
+      }else{await fbUpdateUser(editUid,{...uForm,id:editUid});toast("✓ Pengguna diperbarui");}
       setUModal(false);
     }catch(e){toast("Error: "+e.message,"err");}
   };
-  const delUser=async(u)=>{
-    if(u.id===user.id){toast("Tidak bisa hapus akun sendiri","err");return;}
-    await fbDeleteUser(u.id,u.name,user.name).catch(()=>{});toast("Pengguna dihapus");
+  const delUser=async(id)=>{
+    if(id===user.id){toast("Tidak bisa hapus akun sendiri","err");return;}
+    await fbDeleteUser(id).catch(()=>{});toast("Pengguna dihapus");
   };
 
   // ─── Admin: Product CRUD ───
@@ -1013,77 +825,46 @@ function AppInner() {
     try{
       if(editPid===null){
         if(prods.find(p=>p.barcode===pForm.barcode)){toast("Barcode sudah ada!","err");return;}
-        await fbAddProduct({...pForm,id:NEXT_ID++,price:+pForm.price,hpp:+pForm.hpp||0,stock:+pForm.stock},user.name);
+        await fbAddProduct({...pForm,id:NEXT_ID++,price:+pForm.price,hpp:+pForm.hpp||0,stock:+pForm.stock});
         toast("✓ Produk ditambahkan");
-      }else{
-        await fbUpdateProduct(editPid,{...pForm,id:editPid,price:+pForm.price,hpp:+pForm.hpp||0,stock:+pForm.stock},user.name);
-        toast("✓ Produk diperbarui");
-      }
+      }else{await fbUpdateProduct(editPid,{...pForm,id:editPid,price:+pForm.price,hpp:+pForm.hpp||0,stock:+pForm.stock});toast("✓ Produk diperbarui");}
       setPModal(false);
     }catch(e){toast("Error: "+e.message,"err");}
   };
 
-  // ─── Retur ───
-  const doRetur=async(trx)=>{
-    if(trx.returned){toast("Transaksi ini sudah pernah diretur","warn");return;}
-    const ret={id:"RET-"+uid().toUpperCase(),date:nowStr(),kasir:user.name,business:trx.business,
-      originalTrxId:trx.id,items:trx.items,total:trx.total,reason:"Retur oleh "+user.name};
-    const stockUpdates=trx.items.map(c=>{
-      const p=prods.find(x=>x.barcode===c.barcode);
-      return{productId:c.id,newStock:(p?.stock||0)+c.qty};
-    });
-    const logs=trx.items.map(c=>({id:"LOG-"+uid(),date:nowStr(),barcode:c.barcode,name:c.name,
-      type:"masuk",qty:c.qty,before:prods.find(x=>x.barcode===c.barcode)?.stock||0,
-      after:(prods.find(x=>x.barcode===c.barcode)?.stock||0)+c.qty,by:user.name,business:trx.business}));
-    try{
-      await fbAddReturn(ret,stockUpdates,logs);
-      toast("✅ Retur berhasil, stok dikembalikan");
-    }catch(e){toast("Gagal retur: "+e.message,"err");}
-  };
-
-  // ─── Face registration ───
-  const handleFaceReg=async(desc)=>{
-    if(!faceReg) return;
-    const u=users.find(x=>x.id===faceReg);if(!u) return;
-    await fbUpdateUser(u.id,{...u,faceDescriptor:Array.from(desc)},user?.name);
-    setFaceReg(null);toast("✅ Data wajah terdaftar!");
-  };
-
-  // ─── Laporan calculations ───
-  const getDateFilter=(rows,dateKey="date")=>{
+  // ─── Reports computation ───
+  const getDateFilter=(trxs)=>{
+    if(reportRange==="all") return trxs;
     const now=new Date();
-    return rows.filter(t=>{
-      const d=parseD(t[dateKey]); if(!d) return true;
-      if(reportRange==="today") return d.toDateString()===now.toDateString();
-      if(reportRange==="week"){const w=new Date(now);w.setDate(w.getDate()-7);return d>=w;}
-      if(reportRange==="month") return d.getMonth()===now.getMonth()&&d.getFullYear()===now.getFullYear();
-      if(reportRange==="custom"){
-        const from=lapFrom?new Date(lapFrom):null;
-        const to=lapTo?new Date(lapTo+"T23:59:59"):null;
-        if(from&&d<from) return false;
-        if(to&&d>to) return false;
+    return trxs.filter(t=>{
+      try{
+        const d=new Date(t.date.replace(/(\d+)\/(\d+)\/(\d+),/,"$3-$2-$1 "));
+        if(reportRange==="today") return d.toDateString()===now.toDateString();
+        if(reportRange==="week"){const w=new Date(now);w.setDate(w.getDate()-7);return d>=w;}
+        if(reportRange==="month") return d.getMonth()===now.getMonth()&&d.getFullYear()===now.getFullYear();
         return true;
-      }
-      return true;
+      }catch{return true;}
     });
   };
-  const filtTrx=getDateFilter(
-    trxs.filter(t=>(reportBiz==="ALL"||t.business===reportBiz)&&(reportKasir==="ALL"||String(t.kasirId)===reportKasir))
-  );
+  const filtTrx=getDateFilter(trxs.filter(t=>reportBiz==="ALL"||t.business===reportBiz));
   const totalRev=filtTrx.reduce((s,t)=>s+t.total,0);
   const totalHppAll=filtTrx.reduce((s,t)=>s+(t.totalHpp||0),0);
   const grossProfit=totalRev-totalHppAll;
   const margin=totalRev>0?((grossProfit/totalRev)*100).toFixed(1)+"%":"0%";
+
+  // Daily chart
   const dailyMap={};
   filtTrx.forEach(t=>{
     try{
-      const d=parseD(t.date);if(!d) return;
+      const d=new Date(t.date.replace(/(\d+)\/(\d+)\/(\d+),/,"$3-$2-$1 "));
       const key=d.toLocaleDateString("id-ID",{day:"2-digit",month:"2-digit"});
       if(!dailyMap[key])dailyMap[key]={date:key,rev:0,profit:0,trxCount:0};
       dailyMap[key].rev+=t.total;dailyMap[key].profit+=(t.profit||0);dailyMap[key].trxCount++;
     }catch{}
   });
   const dailyData=Object.values(dailyMap).slice(-20);
+
+  // Per-product
   const prodPerf=(()=>{
     const m={};
     filtTrx.forEach(t=>t.items?.forEach(item=>{
@@ -1092,71 +873,65 @@ function AppInner() {
     }));
     return Object.values(m).sort((a,b)=>b.rev-a.rev);
   })();
-  const kasirPerf=(()=>{
-    const m={};
-    filtTrx.forEach(t=>{
-      const k=t.kasirId||t.kasir;
-      if(!m[k])m[k]={kasirId:t.kasirId,kasir:t.kasir,trxCount:0,total:0,profit:0};
-      m[k].trxCount++;m[k].total+=t.total;m[k].profit+=(t.profit||0);
-    });
-    return Object.values(m).sort((a,b)=>b.total-a.total);
-  })();
-  const totalDisc=filtTrx.reduce((s,t)=>s+(t.discount||0),0);
-  const bizRevData=[
-    {name:"JS Clothing",value:filtTrx.filter(t=>t.business==="JS_CLOTHING").reduce((s,t)=>s+t.total,0),color:"#38bdf8"},
-    {name:"JB Store",value:filtTrx.filter(t=>t.business==="JB_STORE").reduce((s,t)=>s+t.total,0),color:"#f472b6"},
-  ].filter(d=>d.value>0);
-  const kasirBreakdown=(()=>{
-    const m={};
-    filtTrx.forEach(t=>{
-      const k=t.kasir||"?";
-      if(!m[k])m[k]={name:k,trx:0,rev:0,profit:0,discount:0};
-      m[k].trx++;m[k].rev+=t.total;m[k].profit+=(t.profit||0);m[k].discount+=(t.discount||0);
-    });
-    return Object.values(m).sort((a,b)=>b.rev-a.rev);
-  })();
 
-  // ─── Attendance calculations ───
-  const attFiltered=(()=>{
-    const now2=new Date();
-    return attend.filter(a=>{
-      const matchUser=selUser==="ALL"||String(a.userId)===String(selUser);
-      const isoSrc=a.checkInISO||a.dateISO||"";
-      const aDate=isoSrc?new Date(isoSrc):null;
-      let matchRange=true;
-      if(attRange==="today") matchRange=aDate?aDate.toDateString()===now2.toDateString():false;
-      else if(attRange==="week"){const w=new Date(now2);w.setDate(w.getDate()-7);matchRange=aDate?aDate>=w:false;}
-      else if(attRange==="month") matchRange=aDate?aDate.getFullYear()===now2.getFullYear()&&aDate.getMonth()===now2.getMonth():false;
-      else if(attRange==="custom"){
-        const from=attFrom?new Date(attFrom):null;
-        const to=attTo?new Date(attTo+"T23:59:59"):null;
-        if(from&&aDate&&aDate<from) matchRange=false;
-        else if(to&&aDate&&aDate>to) matchRange=false;
-      }
-      return matchUser&&matchRange;
-    });
-  })();
-  const attByUser={};
-  attFiltered.forEach(a=>{
-    const key=a.userId;
-    if(!attByUser[key])attByUser[key]={userId:a.userId,name:a.name,role:a.role,days:0,totalMinutes:0,records:[]};
-    attByUser[key].days++;attByUser[key].records.push(a);
-    const ci=a.checkInISO||a.checkIn,co=a.checkOutISO||a.checkOut;
-    if(ci&&co){try{attByUser[key].totalMinutes+=Math.floor((new Date(co)-new Date(ci))/60000);}catch{}}
+  // Per-bisnis pie
+  const bizRevData=[
+    {name:"JS Clothing",value:filtTrx.filter(t=>t.business==="JS_CLOTHING").reduce((s,t)=>s+t.total,0),color:C.b},
+    {name:"JB Store",value:filtTrx.filter(t=>t.business==="JB_STORE").reduce((s,t)=>s+t.total,0),color:C.p},
+  ].filter(d=>d.value>0);
+
+  // ─── Attendance report per pegawai ───
+  const [selUser,setSelUser]=useState("ALL");
+  const [selMonth,setSelMonth]=useState(new Date().toISOString().slice(0,7));
+  const [selY,selM]=(selMonth+"-01").split("-").map(Number);
+
+  const attFiltered=attend.filter(a=>{
+    const matchUser=selUser==="ALL"||String(a.userId)===String(selUser);
+    let matchMonth=true;
+    // prefer ISO field, fallback to date string prefix
+    const isoSrc = a.checkInISO||a.dateISO||"";
+    if(isoSrc){
+      const [y,m]=isoSrc.split("-").map(Number);
+      matchMonth=y===selY&&m===selM;
+    } else {
+      // fallback: try parsing locale date
+      try{const d=new Date(a.checkIn);matchMonth=d.getFullYear()===selY&&d.getMonth()+1===selM;}catch{}
+    }
+    return matchUser&&matchMonth;
   });
 
-  // ─── Target calculations ───
-  const currMonth=new Date().toISOString().slice(0,7);
-  const monthRevByBiz={};
-  trxs.filter(t=>{try{const d=parseD(t.date);return d&&d.getMonth()===new Date().getMonth()&&d.getFullYear()===new Date().getFullYear();}catch{return false;}})
-    .forEach(t=>{if(!monthRevByBiz[t.business])monthRevByBiz[t.business]=0;monthRevByBiz[t.business]+=t.total;});
+  // Summary per user for selected month
+  const attByUser={};
+  attend.forEach(a=>{
+    let matchMonth=true;
+    const isoSrc2=a.checkInISO||a.dateISO||"";
+    if(isoSrc2){
+      const [y,m]=isoSrc2.split("-").map(Number);
+      matchMonth=y===selY&&m===selM;
+    } else {
+      try{const d=new Date(a.checkIn);matchMonth=d.getFullYear()===selY&&d.getMonth()+1===selM;}catch{}
+    }
+    if(!matchMonth) return;
+    const key=a.userId;
+    if(!attByUser[key])attByUser[key]={userId:a.userId,name:a.name,role:a.role,days:0,totalMinutes:0,records:[]};
+    attByUser[key].days++;
+    attByUser[key].records.push(a);
+    const ci2=a.checkInISO||a.checkIn, co2=a.checkOutISO||a.checkOut;
+    if(ci2&&co2){
+      try{attByUser[key].totalMinutes+=Math.floor((new Date(co2)-new Date(ci2))/60000);}catch{}
+    }
+  });
 
-  // ─── CSS sync ───
-  CSS = makeCSS();
+  const calcDur=(a)=>{
+    const ci=a.checkInISO||a.checkIn, co=a.checkOutISO||a.checkOut;
+    if(!ci||!co) return "-";
+    try{const ms=new Date(co)-new Date(ci);const h=Math.floor(ms/3600000),m=Math.floor((ms%3600000)/60000);return h>0?`${h}j ${m}m`:`${m}m`;}
+    catch{return "-";}
+  };
 
-  // ─────────────────────────────────────────────────────────────
+  // ─────────────────────────────────
   //  RENDER: Loading
-  // ─────────────────────────────────────────────────────────────
+  // ─────────────────────────────────
   if(fbLoad) return <div style={{fontFamily:F.sans,background:C.bg1,color:C.t0,height:"100vh",
     display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:14}}>
     <style>{CSS}</style>
@@ -1171,6 +946,9 @@ function AppInner() {
 
   if(fbSetup||!fbReady) return <FirebaseSetup onDone={()=>{setFbReady(true);setFbSetup(false);setFbLoad(false);}}/>;
 
+  // ─────────────────────────────────
+  //  Face scan
+  // ─────────────────────────────────
   if(screen==="facescan"&&pending) return <div style={{fontFamily:F.sans,color:C.t0,height:"100vh",background:C.bg1}}>
     <style>{CSS}</style><Toast n={notif}/>
     <FaceScan user={pending} mode="verify" onSuccess={()=>afterFace(pending)} onCancel={()=>{setPending(null);setScreen("login");}}/>
@@ -1181,55 +959,93 @@ function AppInner() {
     <FaceScan user={users.find(u=>u.id===faceReg)} mode="register" onSuccess={handleFaceReg} onCancel={()=>setFaceReg(null)}/>
   </div>;
 
-  // ─────────────────────────────────────────────────────────────
+  // ─────────────────────────────────
   //  LOGIN
-  // ─────────────────────────────────────────────────────────────
+  // ─────────────────────────────────
   if(screen==="login") return <div style={{fontFamily:F.sans,background:C.bg1,color:C.t0,minHeight:"100vh",
     display:"flex",alignItems:"center",justifyContent:"center",padding:16}}>
     <style>{CSS}</style><Toast n={notif}/>
+    {/* Ambient */}
     <div style={{position:"fixed",inset:0,pointerEvents:"none",overflow:"hidden"}}>
       <div style={{position:"absolute",top:"-15%",right:"-10%",width:"50%",paddingBottom:"50%",borderRadius:"50%",background:`radial-gradient(circle,${C.g}07,transparent 70%)`}}/>
       <div style={{position:"absolute",bottom:"-10%",left:"-5%",width:"45%",paddingBottom:"45%",borderRadius:"50%",background:`radial-gradient(circle,${C.b}05,transparent 70%)`}}/>
+      <div style={{position:"absolute",inset:0,backgroundImage:`linear-gradient(${C.b0} 1px,transparent 1px),linear-gradient(90deg,${C.b0} 1px,transparent 1px)`,backgroundSize:"48px 48px",opacity:.35}}/>
     </div>
+
     <div style={{position:"relative",width:"100%",maxWidth:380,animation:"fadeUp .4s ease"}}>
       <div style={{textAlign:"center",marginBottom:24}}>
-        <div style={{display:"inline-flex",width:68,height:68,borderRadius:22,background:`linear-gradient(135deg,${C.g}20,${C.b}18)`,border:`1.5px solid ${C.g}30`,alignItems:"center",justifyContent:"center",fontSize:32,marginBottom:14}}>🏬</div>
-        <h1 className="mn" style={{fontSize:22,fontWeight:700,letterSpacing:3,background:`linear-gradient(90deg,${C.g} 0%,${C.b} 55%,${C.p} 100%)`,WebkitBackgroundClip:"text",WebkitTextFillColor:"transparent",marginBottom:12}}>KASIR JE GRUP</h1>
+        <div style={{display:"inline-flex",width:68,height:68,borderRadius:22,
+          background:`linear-gradient(135deg,${C.g}20,${C.b}18)`,border:`1.5px solid ${C.g}30`,
+          alignItems:"center",justifyContent:"center",fontSize:32,marginBottom:14}}>🏬</div>
+        <h1 className="mn" style={{fontSize:22,fontWeight:700,letterSpacing:3,
+          background:`linear-gradient(90deg,${C.g} 0%,${C.b} 55%,${C.p} 100%)`,
+          WebkitBackgroundClip:"text",WebkitTextFillColor:"transparent",marginBottom:12}}>
+          KASIR JE GRUP
+        </h1>
         <div style={{display:"flex",justifyContent:"center",gap:7,flexWrap:"wrap",marginBottom:8}}>
-          {Object.values(BIZ).map(b=><span key={b.id} style={{fontSize:11,padding:"3px 11px",borderRadius:20,fontWeight:600,background:b.id==="JS_CLOTHING"?C.b1:C.p1,color:b.id==="JS_CLOTHING"?C.b:C.p,border:`1px solid ${(b.id==="JS_CLOTHING"?C.b:C.p)}22`}}>{b.icon} {b.name}</span>)}
+          {Object.values(BIZ).map(b=><span key={b.id} style={{fontSize:11,padding:"3px 11px",borderRadius:20,fontWeight:600,
+            background:b.id==="JS_CLOTHING"?C.b1:C.p1,color:b.id==="JS_CLOTHING"?C.b:C.p,
+            border:`1px solid ${(b.id==="JS_CLOTHING"?C.b:C.p)}22`}}>{b.icon} {b.name}</span>)}
         </div>
         <OnlineDot online={online}/>
       </div>
+
       <Card style={{padding:"24px 20px"}}>
         <h2 style={{fontSize:15,fontWeight:800,marginBottom:4}}>Masuk ke Sistem</h2>
-        <p style={{fontSize:12,color:C.t2,marginBottom:18,lineHeight:1.6}}>Pegawai kasir/stok diverifikasi wajah & absen otomatis.</p>
-        <div style={{marginBottom:12}}><Inp value={lf.u} onChange={e=>setLf(x=>({...x,u:e.target.value}))} onKeyDown={e=>e.key==="Enter"&&doLogin()} placeholder="Username" icon="👤" label="Username" mono/></div>
-        <div style={{marginBottom:14}}><Inp value={lf.p} onChange={e=>setLf(x=>({...x,p:e.target.value}))} type="password" onKeyDown={e=>e.key==="Enter"&&doLogin()} placeholder="••••••••" icon="🔒" label="Password"/></div>
-        <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:16}}>
-          <div onClick={()=>setRememberMe(x=>!x)} style={{width:40,height:22,borderRadius:11,cursor:"pointer",background:rememberMe?C.g:C.bg4,border:`1.5px solid ${rememberMe?C.g:C.bo1}`,position:"relative",transition:"background .2s",flexShrink:0}}>
-            <div style={{position:"absolute",top:2,left:rememberMe?20:2,width:14,height:14,borderRadius:"50%",background:rememberMe?"#000":C.t2,transition:"left .2s"}}/>
-          </div>
-          <label onClick={()=>setRememberMe(x=>!x)} style={{fontSize:12.5,color:C.t1,cursor:"pointer",userSelect:"none"}}>Ingat login saya</label>
+        <p style={{fontSize:12,color:C.t2,marginBottom:18,lineHeight:1.6}}>Pegawai kasir/stok akan diverifikasi wajah & otomatis absen masuk.</p>
+
+        <div style={{marginBottom:12}}>
+          <Inp value={lf.u} onChange={e=>setLf(x=>({...x,u:e.target.value}))} onKeyDown={e=>e.key==="Enter"&&doLogin()}
+            placeholder="Username" icon="👤" label="Username" mono/>
         </div>
-        {lerr&&<div style={{padding:"9px 12px",background:C.r1,borderRadius:8,border:`1px solid ${C.r}33`,fontSize:12,color:C.r,marginBottom:14,display:"flex",gap:6}}>⚠ {lerr}</div>}
-        <button onClick={doLogin} className="press" style={{width:"100%",padding:"14px",background:`linear-gradient(90deg,${C.g},${C.b})`,border:"none",borderRadius:12,color:C.bg1,fontSize:14,fontWeight:800,boxShadow:`0 4px 20px ${C.g}30`}}>MASUK SEKARANG →</button>
+        <div style={{marginBottom:14}}>
+          <Inp value={lf.p} onChange={e=>setLf(x=>({...x,p:e.target.value}))} type="password"
+            onKeyDown={e=>e.key==="Enter"&&doLogin()} placeholder="••••••••" icon="🔒" label="Password"/>
+        </div>
+
+        {/* Remember Me */}
+        <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:16}}>
+          <div onClick={()=>setRememberMe(x=>!x)} style={{width:40,height:22,borderRadius:11,cursor:"pointer",
+            background:rememberMe?C.g:C.bg4,border:`1.5px solid ${rememberMe?C.g:C.b1}`,
+            position:"relative",transition:"background .2s,border-color .2s",flexShrink:0}}>
+            <div style={{position:"absolute",top:2,left:rememberMe?20:2,width:14,height:14,
+              borderRadius:"50%",background:rememberMe?"#000":C.t2,transition:"left .2s"}}/>
+          </div>
+          <label onClick={()=>setRememberMe(x=>!x)} style={{fontSize:12.5,color:C.t1,cursor:"pointer",userSelect:"none"}}>
+            Ingat login saya
+          </label>
+        </div>
+
+        {lerr&&<div style={{padding:"9px 12px",background:C.r1,borderRadius:8,border:`1px solid ${C.r}33`,
+          fontSize:12,color:C.r,marginBottom:14,display:"flex",gap:6}}>⚠ {lerr}</div>}
+
+        <button onClick={doLogin} className="press" style={{width:"100%",padding:"14px",
+          background:`linear-gradient(90deg,${C.g},${C.b})`,border:"none",borderRadius:12,
+          color:C.bg1,fontSize:14,fontWeight:800,boxShadow:`0 4px 20px ${C.g}30`}}>
+          MASUK SEKARANG →
+        </button>
+
         <Divider my={16}/>
-        <div style={{padding:"10px 12px",background:C.bg3,borderRadius:8,border:`1px solid ${C.bo0}`,fontSize:11.5,color:C.t2,lineHeight:1.9}}>
+        <div style={{padding:"10px 12px",background:C.bg3,borderRadius:8,border:`1px solid ${C.b0}`,
+          fontSize:11.5,color:C.t2,lineHeight:1.9}}>
           <span style={{color:C.vi,fontWeight:700}}>👑 Admin</span> — masuk langsung tanpa scan wajah<br/>
           <span style={{color:C.cy,fontWeight:700}}>🧑 Kasir/Stok</span> — verifikasi wajah + absen otomatis
         </div>
       </Card>
-      <div style={{display:"flex",justifyContent:"center",gap:12,marginTop:10}}>
-        <button onClick={()=>{clearConfig();setFbReady(false);setFbSetup(true);}} style={{background:"transparent",border:"none",color:C.t3,cursor:"pointer",fontSize:11,textDecoration:"underline"}}>Ganti Firebase</button>
-        <button onClick={toggleTheme} className="press" style={{background:C.bg2,border:`1px solid ${C.bo1}`,borderRadius:20,padding:"4px 14px",color:C.t1,fontSize:12,fontWeight:600}}>{isDark?"☀️ Terang":"🌙 Gelap"}</button>
-      </div>
+
+      <button onClick={()=>{clearConfig();setFbReady(false);setFbSetup(true);}}
+        style={{display:"block",margin:"12px auto 0",background:"transparent",border:"none",
+          color:C.t3,cursor:"pointer",fontSize:11,textDecoration:"underline"}}>
+        Ganti Firebase Project
+      </button>
     </div>
   </div>;
 
-  // ─────────────────────────────────────────────────────────────
+  // ─────────────────────────────────
   //  BIZ SELECT
-  // ─────────────────────────────────────────────────────────────
-  if(screen==="bizselect") return <div style={{fontFamily:F.sans,background:C.bg1,color:C.t0,minHeight:"100vh",display:"flex",alignItems:"center",justifyContent:"center",padding:16}}>
+  // ─────────────────────────────────
+  if(screen==="bizselect") return <div style={{fontFamily:F.sans,background:C.bg1,color:C.t0,minHeight:"100vh",
+    display:"flex",alignItems:"center",justifyContent:"center",padding:16}}>
     <style>{CSS}</style><Toast n={notif}/>
     <div style={{width:"100%",maxWidth:400,animation:"fadeUp .35s ease"}}>
       <div style={{textAlign:"center",marginBottom:22}}>
@@ -1240,10 +1056,14 @@ function AppInner() {
       <div style={{display:"flex",flexDirection:"column",gap:10}}>
         {user?.access?.map(bizId=>{
           const b=BIZ[bizId],isJ=bizId==="JS_CLOTHING";
-          return <button key={bizId} className="press"
-            onClick={async()=>{setBiz(bizId);await doCheckIn(user,bizId);setScreen(user.role==="kasir"?"kasir":"stok");}}
-            style={{padding:"18px",background:C.bg2,border:`1.5px solid ${C.bo0}`,borderRadius:16,cursor:"pointer",textAlign:"left",display:"flex",alignItems:"center",gap:14}}>
-            <div style={{width:52,height:52,borderRadius:14,flexShrink:0,background:isJ?C.b1:C.p1,border:`2px solid ${b.color}33`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:24}}>{b.icon}</div>
+          return <button key={bizId} className="press" onClick={async()=>{setBiz(bizId);await doCheckIn(user,bizId);setScreen(user.role==="kasir"?"kasir":"stok");}}
+            style={{padding:"18px",background:C.bg2,border:`1.5px solid ${C.b0}`,borderRadius:16,
+              cursor:"pointer",textAlign:"left",display:"flex",alignItems:"center",gap:14}}
+            onMouseEnter={e=>e.currentTarget.style.borderColor=b.color+"55"}
+            onMouseLeave={e=>e.currentTarget.style.borderColor=C.b0}>
+            <div style={{width:52,height:52,borderRadius:14,flexShrink:0,
+              background:isJ?C.b1:C.p1,border:`2px solid ${b.color}33`,
+              display:"flex",alignItems:"center",justifyContent:"center",fontSize:24}}>{b.icon}</div>
             <div style={{flex:1}}>
               <div style={{fontSize:15,fontWeight:800,color:b.color}}>{b.name}</div>
               <div style={{fontSize:12,color:C.t2,marginTop:2}}>{b.desc}</div>
@@ -1255,17 +1075,18 @@ function AppInner() {
           </button>;
         })}
       </div>
-      <button onClick={doLogout} style={{width:"100%",marginTop:12,padding:"11px",background:"transparent",border:`1px solid ${C.bo0}`,borderRadius:10,color:C.t2,cursor:"pointer",fontSize:12,fontFamily:F.sans}}>← Kembali</button>
+      <button onClick={doLogout} style={{width:"100%",marginTop:12,padding:"11px",background:"transparent",
+        border:`1px solid ${C.b0}`,borderRadius:10,color:C.t2,cursor:"pointer",fontSize:12,fontFamily:F.sans}}>
+        ← Kembali
+      </button>
     </div>
   </div>;
 
-  // ─────────────────────────────────────────────────────────────
-  //  KASIR SCREEN
-  // ─────────────────────────────────────────────────────────────
+  // ─────────────────────────────────
+  //  KASIR
+  // ─────────────────────────────────
   if(screen==="kasir") {
-    const subtotal=cart.reduce((s,c)=>s+c.price*c.qty,0);
-    const discAmt=calcDiscount(subtotal);
-    const total=subtotal-discAmt;
+    const total=cart.reduce((s,c)=>s+c.price*c.qty,0);
     const totalHpp=cart.reduce((s,c)=>s+(c.hpp||0)*c.qty,0);
     const bc=biz==="JS_CLOTHING"?C.b:C.p;
 
@@ -1273,144 +1094,132 @@ function AppInner() {
       <style>{CSS}</style><Toast n={notif}/>
       <Header biz={biz} user={user} online={online} onLogout={doLogout}
         onSwitchBiz={user?.access?.length>1?()=>{setCart([]);setScreen("bizselect");}:null}
-        onAbsenPulang={handlePulang} hasCheckedIn={hasCheckedIn}
-        onToggleTheme={toggleTheme} isDark={isDark} lowStockCount={lowStockCount}/>
+        onAbsenPulang={handlePulang} hasCheckedIn={hasCheckedIn}/>
 
-      {/* Invoice */}
-      {receipt&&<Invoice receipt={receipt} biz={biz}
-        onClose={()=>{setReceipt(null);scanRef.current?.focus();}}
-        onNew={()=>{setReceipt(null);setCart([]);scanRef.current?.focus();}}/>}
-      {/* Stock check */}
-      {showStock&&<StockCheckModal prods={bizProds()} biz={biz} onClose={()=>setShowStock(false)}/>}
-
-      {/* Checkout modal */}
-      {showCheckout&&<div style={{position:"fixed",inset:0,background:"rgba(2,8,24,.88)",zIndex:500,display:"flex",alignItems:"flex-end",justifyContent:"center"}} onClick={()=>setShowCheckout(false)}>
-        <div style={{width:"100%",maxWidth:420,background:C.bg2,borderRadius:"22px 22px 0 0",border:`1px solid ${C.bo1}`,borderBottom:"none",animation:"slideUp .25s ease",padding:"16px 18px 32px"}} onClick={e=>e.stopPropagation()}>
+      {/* Receipt bottom sheet */}
+      {receipt&&<div style={{position:"fixed",inset:0,background:"rgba(2,8,24,.85)",zIndex:500,
+        display:"flex",alignItems:"flex-end",justifyContent:"center"}} onClick={()=>{setReceipt(null);scanRef.current?.focus();}}>
+        <div style={{width:"100%",maxWidth:400,background:C.bg2,borderRadius:"22px 22px 0 0",
+          padding:"20px 20px 32px",border:`1px solid ${C.b1}`,borderBottom:"none",
+          animation:"slideUp .3s ease",maxHeight:"85vh",overflowY:"auto"}} onClick={e=>e.stopPropagation()}>
           <div style={{width:36,height:4,background:C.b1,borderRadius:2,margin:"0 auto 16px"}}/>
-          <h3 style={{fontSize:15,fontWeight:800,marginBottom:14}}>💳 Konfirmasi Pembayaran</h3>
-          {/* Subtotal */}
-          <div style={{display:"flex",justifyContent:"space-between",fontSize:13,marginBottom:8}}>
-            <span style={{color:C.t2}}>Subtotal</span>
-            <span className="mn">{rp(subtotal)}</span>
+          <div style={{textAlign:"center",marginBottom:14}}>
+            <div style={{fontSize:40,marginBottom:8}}>🎉</div>
+            <div className="mn" style={{fontSize:10.5,color:C.g,fontWeight:700,letterSpacing:2,marginBottom:3}}>TRANSAKSI BERHASIL</div>
+            <div className="mn" style={{fontSize:10,color:C.t2}}>{receipt.id}</div>
+            <div className="mn" style={{fontSize:10,color:C.t2}}>{receipt.date}</div>
+            <div style={{marginTop:6}}><BizChip biz={biz}/></div>
           </div>
-          {/* Discount */}
-          <div style={{padding:"10px 12px",background:C.bg3,borderRadius:10,border:`1px solid ${C.bo0}`,marginBottom:10}}>
-            <div style={{fontSize:10,fontWeight:700,color:C.t2,textTransform:"uppercase",letterSpacing:1,marginBottom:8}}>Diskon (Opsional)</div>
-            <div style={{display:"flex",gap:6}}>
-              <div style={{display:"flex",borderRadius:8,overflow:"hidden",border:`1px solid ${C.bo0}`,flexShrink:0}}>
-                {[["pct","%"],["rp","Rp"]].map(([t,l])=>(
-                  <button key={t} onClick={()=>setDiscount(x=>({...x,type:t}))}
-                    style={{padding:"8px 12px",background:discount.type===t?C.g:C.bg4,border:"none",
-                      color:discount.type===t?"#000":C.t2,fontWeight:700,fontSize:12,fontFamily:F.sans}}>{l}</button>))}
-              </div>
-              <input type="number" value={discount.value} onChange={e=>setDiscount(x=>({...x,value:e.target.value}))}
-                placeholder={discount.type==="pct"?"0-100":"0"}
-                style={{flex:1,padding:"8px 12px",background:C.bg4,border:`1px solid ${C.bo0}`,borderRadius:8,color:C.t0,fontSize:14,fontFamily:F.mono}}/>
-            </div>
-            {discAmt>0&&<div style={{marginTop:8,fontSize:12,color:C.r,fontWeight:600}}>Diskon: − {rp(discAmt)}</div>}
+          <div style={{background:C.bg3,borderRadius:10,padding:"12px 14px",marginBottom:12,border:`1px solid ${C.b0}`}}>
+            {receipt.items.map(item=><div key={item.barcode} style={{display:"flex",justifyContent:"space-between",
+              fontSize:12.5,marginBottom:7,gap:8}}>
+              <span style={{color:C.t1,flex:1,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{item.name} ×{item.qty}</span>
+              <span className="mn" style={{flexShrink:0}}>{rp(item.price*item.qty)}</span>
+            </div>)}
           </div>
-          {/* Payment method */}
-          <div style={{marginBottom:14}}>
-            <div style={{fontSize:10,fontWeight:700,color:C.t2,textTransform:"uppercase",letterSpacing:1,marginBottom:8}}>Metode Pembayaran</div>
-            <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
-              {PAYMENT_METHODS.map(m=>(
-                <button key={m} onClick={()=>setPayMethod(m)}
-                  style={{padding:"7px 14px",borderRadius:8,fontSize:12,fontWeight:600,cursor:"pointer",
-                    background:payMethod===m?C.g1:"transparent",border:`1.5px solid ${payMethod===m?C.g:C.bo0}`,
-                    color:payMethod===m?C.g:C.t2,fontFamily:F.sans}}>{m}</button>))}
-            </div>
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"baseline",marginBottom:6}}>
+            <span style={{fontSize:13,color:C.t1}}>Total Pembayaran</span>
+            <span className="mn" style={{fontSize:22,fontWeight:700,color:C.g}}>{rp(receipt.total)}</span>
           </div>
-          {/* Total */}
-          <div style={{padding:"12px 14px",background:C.bg4,borderRadius:12,border:`1px solid ${C.bo0}`,marginBottom:14}}>
-            <div style={{display:"flex",justifyContent:"space-between",alignItems:"baseline"}}>
-              <span style={{fontSize:13,fontWeight:700}}>TOTAL</span>
-              <span className="mn" style={{fontSize:26,fontWeight:800,color:C.g}}>{rp(total)}</span>
-            </div>
-            <div style={{fontSize:11,color:C.t2,marginTop:4}}>{payMethod} · {cart.reduce((s,c)=>s+c.qty,0)} item</div>
+          <div style={{display:"flex",justifyContent:"space-between",fontSize:11.5,color:C.t2,marginBottom:18}}>
+            <span>Est. Laba Kotor</span>
+            <span className="mn" style={{color:C.cy}}>+{rp(receipt.profit)}</span>
           </div>
-          <div style={{display:"flex",gap:8}}>
-            <button onClick={doCheckout} className="press"
-              style={{flex:2,padding:"14px",background:`linear-gradient(90deg,${C.g},${C.b})`,border:"none",borderRadius:12,color:C.bg1,fontSize:14,fontWeight:800,fontFamily:F.sans}}>
-              ✓ Bayar {rp(total)}</button>
-            <button onClick={()=>setShowCheckout(false)}
-              style={{flex:1,padding:"14px",background:"transparent",border:`1px solid ${C.bo0}`,borderRadius:12,color:C.t2,fontSize:13,fontFamily:F.sans}}>Batal</button>
-          </div>
+          <button onClick={()=>{setReceipt(null);scanRef.current?.focus();}} className="press"
+            style={{width:"100%",padding:"14px",background:`linear-gradient(90deg,${C.g},${C.b})`,
+              border:"none",borderRadius:12,color:C.bg1,fontSize:14,fontWeight:800}}>
+            Transaksi Baru →
+          </button>
         </div>
       </div>}
 
-      {/* Main layout */}
+      {/* Layout: side-by-side on tablet */}
       <div style={{flex:1,display:"flex",overflow:"hidden"}}>
+        {/* Main: scan + cart */}
         <div style={{flex:1,display:"flex",flexDirection:"column",overflow:"hidden",minWidth:0}}>
           {/* Scan bar */}
-          <div style={{padding:"10px 12px",background:C.bg2,borderBottom:`1px solid ${C.bo0}`,flexShrink:0}}>
+          <div style={{padding:"10px 12px",background:C.bg2,borderBottom:`1px solid ${C.b0}`,flexShrink:0}}>
             <div style={{display:"flex",gap:8}}>
               <div style={{flex:1,position:"relative"}}>
                 <span style={{position:"absolute",left:12,top:"50%",transform:"translateY(-50%)",fontSize:15,pointerEvents:"none",color:C.t2}}>📷</span>
                 <input ref={scanRef} value={scanIn} onChange={e=>setScanIn(e.target.value)}
                   onKeyDown={e=>e.key==="Enter"&&kasirScan(scanIn)}
                   placeholder="Scan barcode produk..."
-                  style={{width:"100%",padding:"12px 12px 12px 40px",background:C.bg3,border:`2px solid ${bc}44`,borderRadius:12,color:C.t0,fontSize:14,fontFamily:F.mono}}/>
+                  style={{width:"100%",padding:"12px 12px 12px 40px",background:C.bg3,
+                    border:`2px solid ${bc}44`,borderRadius:12,color:C.t0,fontSize:14,fontFamily:F.mono}}/>
               </div>
               <button onClick={()=>kasirScan(scanIn)} className="press"
-                style={{padding:"12px 16px",background:bc,border:"none",borderRadius:12,color:"#fff",fontWeight:800,fontSize:14,flexShrink:0}}>+</button>
-              <button onClick={()=>setShowStock(true)} className="press" title="Cek Stok"
-                style={{padding:"12px 14px",background:C.bg3,border:`1.5px solid ${C.bo1}`,borderRadius:12,color:C.t1,fontSize:14,flexShrink:0}}>📦</button>
+                style={{padding:"12px 16px",background:bc,border:"none",borderRadius:12,
+                  color:"#fff",fontWeight:800,fontSize:14,flexShrink:0}}>+</button>
             </div>
           </div>
+
           {/* Cart */}
-          <div style={{flex:1,overflowY:"auto",padding:10,display:"flex",flexDirection:"column",gap:7,minHeight:0}}>
-            {cart.length===0 ? <div style={{display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",flex:1,gap:10,padding:"32px 16px"}}>
+          <div style={{flex:1,overflowY:"auto",padding:10,display:"flex",flexDirection:"column",gap:7}}>
+            {cart.length===0 ? <div style={{display:"flex",flexDirection:"column",alignItems:"center",
+              justifyContent:"center",flex:1,gap:10,padding:"32px 16px"}}>
               <div style={{fontSize:48,opacity:.08}}>🛒</div>
               <p style={{fontSize:13,fontWeight:600,color:C.t2}}>Keranjang kosong</p>
               <p style={{fontSize:11.5,color:C.t3}}>Scan barcode {BIZ[biz]?.name} untuk mulai</p>
-            </div> : cart.map(item=><div key={item.barcode} style={{background:C.bg2,borderRadius:12,border:`1px solid ${C.bo0}`,padding:"10px 12px",display:"flex",alignItems:"center",gap:8,animation:"fadeUp .15s ease"}}>
+            </div> : cart.map(item=><div key={item.barcode} style={{background:C.bg2,borderRadius:12,
+              border:`1px solid ${C.b0}`,padding:"10px 12px",display:"flex",
+              alignItems:"center",gap:8,animation:"fadeUp .15s ease"}}>
               <div style={{flex:1,minWidth:0}}>
                 <div style={{fontWeight:600,fontSize:12.5,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{item.name}</div>
                 <div className="mn" style={{color:C.t2,fontSize:10,marginTop:1}}>{item.barcode}</div>
               </div>
+              {/* Qty controls */}
               <div style={{display:"flex",alignItems:"center",gap:4,flexShrink:0}}>
                 <button onClick={()=>setCart(p=>{const it=p.find(c=>c.barcode===item.barcode);return it.qty<=1?p.filter(c=>c.barcode!==item.barcode):p.map(c=>c.barcode===item.barcode?{...c,qty:c.qty-1}:c);})}
-                  className="press" style={{width:30,height:30,background:C.bg4,border:`1px solid ${C.bo1}`,borderRadius:8,color:C.t0,fontSize:16,display:"flex",alignItems:"center",justifyContent:"center"}}>−</button>
+                  className="press" style={{width:30,height:30,background:C.bg4,border:`1px solid ${C.b1}`,
+                    borderRadius:8,color:C.t0,fontSize:16,display:"flex",alignItems:"center",justifyContent:"center"}}>−</button>
                 <span className="mn" style={{minWidth:24,textAlign:"center",fontWeight:700,fontSize:14}}>{item.qty}</span>
                 <button onClick={()=>setCart(p=>p.map(c=>c.barcode===item.barcode&&c.qty<c.stock?{...c,qty:c.qty+1}:c))}
-                  className="press" style={{width:30,height:30,background:C.bg4,border:`1px solid ${C.bo1}`,borderRadius:8,color:C.t0,fontSize:16,display:"flex",alignItems:"center",justifyContent:"center"}}>+</button>
+                  className="press" style={{width:30,height:30,background:C.bg4,border:`1px solid ${C.b1}`,
+                    borderRadius:8,color:C.t0,fontSize:16,display:"flex",alignItems:"center",justifyContent:"center"}}>+</button>
               </div>
-              <div className="mn" style={{fontWeight:700,color:C.a,fontSize:13,minWidth:80,textAlign:"right",flexShrink:0}}>{rp(item.price*item.qty)}</div>
+              <div className="mn" style={{fontWeight:700,color:C.a,fontSize:13,minWidth:78,textAlign:"right",flexShrink:0}}>{rp(item.price*item.qty)}</div>
               <button onClick={()=>setCart(p=>p.filter(c=>c.barcode!==item.barcode))}
                 style={{background:"transparent",border:"none",color:C.t3,fontSize:18,padding:"0 2px",flexShrink:0}}>×</button>
             </div>)}
           </div>
         </div>
-        {/* Side panel tablet */}
-        <div className="hide-mobile" style={{width:220,background:C.bg2,borderLeft:`1px solid ${C.bo0}`,display:"flex",flexDirection:"column",padding:12,flexShrink:0}}>
-          <div style={{padding:"8px 10px",borderRadius:10,marginBottom:12,textAlign:"center",background:biz==="JS_CLOTHING"?C.b1:C.p1,border:`1px solid ${bc}22`}}>
+
+        {/* Side panel (tablet) */}
+        <div className="hide-mobile" style={{width:220,background:C.bg2,borderLeft:`1px solid ${C.b0}`,
+          display:"flex",flexDirection:"column",padding:12,flexShrink:0}}>
+          <div style={{padding:"8px 10px",borderRadius:10,marginBottom:12,textAlign:"center",
+            background:biz==="JS_CLOTHING"?C.b1:C.p1,border:`1px solid ${bc}22`}}>
             <span style={{fontSize:12,color:bc,fontWeight:700}}>{BIZ[biz]?.icon} {BIZ[biz]?.name}</span>
           </div>
           <div style={{flex:1}}>
             {[{l:"Produk",v:cart.length},{l:"Total Item",v:cart.reduce((s,c)=>s+c.qty,0)}].map(r=>(
               <div key={r.l} style={{display:"flex",justifyContent:"space-between",marginBottom:7,fontSize:13}}>
                 <span style={{color:C.t2}}>{r.l}</span><span className="mn">{r.v}</span>
-              </div>))}
+              </div>
+            ))}
             <Divider/>
-            {discAmt>0&&<div style={{display:"flex",justifyContent:"space-between",fontSize:12,color:C.r,marginBottom:5}}>
-              <span>Diskon</span><span className="mn">− {rp(discAmt)}</span>
-            </div>}
             <div style={{display:"flex",justifyContent:"space-between",alignItems:"baseline",marginBottom:5}}>
               <span style={{fontSize:13,color:C.t1}}>Total</span>
               <span className="mn" style={{fontSize:20,fontWeight:700,color:C.g}}>{rp(total)}</span>
             </div>
+            {cart.length>0&&<div style={{display:"flex",justifyContent:"space-between",fontSize:11,color:C.t2}}>
+              <span>Est. Laba</span><span className="mn" style={{color:C.cy}}>+{rp(total-totalHpp)}</span>
+            </div>}
           </div>
           <div style={{display:"flex",flexDirection:"column",gap:7,marginTop:12}}>
-            <button onClick={()=>{if(cart.length)setShowCheckout(true);}} disabled={!cart.length} className="press"
+            <button onClick={doCheckout} disabled={!cart.length} className="press"
               style={{padding:"14px",background:cart.length?`linear-gradient(90deg,${C.g},${C.b})`:C.bg3,
-                border:"none",borderRadius:11,color:cart.length?C.bg1:C.t2,fontSize:13,fontWeight:800,cursor:cart.length?"pointer":"not-allowed"}}>
-              💳 BAYAR</button>
-            <button onClick={()=>setCart([])} style={{padding:"7px",background:"transparent",border:`1px solid ${C.bo0}`,borderRadius:8,color:C.t3,fontSize:11,fontFamily:F.sans}}>Bersihkan</button>
+                border:"none",borderRadius:11,color:cart.length?C.bg1:C.t2,fontSize:13,fontWeight:800,
+                cursor:cart.length?"pointer":"not-allowed"}}>
+              💳 BAYAR
+            </button>
+            <button onClick={()=>setCart([])} style={{padding:"7px",background:"transparent",
+              border:`1px solid ${C.b0}`,borderRadius:8,color:C.t3,fontSize:11,fontFamily:F.sans}}>
+              Bersihkan
+            </button>
           </div>
           <Divider my={8}/>
-          <button onClick={()=>setShowStock(true)} className="press"
-            style={{width:"100%",padding:"8px",background:C.bg3,border:`1px solid ${C.bo1}`,borderRadius:9,color:C.t1,fontSize:11,fontWeight:700,marginBottom:8,fontFamily:F.sans}}>
-            📦 Cek Stok ({bizProds().length})</button>
           <div style={{fontSize:10,color:C.t3,textTransform:"uppercase",letterSpacing:1,marginBottom:6,fontWeight:700}}>Terbaru</div>
           {trxs.filter(t=>t.business===biz).slice(0,5).map(t=><div key={t.id}
             style={{display:"flex",justifyContent:"space-between",marginBottom:4,fontSize:11}}>
@@ -1419,39 +1228,44 @@ function AppInner() {
           </div>)}
         </div>
       </div>
+
       {/* Mobile bottom bar */}
-      <div style={{background:`${C.bg2}f8`,backdropFilter:"blur(16px)",borderTop:`1px solid ${C.bo0}`,
-        padding:"10px 12px",paddingBottom:`calc(10px + var(--safe-b))`,flexShrink:0,display:"flex",alignItems:"center",gap:8}}>
-        <button onClick={()=>setShowStock(true)} className="press"
-          style={{padding:"11px 12px",background:C.bg3,border:`1.5px solid ${C.bo1}`,borderRadius:11,color:C.t1,fontSize:16,flexShrink:0}}>📦</button>
+      <div style={{background:`${C.bg2}f8`,backdropFilter:"blur(16px)",borderTop:`1px solid ${C.b0}`,
+        padding:"10px 12px",paddingBottom:`calc(10px + var(--safe-b))`,flexShrink:0,
+        display:"flex",alignItems:"center",gap:10}}>
         <div style={{flex:1}}>
           <div style={{fontSize:10,color:C.t2,fontWeight:600}}>Total</div>
           <div className="mn" style={{fontSize:20,fontWeight:700,color:C.g,lineHeight:1.2}}>{rp(total)}</div>
           {cart.length>0&&<div className="mn" style={{fontSize:9.5,color:C.t3}}>{cart.reduce((s,c)=>s+c.qty,0)} item</div>}
         </div>
-        <button onClick={()=>{if(cart.length)setShowCheckout(true);}} disabled={!cart.length} className="press"
+        <button onClick={doCheckout} disabled={!cart.length} className="press"
           style={{padding:"13px 24px",background:cart.length?`linear-gradient(90deg,${C.g},${C.b})`:C.bg3,
             border:"none",borderRadius:13,color:cart.length?C.bg1:C.t2,fontSize:14,fontWeight:800,
             flexShrink:0,boxShadow:cart.length?`0 4px 20px ${C.g}30`:undefined}}>
-          💳 BAYAR</button>
+          💳 BAYAR
+        </button>
       </div>
     </div>;
   }
 
-  // ─────────────────────────────────────────────────────────────
-  //  STOK SCREEN
-  // ─────────────────────────────────────────────────────────────
+  // ─────────────────────────────────
+  //  STOK
+  // ─────────────────────────────────
   if(screen==="stok") {
     const bc=biz==="JS_CLOTHING"?C.b:C.p;
-    const filtered=bizProds().filter(p=>!stokSearch||p.name.toLowerCase().includes(stokSearch.toLowerCase())||p.barcode.includes(stokSearch));
+    const filtered=bizProds().filter(p=>!stokSearch||
+      p.name.toLowerCase().includes(stokSearch.toLowerCase())||p.barcode.includes(stokSearch));
+
     return <div style={{fontFamily:F.sans,background:C.bg1,color:C.t0,height:"100vh",display:"flex",flexDirection:"column"}}>
       <style>{CSS}</style><Toast n={notif}/>
       <Header biz={biz} user={user} online={online} onLogout={doLogout}
         onSwitchBiz={user?.access?.length>1?()=>{setStokTarget(null);setScreen("bizselect");}:null}
-        onAbsenPulang={handlePulang} hasCheckedIn={hasCheckedIn} onToggleTheme={toggleTheme} isDark={isDark}/>
+        onAbsenPulang={handlePulang} hasCheckedIn={hasCheckedIn}/>
+
       <div style={{flex:1,overflowY:"auto",padding:10,display:"flex",flexDirection:"column",gap:10,minHeight:0}}>
+        {/* Scan */}
         <Card noPad style={{overflow:"hidden"}}>
-          <div style={{padding:"10px 13px",borderBottom:`1px solid ${C.bo0}`,display:"flex",alignItems:"center",gap:8}}>
+          <div style={{padding:"13px 14px",borderBottom:`1px solid ${C.b0}`,display:"flex",alignItems:"center",gap:8}}>
             <span style={{flex:1,fontSize:10,fontWeight:700,color:C.t2,textTransform:"uppercase",letterSpacing:1}}>📷 Scan Barcode</span>
             <BizChip biz={biz}/>
           </div>
@@ -1461,12 +1275,16 @@ function AppInner() {
               <input ref={stokScanRef} value={stokScan} onChange={e=>setStokScan(e.target.value)}
                 onKeyDown={e=>e.key==="Enter"&&stokScanFn(stokScan)}
                 placeholder="Scan atau ketik barcode..."
-                style={{width:"100%",padding:"12px 12px 12px 40px",background:C.bg3,border:`2px solid ${bc}44`,borderRadius:12,color:C.t0,fontSize:14,fontFamily:F.mono}}/>
+                style={{width:"100%",padding:"12px 12px 12px 40px",background:C.bg3,
+                  border:`2px solid ${bc}44`,borderRadius:12,color:C.t0,fontSize:14,fontFamily:F.mono}}/>
             </div>
             <button onClick={()=>stokScanFn(stokScan)} className="press"
-              style={{padding:"12px 16px",background:bc,border:"none",borderRadius:12,color:"#fff",fontWeight:800,fontSize:13,flexShrink:0}}>Scan</button>
+              style={{padding:"12px 16px",background:bc,border:"none",borderRadius:12,
+                color:"#fff",fontWeight:800,fontSize:13,flexShrink:0}}>Scan</button>
           </div>
         </Card>
+
+        {/* Input stok */}
         {stokTarget&&<Card accent={bc} style={{animation:"fadeUp .2s ease"}}>
           <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:12}}>
             <div style={{flex:1,minWidth:0}}>
@@ -1486,16 +1304,19 @@ function AppInner() {
               <div style={{fontSize:9.5,fontWeight:700,color:C.t2,textTransform:"uppercase",letterSpacing:.5,marginBottom:5}}>Jumlah Masuk *</div>
               <input ref={stokQRef} type="number" min="1" value={stokQ}
                 onChange={e=>setStokQ(e.target.value)} onKeyDown={e=>e.key==="Enter"&&doAddStock()}
-                placeholder="0" style={{width:"100%",padding:"12px",background:C.bg3,border:`1.5px solid ${C.bo0}`,borderRadius:10,color:C.t0,fontSize:24,fontFamily:F.mono,textAlign:"center",fontWeight:700}}
-                onFocus={e=>e.target.style.borderColor=C.g+"88"} onBlur={e=>e.target.style.borderColor=C.bo0}/>
+                placeholder="0" style={{width:"100%",padding:"12px",background:C.bg3,border:`1.5px solid ${C.b0}`,
+                  borderRadius:10,color:C.t0,fontSize:24,fontFamily:F.mono,textAlign:"center",fontWeight:700,transition:"border-color .15s"}}
+                onFocus={e=>e.target.style.borderColor=C.g+"88"} onBlur={e=>e.target.style.borderColor=C.b0}/>
             </div>
             <div>
               <div style={{fontSize:9.5,fontWeight:700,color:C.t2,textTransform:"uppercase",letterSpacing:.5,marginBottom:5}}>Update Harga Jual</div>
               <div style={{position:"relative"}}>
                 <span style={{position:"absolute",left:10,top:"50%",transform:"translateY(-50%)",fontSize:10,color:C.t2,pointerEvents:"none",fontFamily:F.mono}}>Rp</span>
-                <input type="number" value={stokPrice} onChange={e=>setStokPrice(e.target.value)} placeholder={String(stokTarget.price)}
-                  style={{width:"100%",padding:"12px 10px 12px 28px",background:C.bg3,border:`1.5px solid ${C.bo0}`,borderRadius:10,color:C.t0,fontSize:14,fontFamily:F.mono}}
-                  onFocus={e=>e.target.style.borderColor=C.a+"88"} onBlur={e=>e.target.style.borderColor=C.bo0}/>
+                <input type="number" value={stokPrice} onChange={e=>setStokPrice(e.target.value)}
+                  placeholder={String(stokTarget.price)}
+                  style={{width:"100%",padding:"12px 10px 12px 28px",background:C.bg3,border:`1.5px solid ${C.b0}`,
+                    borderRadius:10,color:C.t0,fontSize:14,fontFamily:F.mono,transition:"border-color .15s"}}
+                  onFocus={e=>e.target.style.borderColor=C.a+"88"} onBlur={e=>e.target.style.borderColor=C.b0}/>
               </div>
             </div>
           </div>
@@ -1508,285 +1329,237 @@ function AppInner() {
             <Btn onClick={()=>{setStokTarget(null);stokScanRef.current?.focus();}} outline>Batal</Btn>
           </div>
         </Card>}
+
+        {/* Product table */}
         <Card noPad style={{overflow:"hidden"}}>
-          <div style={{padding:"10px 13px",borderBottom:`1px solid ${C.bo0}`,display:"flex",alignItems:"center",gap:8}}>
+          <div style={{padding:"13px 14px",borderBottom:`1px solid ${C.b0}`,display:"flex",alignItems:"center",gap:8}}>
             <span style={{flex:1,fontSize:10,fontWeight:700,color:C.t2,textTransform:"uppercase",letterSpacing:1}}>Produk ({filtered.length})</span>
             <input value={stokSearch} onChange={e=>setStokSearch(e.target.value)} placeholder="Cari..."
-              style={{padding:"7px 11px",background:C.bg3,border:`1px solid ${C.bo0}`,borderRadius:8,color:C.t0,fontSize:12,width:140,fontFamily:F.sans}}/>
+              style={{padding:"7px 11px",background:C.bg3,border:`1px solid ${C.b0}`,borderRadius:8,color:C.t0,fontSize:12,width:140,fontFamily:F.sans}}/>
           </div>
-          <TableWrap maxH="50vh">
+          <div style={{overflowX:"auto"}}>
             <table style={{width:"100%",borderCollapse:"collapse",fontSize:12,minWidth:460}}>
               <THead cols={["Barcode","Nama","Kategori","Harga Jual","Stok",""]}/>
-              <tbody>{filtered.map((p,i)=><tr key={p.id} className="hrow" style={{borderTop:`1px solid ${C.bo0}`,background:i%2===0?"transparent":C.bg0}}>
-                <td style={{padding:"12px 13px",fontFamily:F.mono,fontSize:10,color:C.t2}}>{p.barcode}</td>
-                <td style={{padding:"12px 13px",fontWeight:600}}>{p.name}</td>
-                <td style={{padding:"12px 13px",color:C.t2}}>{p.category}</td>
-                <td style={{padding:"12px 13px",fontFamily:F.mono,color:C.g,fontSize:11}}>{rp(p.price)}</td>
-                <td style={{padding:"12px 13px"}}><StockBadge s={p.stock}/></td>
-                <td style={{padding:"12px 13px"}}>
+              <tbody>{filtered.map((p,i)=><tr key={p.id} className="hrow" style={{borderTop:`1px solid ${C.b0}`,background:i%2===0?"transparent":C.bg0}}>
+                <td style={{padding:"13px 14px",fontFamily:F.mono,fontSize:10,color:C.t2}}>{p.barcode}</td>
+                <td style={{padding:"13px 14px",fontWeight:600}}>{p.name}</td>
+                <td style={{padding:"13px 14px",color:C.t2}}>{p.category}</td>
+                <td style={{padding:"13px 14px",fontFamily:F.mono,color:C.g,fontSize:11}}>{rp(p.price)}</td>
+                <td style={{padding:"13px 14px"}}><StockBadge s={p.stock}/></td>
+                <td style={{padding:"13px 14px"}}>
                   <button onClick={()=>{setStokTarget(p);setStokQ("");setStokPrice("");}} className="press"
-                    style={{padding:"5px 12px",background:C.g1,border:`1px solid ${C.g}33`,borderRadius:7,color:C.g,fontSize:11,fontWeight:700}}>+ Tambah</button>
+                    style={{padding:"5px 12px",background:C.g1,border:`1px solid ${C.g}33`,
+                      borderRadius:7,color:C.g,fontSize:11,fontWeight:700}}>+ Tambah</button>
                 </td>
               </tr>)}</tbody>
             </table>
-          </TableWrap>
+          </div>
         </Card>
+
+        {/* Log masuk */}
         <Card noPad style={{overflow:"hidden"}}>
-          <div style={{padding:"10px 13px",borderBottom:`1px solid ${C.bo0}`}}>
+          <div style={{padding:"13px 14px",borderBottom:`1px solid ${C.b0}`}}>
             <span style={{fontSize:10,fontWeight:700,color:C.t2,textTransform:"uppercase",letterSpacing:1}}>Log Penerimaan Stok</span>
           </div>
           {slogs.filter(l=>l.business===biz&&l.type==="masuk").length===0
             ?<div style={{padding:"24px",textAlign:"center",color:C.t3,fontSize:12}}>Belum ada log penerimaan</div>
-            :<TableWrap maxH="40vh">
-              <table style={{width:"100%",borderCollapse:"collapse",fontSize:13,minWidth:400}}>
+            :<div style={{overflowX:"auto"}}>
+              <table style={{width:"100%",borderCollapse:"collapse",fontSize:11.5,minWidth:400}}>
                 <THead cols={["Waktu","Produk","Qty","Sblm→Ssdh","Oleh"]}/>
                 <tbody>{slogs.filter(l=>l.business===biz&&l.type==="masuk").slice(0,30).map((l,i)=>(
-                  <tr key={l.id} className="hrow" style={{borderTop:`1px solid ${C.bo0}`,background:i%2===0?"transparent":C.bg0}}>
+                  <tr key={l.id} className="hrow" style={{borderTop:`1px solid ${C.b0}`,background:i%2===0?"transparent":C.bg0}}>
                     <td style={{padding:"12px 13px",color:C.t2,fontSize:10,whiteSpace:"nowrap"}}>{l.date}</td>
                     <td style={{padding:"12px 13px",fontWeight:500}}>{l.name}</td>
                     <td style={{padding:"12px 13px",fontFamily:F.mono,fontWeight:700,color:C.g}}>+{l.qty}</td>
                     <td style={{padding:"12px 13px",fontFamily:F.mono,fontSize:10}}>{l.before}→<b>{l.after}</b></td>
                     <td style={{padding:"12px 13px",color:C.t2}}>{l.by}</td>
-                  </tr>))}</tbody>
+                  </tr>
+                ))}</tbody>
               </table>
-            </TableWrap>}
+            </div>}
         </Card>
       </div>
     </div>;
   }
 
-  // ─────────────────────────────────────────────────────────────
-  //  ADMIN SCREEN
-  // ─────────────────────────────────────────────────────────────
+  // ─────────────────────────────────
+  //  ADMIN
+  // ─────────────────────────────────
   if(screen==="admin") {
-    const IS={width:"100%",padding:"11px 13px",background:C.bg3,border:`1.5px solid ${C.bo0}`,borderRadius:10,color:C.t0,fontSize:13,fontFamily:F.mono,transition:"border-color .15s"};
+    const IS={width:"100%",padding:"11px 13px",background:C.bg3,border:`1.5px solid ${C.b0}`,
+      borderRadius:10,color:C.t0,fontSize:13,fontFamily:F.mono,transition:"border-color .15s"};
     const TABS=[
-      {id:"dashboard",l:"📊 Dashboard"},{id:"users",l:"👥 Pengguna"},{id:"products",l:"📦 Produk"},
-      {id:"laporan",l:"💰 Laporan"},{id:"absensi",l:"🕐 Absensi"},{id:"stoklog",l:"📋 Log Stok"},
-      {id:"returns",l:"↩ Retur"},{id:"actlog",l:"🔍 Aktivitas"},{id:"sheets",l:"🔗 Sheets"},
+      {id:"dashboard",l:"📊 Dashboard"},
+      {id:"users",    l:"👥 Pengguna"},
+      {id:"products", l:"📦 Produk"},
+      {id:"laporan",  l:"💰 Laporan"},
+      {id:"absensi",  l:"🕐 Absensi"},
+      {id:"stoklog",  l:"📋 Log Stok"},
+      {id:"sheets",   l:"🔗 Sheets"},
     ];
-    const adminPs=prods.filter(p=>p.business===adminBiz&&(!searchQ||p.name.toLowerCase().includes(searchQ.toLowerCase())||p.barcode.includes(searchQ)));
+    const adminPs=prods.filter(p=>p.business===adminBiz&&(!searchQ||
+      p.name.toLowerCase().includes(searchQ.toLowerCase())||p.barcode.includes(searchQ)));
 
     return <div style={{fontFamily:F.sans,background:C.bg1,color:C.t0,height:"100vh",display:"flex",flexDirection:"column"}}>
       <style>{CSS}</style><Toast n={notif}/>
-      <Header title="Admin Panel" user={user} online={online} onLogout={doLogout} lowStockCount={lowStockCount} onToggleTheme={toggleTheme} isDark={isDark}/>
+      <Header title="Admin Panel" user={user} online={online} onLogout={doLogout}/>
 
-      {/* Change password modal */}
-      {cpwdModal&&<div style={{position:"fixed",inset:0,background:"rgba(2,8,24,.85)",zIndex:500,display:"flex",alignItems:"flex-end",justifyContent:"center"}} onClick={()=>setCpwdModal(null)}>
-        <div style={{width:"100%",maxWidth:420,background:C.bg2,borderRadius:"22px 22px 0 0",padding:"18px 20px 32px",border:`1px solid ${C.bo1}`,borderBottom:"none",animation:"slideUp .25s ease"}} onClick={e=>e.stopPropagation()}>
-          <div style={{width:36,height:4,background:C.b1,borderRadius:2,margin:"0 auto 16px"}}/>
-          <h3 style={{fontSize:14,fontWeight:800,marginBottom:14,color:C.a}}>🔑 Ganti Password</h3>
-          <p style={{fontSize:12,color:C.t2,marginBottom:14}}>Untuk: <b style={{color:C.t0}}>{users.find(u=>u.id===cpwdModal)?.name}</b></p>
-          <div style={{display:"flex",flexDirection:"column",gap:10}}>
-            {user.role!=="admin"&&<div>
-              <div style={{fontSize:9.5,fontWeight:700,color:C.t2,textTransform:"uppercase",letterSpacing:.5,marginBottom:4}}>Password Lama</div>
-              <input type="password" value={cpwdForm.old} onChange={e=>setCpwdForm(x=>({...x,old:e.target.value}))} style={IS}
-                onFocus={e=>e.target.style.borderColor=C.g+"88"} onBlur={e=>e.target.style.borderColor=C.bo0}/>
-            </div>}
-            <div>
-              <div style={{fontSize:9.5,fontWeight:700,color:C.t2,textTransform:"uppercase",letterSpacing:.5,marginBottom:4}}>Password Baru *</div>
-              <input type="password" value={cpwdForm.n1} onChange={e=>setCpwdForm(x=>({...x,n1:e.target.value}))} style={IS}
-                onFocus={e=>e.target.style.borderColor=C.g+"88"} onBlur={e=>e.target.style.borderColor=C.bo0}/>
-            </div>
-            <div>
-              <div style={{fontSize:9.5,fontWeight:700,color:C.t2,textTransform:"uppercase",letterSpacing:.5,marginBottom:4}}>Konfirmasi Password *</div>
-              <input type="password" value={cpwdForm.n2} onChange={e=>setCpwdForm(x=>({...x,n2:e.target.value}))} style={IS}
-                onFocus={e=>e.target.style.borderColor=C.g+"88"} onBlur={e=>e.target.style.borderColor=C.bo0}/>
-            </div>
-          </div>
-          <div style={{display:"flex",gap:8,marginTop:16}}>
-            <Btn onClick={doChangePassword} full>Simpan</Btn>
-            <Btn onClick={()=>setCpwdModal(null)} outline>Batal</Btn>
-          </div>
-        </div>
-      </div>}
+      {/* Tab bar */}
+      <div style={{background:C.bg2,borderBottom:`1px solid ${C.b0}`,
+        display:"flex",overflowX:"auto",flexShrink:0,gap:0,padding:"0 4px"}}>
+        {TABS.map(t=><button key={t.id} onClick={()=>{setAdminTab(t.id);setSearchQ("");setPModal(false);}}
+          className={`atab${adminTab===t.id?" on":""}`}>{t.l}</button>)}
+      </div>
 
       {/* User modal */}
-      {uModal&&<div style={{position:"fixed",inset:0,background:"rgba(2,8,24,.85)",zIndex:500,display:"flex",alignItems:"flex-end",justifyContent:"center"}} onClick={()=>setUModal(false)}>
-        <div style={{width:"100%",maxWidth:500,background:C.bg2,borderRadius:"22px 22px 0 0",padding:"18px 20px 32px",border:`1px solid ${C.bo1}`,borderBottom:"none",animation:"slideUp .25s ease",maxHeight:"90vh",overflowY:"auto"}} onClick={e=>e.stopPropagation()}>
+      {uModal&&<div style={{position:"fixed",inset:0,background:"rgba(2,8,24,.85)",zIndex:500,
+        display:"flex",alignItems:"flex-end",justifyContent:"center"}} onClick={()=>setUModal(false)}>
+        <div style={{width:"100%",maxWidth:500,background:C.bg2,borderRadius:"22px 22px 0 0",
+          padding:"18px 20px 32px",border:`1px solid ${C.b1}`,borderBottom:"none",
+          animation:"slideUp .25s ease",maxHeight:"90vh",overflowY:"auto"}} onClick={e=>e.stopPropagation()}>
           <div style={{width:36,height:4,background:C.b1,borderRadius:2,margin:"0 auto 16px"}}/>
           <h3 style={{fontSize:14,fontWeight:800,marginBottom:16,color:C.g}}>{editUid===null?"➕ Tambah Pengguna":"✏️ Edit Pengguna"}</h3>
           <div style={{display:"flex",flexDirection:"column",gap:10}}>
             <div>
-              <div style={{fontSize:9.5,fontWeight:700,color:C.t2,textTransform:"uppercase",letterSpacing:.5,marginBottom:4}}>Nama Lengkap *</div>
-              <input value={uForm.name||""} onChange={e=>setUForm(x=>({...x,name:e.target.value}))} style={IS} onFocus={e=>e.target.style.borderColor=C.g+"88"} onBlur={e=>e.target.style.borderColor=C.bo0}/>
+              <div style={{fontSize:9.5,fontWeight:700,color:C.t2,textTransform:"uppercase",letterSpacing:1,marginBottom:4}}>Nama Lengkap *</div>
+              <input value={uForm.name||""} onChange={e=>setUForm(x=>({...x,name:e.target.value}))} style={IS}
+                onFocus={e=>e.target.style.borderColor=C.g+"88"} onBlur={e=>e.target.style.borderColor=C.b0}/>
             </div>
             <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
-              <div>
-                <div style={{fontSize:9.5,fontWeight:700,color:C.t2,textTransform:"uppercase",letterSpacing:.5,marginBottom:4}}>Username *</div>
-                <input value={uForm.username||""} onChange={e=>setUForm(x=>({...x,username:e.target.value}))} disabled={editUid!==null} style={{...IS,color:editUid!==null?C.t2:C.t0}} onFocus={e=>editUid===null&&(e.target.style.borderColor=C.g+"88")} onBlur={e=>e.target.style.borderColor=C.bo0}/>
+              <div style={{gridColumn:"span 1"}}>
+                <div style={{fontSize:9.5,fontWeight:700,color:C.t2,textTransform:"uppercase",letterSpacing:1,marginBottom:4}}>Username *</div>
+                <input value={uForm.username||""} onChange={e=>setUForm(x=>({...x,username:e.target.value}))}
+                  disabled={editUid!==null} style={{...IS,color:editUid!==null?C.t2:C.t0}}
+                  onFocus={e=>editUid===null&&(e.target.style.borderColor=C.g+"88")} onBlur={e=>e.target.style.borderColor=C.b0}/>
               </div>
               <div>
-                <div style={{fontSize:9.5,fontWeight:700,color:C.t2,textTransform:"uppercase",letterSpacing:.5,marginBottom:4}}>Password *</div>
-                <input type="password" value={uForm.password||""} onChange={e=>setUForm(x=>({...x,password:e.target.value}))} style={IS} onFocus={e=>e.target.style.borderColor=C.g+"88"} onBlur={e=>e.target.style.borderColor=C.bo0}/>
+                <div style={{fontSize:9.5,fontWeight:700,color:C.t2,textTransform:"uppercase",letterSpacing:1,marginBottom:4}}>Password *</div>
+                <input type="password" value={uForm.password||""} onChange={e=>setUForm(x=>({...x,password:e.target.value}))} style={IS}
+                  onFocus={e=>e.target.style.borderColor=C.g+"88"} onBlur={e=>e.target.style.borderColor=C.b0}/>
               </div>
               <div>
-                <div style={{fontSize:9.5,fontWeight:700,color:C.t2,textTransform:"uppercase",letterSpacing:.5,marginBottom:4}}>Avatar Emoji</div>
-                <input value={uForm.avatar||""} onChange={e=>setUForm(x=>({...x,avatar:e.target.value}))} style={IS} onFocus={e=>e.target.style.borderColor=C.g+"88"} onBlur={e=>e.target.style.borderColor=C.bo0}/>
+                <div style={{fontSize:9.5,fontWeight:700,color:C.t2,textTransform:"uppercase",letterSpacing:1,marginBottom:4}}>Avatar Emoji</div>
+                <input value={uForm.avatar||""} onChange={e=>setUForm(x=>({...x,avatar:e.target.value}))} style={IS}
+                  onFocus={e=>e.target.style.borderColor=C.g+"88"} onBlur={e=>e.target.style.borderColor=C.b0}/>
               </div>
               <div>
-                <div style={{fontSize:9.5,fontWeight:700,color:C.t2,textTransform:"uppercase",letterSpacing:.5,marginBottom:4}}>Role</div>
-                <select value={uForm.role||"kasir"} onChange={e=>setUForm(x=>({...x,role:e.target.value}))} style={{...IS,fontFamily:F.sans}}>
+                <div style={{fontSize:9.5,fontWeight:700,color:C.t2,textTransform:"uppercase",letterSpacing:1,marginBottom:4}}>Role</div>
+                <select value={uForm.role||"kasir"} onChange={e=>setUForm(x=>({...x,role:e.target.value}))}
+                  style={{...IS,fontFamily:F.sans}}>
                   <option value="kasir">Kasir</option><option value="stok">Stok</option><option value="admin">Admin</option>
                 </select>
               </div>
             </div>
             <div>
-              <div style={{fontSize:9.5,fontWeight:700,color:C.t2,textTransform:"uppercase",letterSpacing:.5,marginBottom:8}}>Akses Bisnis *</div>
+              <div style={{fontSize:9.5,fontWeight:700,color:C.t2,textTransform:"uppercase",letterSpacing:1,marginBottom:8}}>Akses Bisnis *</div>
               <div style={{display:"flex",gap:8}}>
                 {Object.values(BIZ).map(b2=>{const chk=uForm.access?.includes(b2.id),isJ=b2.id==="JS_CLOTHING";
                   return <button key={b2.id} onClick={()=>setUForm(x=>({...x,access:chk?x.access.filter(a=>a!==b2.id):[...(x.access||[]),b2.id]}))}
-                    style={{flex:1,padding:"10px",borderRadius:10,cursor:"pointer",fontWeight:700,fontSize:12,background:chk?(isJ?C.b1:C.p1):"transparent",border:`2px solid ${chk?(isJ?C.b:C.p):C.bo0}`,color:chk?(isJ?C.b:C.p):C.t2,fontFamily:F.sans}}>
+                    style={{flex:1,padding:"10px",borderRadius:10,cursor:"pointer",fontWeight:700,fontSize:12,
+                      background:chk?(isJ?C.b1:C.p1):"transparent",border:`2px solid ${chk?(isJ?C.b:C.p):C.b0}`,
+                      color:chk?(isJ?C.b:C.p):C.t2,fontFamily:F.sans}}>
                     {b2.icon} {b2.name}</button>;})}
               </div>
             </div>
             <div style={{display:"flex",alignItems:"center",gap:8}}>
-              <input type="checkbox" id="uac" checked={!!uForm.active} onChange={e=>setUForm(x=>({...x,active:e.target.checked}))} style={{width:16,height:16,accentColor:C.g}}/>
+              <input type="checkbox" id="uac" checked={!!uForm.active} onChange={e=>setUForm(x=>({...x,active:e.target.checked}))}
+                style={{width:16,height:16,cursor:"pointer",accentColor:C.g}}/>
               <label htmlFor="uac" style={{fontSize:12.5,cursor:"pointer"}}>Akun Aktif</label>
             </div>
           </div>
-          <div style={{display:"flex",gap:8,marginTop:16}}><Btn onClick={saveUser} full>Simpan</Btn><Btn onClick={()=>setUModal(false)} outline>Batal</Btn></div>
+          <div style={{display:"flex",gap:8,marginTop:16}}>
+            <Btn onClick={saveUser} full>Simpan</Btn>
+            <Btn onClick={()=>setUModal(false)} outline>Batal</Btn>
+          </div>
         </div>
       </div>}
 
-      {/* Tab bar */}
-      <div style={{background:C.bg2,borderBottom:`1px solid ${C.bo0}`,display:"flex",overflowX:"auto",flexShrink:0,gap:0,padding:"0 4px"}}>
-        {TABS.map(t=><button key={t.id} onClick={()=>{setAdminTab(t.id);setSearchQ("");setPModal(false);}}
-          className={`atab${adminTab===t.id?" on":""}`}>{t.l}</button>)}
-      </div>
-
-      <div style={{flex:1,overflowY:"auto",padding:10,paddingBottom:`calc(16px + var(--safe-b))`,minHeight:0}}>
-
+      <div style={{flex:1,overflowY:"auto",padding:10,paddingBottom:`calc(10px + var(--safe-b))`,minHeight:0}}>
 
         {/* ── DASHBOARD ── */}
         {adminTab==="dashboard"&&<div style={{display:"flex",flexDirection:"column",gap:10}}>
           <h2 style={{fontSize:15,fontWeight:800}}>Dashboard</h2>
-          <div className="stat-grid-4" style={{display:"grid",gap:8}}>
+          {/* Stats */}
+          <div style={{display:"grid",gridTemplateColumns:"repeat(2,1fr)",gap:8}}>
             <Stat icon="💰" label="Pendapatan Hari Ini" color={C.g}
-              value={rp(trxs.filter(t=>{const d=parseD(t.date);return d&&d.toDateString()===new Date().toDateString();}).reduce((s,t)=>s+t.total,0))}/>
+              value={rp(trxs.filter(t=>{try{return new Date(t.date.replace(/(\d+)\/(\d+)\/(\d+),/,"$3-$2-$1 ")).toDateString()===new Date().toDateString();}catch{return false;}}).reduce((s,t)=>s+t.total,0))}/>
             <Stat icon="🧾" label="Transaksi Hari Ini" color={C.cy}
-              value={trxs.filter(t=>{const d=parseD(t.date);return d&&d.toDateString()===new Date().toDateString();}).length}/>
-            <Stat icon="📦" label="Total Produk" color={C.b} value={prods.length} sub={`${lowStockCount} stok menipis`}/>
-            <Stat icon="🕐" label="Hadir Hari Ini" color={C.a} value={attend.filter(a=>a.date===todayDate()).length}/>
+              value={trxs.filter(t=>{try{return new Date(t.date.replace(/(\d+)\/(\d+)\/(\d+),/,"$3-$2-$1 ")).toDateString()===new Date().toDateString();}catch{return false;}}).length}/>
+            <Stat icon="📦" label="Total Produk" color={C.b} value={prods.length}
+              sub={`${prods.filter(p=>p.stock<10).length} stok menipis`}/>
+            <Stat icon="🕐" label="Hadir Hari Ini" color={C.a}
+              value={attend.filter(a=>a.date===todayDate()).length}/>
           </div>
-          {/* Targets */}
-          {Object.values(BIZ).some(b2=>currentTarget(b2.id))&&<Card>
-            <div style={{fontSize:10,fontWeight:700,color:C.t2,textTransform:"uppercase",letterSpacing:1,marginBottom:12}}>🎯 Target Penjualan Bulan Ini</div>
-            {Object.values(BIZ).map(b2=>{
-              const tgt=currentTarget(b2.id);if(!tgt) return null;
-              const rev=monthRevBiz(b2.id);const isJ=b2.id==="JS_CLOTHING";
-              return <div key={b2.id} style={{marginBottom:12}}>
-                <div style={{display:"flex",justifyContent:"space-between",fontSize:12,marginBottom:6}}>
-                  <span style={{fontWeight:600}}>{b2.icon} {b2.name}</span>
-                  <span className="mn" style={{color:isJ?C.b:C.p}}>{rp(rev)} / {rp(tgt.amount)}</span>
-                </div>
-                <ProgressBar value={rev} max={tgt.amount} color={isJ?C.b:C.p}/>
-              </div>;})}
-          </Card>}
           {/* Stok menipis */}
-          {lowStockCount>0&&<Card accent={C.r}>
-            <div style={{fontSize:10,fontWeight:700,color:C.r,textTransform:"uppercase",letterSpacing:1,marginBottom:10}}>⚠ Stok Menipis ({lowStockCount})</div>
-            {prods.filter(p=>p.stock<10).map(p=><div key={p.id} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"6px 0",borderTop:`1px solid ${C.bo0}`,fontSize:12.5}}>
+          {prods.filter(p=>p.stock<10).length>0&&<Card accent={C.r}>
+            <div style={{fontSize:10,fontWeight:700,color:C.r,textTransform:"uppercase",letterSpacing:1,marginBottom:10}}>⚠ Stok Menipis</div>
+            {prods.filter(p=>p.stock<10).map(p=><div key={p.id} style={{display:"flex",justifyContent:"space-between",
+              alignItems:"center",padding:"6px 0",borderTop:`1px solid ${C.b0}`,fontSize:12.5}}>
               <span style={{fontWeight:600}}>{p.name}</span>
-              <div style={{display:"flex",gap:8,alignItems:"center"}}><BizChip biz={p.business} sm/><StockBadge s={p.stock}/></div>
+              <div style={{display:"flex",gap:8,alignItems:"center"}}>
+                <BizChip biz={p.business} sm/>
+                <StockBadge s={p.stock}/>
+              </div>
             </div>)}
           </Card>}
-          {/* Today attendance */}
+          {/* Absen hari ini */}
           <Card>
             <div style={{fontSize:10,fontWeight:700,color:C.t2,textTransform:"uppercase",letterSpacing:1,marginBottom:10}}>🕐 Kehadiran Hari Ini</div>
             {attend.filter(a=>a.date===todayDate()).length===0
               ?<p style={{fontSize:12,color:C.t3}}>Belum ada pegawai yang absen hari ini</p>
-              :attend.filter(a=>a.date===todayDate()).map(a=><div key={a.id} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"7px 0",borderTop:`1px solid ${C.bo0}`,fontSize:12.5}}>
+              :attend.filter(a=>a.date===todayDate()).map(a=><div key={a.id} style={{display:"flex",justifyContent:"space-between",
+                alignItems:"center",padding:"7px 0",borderTop:`1px solid ${C.b0}`,fontSize:12.5}}>
                 <div style={{display:"flex",alignItems:"center",gap:8}}>
                   <span>{users.find(u=>u.id===a.userId)?.avatar||"🧑"}</span>
                   <div><div style={{fontWeight:600}}>{a.name}</div><div style={{fontSize:10,color:C.t2}}>{a.checkIn}</div></div>
                 </div>
                 <div style={{display:"flex",gap:6,alignItems:"center"}}>
                   <BizChip biz={a.business} sm/>
-                  {a.checkOut?<span style={{fontSize:10,color:C.g,fontWeight:600}}>✓ Pulang</span>:<span style={{fontSize:10,color:C.a,fontWeight:600}}>● Hadir</span>}
+                  {a.checkOut?<span style={{fontSize:10,color:C.g,fontWeight:600}}>✓ Pulang</span>
+                    :<span style={{fontSize:10,color:C.a,fontWeight:600}}>● Hadir</span>}
                 </div>
               </div>)}
           </Card>
-          {/* Target management */}
-          <Card>
-            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}}>
-              <div style={{fontSize:10,fontWeight:700,color:C.t2,textTransform:"uppercase",letterSpacing:1}}>🎯 Kelola Target</div>
-              <button onClick={()=>setTargetModal(true)} className="press" style={{padding:"5px 12px",background:C.g1,border:`1px solid ${C.g}33`,borderRadius:7,color:C.g,fontSize:11,fontWeight:700,fontFamily:F.sans}}>+ Set Target</button>
-            </div>
-            {targetModal&&<div style={{background:C.bg3,borderRadius:10,padding:"12px 14px",marginBottom:12,border:`1px solid ${C.bo0}`}}>
-              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:8,marginBottom:10}}>
-                <div>
-                  <div style={{fontSize:9.5,fontWeight:700,color:C.t2,marginBottom:4,textTransform:"uppercase",letterSpacing:.5}}>Bisnis</div>
-                  <select value={targetForm.business} onChange={e=>setTargetForm(x=>({...x,business:e.target.value}))} style={{width:"100%",padding:"10px",background:C.bg2,border:`1.5px solid ${C.bo0}`,borderRadius:8,color:C.t0,fontSize:12,fontFamily:F.sans}}>
-                    {Object.values(BIZ).map(b2=><option key={b2.id} value={b2.id}>{b2.icon} {b2.name}</option>)}
-                  </select>
-                </div>
-                <div>
-                  <div style={{fontSize:9.5,fontWeight:700,color:C.t2,marginBottom:4,textTransform:"uppercase",letterSpacing:.5}}>Periode</div>
-                  <input type="month" value={targetForm.period} onChange={e=>setTargetForm(x=>({...x,period:e.target.value}))}
-                    style={{width:"100%",padding:"10px",background:C.bg2,border:`1.5px solid ${C.bo0}`,borderRadius:8,color:C.t0,fontSize:12}}/>
-                </div>
-                <div>
-                  <div style={{fontSize:9.5,fontWeight:700,color:C.t2,marginBottom:4,textTransform:"uppercase",letterSpacing:.5}}>Target (Rp)</div>
-                  <input type="number" value={targetForm.amount} onChange={e=>setTargetForm(x=>({...x,amount:e.target.value}))}
-                    placeholder="0" style={{width:"100%",padding:"10px",background:C.bg2,border:`1.5px solid ${C.bo0}`,borderRadius:8,color:C.t0,fontSize:12,fontFamily:F.mono}}/>
-                </div>
-              </div>
-              <div style={{display:"flex",gap:8}}>
-                <Btn onClick={async()=>{
-                  if(!targetForm.period||!targetForm.amount){toast("Isi semua field","warn");return;}
-                  await fbSetTarget({id:`${targetForm.business}-${targetForm.period}`,
-                    business:targetForm.business,period:targetForm.period,amount:+targetForm.amount});
-                  setTargetModal(false);toast("✓ Target disimpan");
-                }}>Simpan</Btn>
-                <Btn onClick={()=>setTargetModal(false)} outline>Batal</Btn>
-              </div>
-            </div>}
-            {targets.length===0?<p style={{fontSize:12,color:C.t3}}>Belum ada target tersimpan</p>
-            :targets.map(t=><div key={t.id} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"7px 0",borderTop:`1px solid ${C.bo0}`,fontSize:12}}>
-              <div><BizChip biz={t.business} sm/><span style={{marginLeft:8,color:C.t2}}>{t.period}</span></div>
-              <div style={{display:"flex",alignItems:"center",gap:8}}>
-                <span className="mn" style={{color:C.g}}>{rp(t.amount)}</span>
-                <button onClick={()=>fbDeleteTarget(t.id).then(()=>toast("Target dihapus","warn"))} className="press" style={{padding:"2px 8px",background:C.r1,border:`1px solid ${C.r}22`,borderRadius:5,color:C.r,fontSize:10}}>×</button>
-              </div>
-            </div>)}
-          </Card>
         </div>}
-
 
         {/* ── PENGGUNA ── */}
         {adminTab==="users"&&<div style={{display:"flex",flexDirection:"column",gap:10}}>
           <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",flexWrap:"wrap",gap:8}}>
-            <div><h2 style={{fontSize:15,fontWeight:800}}>Database Pengguna</h2></div>
+            <div>
+              <h2 style={{fontSize:15,fontWeight:800}}>Database Pengguna</h2>
+              <p style={{fontSize:11.5,color:C.t2,marginTop:2}}>Kelola akun & biometrik wajah pegawai</p>
+            </div>
             <Btn onClick={openAddU} size="sm">+ Tambah</Btn>
           </div>
           <Card noPad style={{overflow:"hidden"}}>
-            <TableWrap>
-              <table style={{width:"100%",borderCollapse:"collapse",fontSize:12,minWidth:600}}>
+            <div style={{overflowX:"auto"}}>
+              <table style={{width:"100%",borderCollapse:"collapse",fontSize:12,minWidth:580}}>
                 <THead cols={["#","Username","Nama","Role","Akses","Wajah","Status","Aksi"]}/>
-                <tbody>{users.map((u,i)=><tr key={u.id} className="hrow" style={{borderTop:`1px solid ${C.bo0}`,background:i%2===0?"transparent":C.bg0}}>
-                  <td style={{padding:"14px 13px",fontFamily:F.mono,color:C.t3,fontSize:10}}>{u.id}</td>
-                  <td style={{padding:"14px 13px",fontFamily:F.mono,fontSize:11}}>{u.avatar} {u.username}</td>
-                  <td style={{padding:"14px 13px",fontWeight:600}}>{u.name}</td>
-                  <td style={{padding:"14px 13px"}}><RoleTag role={u.role}/></td>
-                  <td style={{padding:"14px 13px"}}><div style={{display:"flex",gap:4,flexWrap:"wrap"}}>{u.access?.map(a=><BizChip key={a} biz={a} sm/>)}</div></td>
-                  <td style={{padding:"14px 13px"}}>
+                <tbody>{users.map((u,i)=><tr key={u.id} className="hrow" style={{borderTop:`1px solid ${C.b0}`,background:i%2===0?"transparent":C.bg0}}>
+                  <td style={{padding:"13px 14px",fontFamily:F.mono,color:C.t3,fontSize:10}}>{u.id}</td>
+                  <td style={{padding:"13px 14px",fontFamily:F.mono,fontSize:11}}>{u.avatar} {u.username}</td>
+                  <td style={{padding:"13px 14px",fontWeight:600}}>{u.name}</td>
+                  <td style={{padding:"13px 14px"}}><RoleTag role={u.role}/></td>
+                  <td style={{padding:"13px 14px"}}><div style={{display:"flex",gap:4,flexWrap:"wrap"}}>{u.access?.map(a=><BizChip key={a} biz={a} sm/>)}</div></td>
+                  <td style={{padding:"13px 14px"}}>
                     {u.role==="admin"?<span style={{fontSize:10,color:C.t3}}>N/A</span>
-                    :u.faceDescriptor?<span style={{fontSize:10,color:C.g,fontWeight:700}}>✓ Ada</span>
-                    :<button onClick={()=>setFaceReg(u.id)} className="press" style={{padding:"3px 9px",background:C.a1,border:`1px solid ${C.a}33`,borderRadius:6,color:C.a,fontSize:10,fontWeight:700}}>Daftarkan</button>}
+                    :u.faceDescriptor?<span style={{fontSize:10,color:C.g,fontWeight:700}}>✓ Terdaftar</span>
+                    :<button onClick={()=>setFaceReg(u.id)} className="press"
+                      style={{padding:"3px 9px",background:C.a1,border:`1px solid ${C.a}33`,
+                        borderRadius:6,color:C.a,fontSize:10,fontWeight:700}}>Daftarkan</button>}
                   </td>
-                  <td style={{padding:"14px 13px"}}>
-                    <span style={{padding:"2px 8px",borderRadius:20,fontSize:9.5,fontWeight:700,background:u.active?C.g1:C.r1,color:u.active?C.g:C.r}}>{u.active?"AKTIF":"OFF"}</span>
+                  <td style={{padding:"13px 14px"}}>
+                    <span style={{padding:"2px 8px",borderRadius:20,fontSize:9.5,fontWeight:700,
+                      background:u.active?C.g1:C.r1,color:u.active?C.g:C.r}}>{u.active?"AKTIF":"NONAKTIF"}</span>
                   </td>
-                  <td style={{padding:"14px 13px",whiteSpace:"nowrap"}}>
-                    <button onClick={()=>openEditU(u)} className="press" style={{marginRight:4,padding:"3px 9px",background:"transparent",border:`1px solid ${C.bo1}`,borderRadius:6,color:C.t0,fontSize:10}}>Edit</button>
-                    <button onClick={()=>{setCpwdModal(u.id);setCpwdForm({old:"",n1:"",n2:""}); }} className="press" style={{marginRight:4,padding:"3px 9px",background:C.a1,border:`1px solid ${C.a}22`,borderRadius:6,color:C.a,fontSize:10}}>🔑</button>
-                    {u.faceDescriptor&&u.role!=="admin"&&<button onClick={()=>{fbUpdateUser(u.id,{...u,faceDescriptor:null},user.name);toast("Wajah direset","warn");}} className="press" style={{marginRight:4,padding:"3px 9px",background:C.b1,border:`1px solid ${C.b}22`,borderRadius:6,color:C.b,fontSize:10}}>Reset</button>}
-                    <button onClick={()=>delUser(u)} className="press" style={{padding:"3px 9px",background:C.r1,border:`1px solid ${C.r}22`,borderRadius:6,color:C.r,fontSize:10}}>Hapus</button>
+                  <td style={{padding:"13px 14px",whiteSpace:"nowrap"}}>
+                    <button onClick={()=>openEditU(u)} className="press" style={{marginRight:4,padding:"3px 9px",background:"transparent",border:`1px solid ${C.b1}`,borderRadius:6,color:C.t0,fontSize:10}}>Edit</button>
+                    {u.faceDescriptor&&u.role!=="admin"&&<button onClick={()=>{fbUpdateUser(u.id,{...u,faceDescriptor:null});toast("Wajah direset","warn");}} className="press" style={{marginRight:4,padding:"3px 9px",background:C.a1,border:`1px solid ${C.a}22`,borderRadius:6,color:C.a,fontSize:10}}>Reset</button>}
+                    <button onClick={()=>delUser(u.id)} className="press" style={{padding:"3px 9px",background:C.r1,border:`1px solid ${C.r}22`,borderRadius:6,color:C.r,fontSize:10}}>Hapus</button>
                   </td>
                 </tr>)}</tbody>
               </table>
-            </TableWrap>
+            </div>
           </Card>
         </div>}
 
@@ -1795,496 +1568,369 @@ function AppInner() {
           <div style={{display:"flex",gap:7,alignItems:"center",flexWrap:"wrap"}}>
             {Object.values(BIZ).map(b2=>{const isJ=b2.id==="JS_CLOTHING",active=adminBiz===b2.id;
               return <button key={b2.id} onClick={()=>{setAdminBiz(b2.id);setSearchQ("");setPModal(false);}} className="press"
-                style={{padding:"7px 14px",borderRadius:9,cursor:"pointer",fontWeight:700,fontSize:12,background:active?(isJ?C.b1:C.p1):"transparent",border:`2px solid ${active?(isJ?C.b:C.p):C.bo0}`,color:active?(isJ?C.b:C.p):C.t2,fontFamily:F.sans}}>
+                style={{padding:"7px 14px",borderRadius:9,cursor:"pointer",fontWeight:700,fontSize:12,
+                  background:active?(isJ?C.b1:C.p1):"transparent",
+                  border:`2px solid ${active?(isJ?C.b:C.p):C.b0}`,color:active?(isJ?C.b:C.p):C.t2,fontFamily:F.sans}}>
                 {b2.icon} {b2.name}</button>;})}
             <input value={searchQ} onChange={e=>setSearchQ(e.target.value)} placeholder="Cari produk..."
-              style={{padding:"7px 11px",background:C.bg2,border:`1px solid ${C.bo0}`,borderRadius:8,color:C.t0,fontSize:12,width:140,fontFamily:F.sans}}/>
-            <button onClick={()=>downloadXLSX(adminPs,[
-              {key:"barcode",label:"Barcode",w:14},{key:"name",label:"Nama Produk",w:28},
-              {key:"category",label:"Kategori",w:16},{key:"hpp",label:"HPP (Rp)",fn:r=>r.hpp||0,num:true,w:16},
-              {key:"price",label:"Harga Jual (Rp)",fn:r=>r.price,num:true,w:18},{key:"stock",label:"Stok",fn:r=>r.stock,num:true,w:10},
-              {key:"business",label:"Bisnis",fn:r=>BIZ[r.business]?.name||r.business,w:14},
-              {key:"margin",label:"Margin %",fn:r=>r.price>0?(((r.price-(r.hpp||0))/r.price)*100).toFixed(1)+"%":"0%",w:12},
-            ],"Produk","produk_"+adminBiz)} className="press"
-              style={{padding:"7px 12px",background:C.g1,border:`1px solid ${C.g}33`,borderRadius:8,color:C.g,fontSize:12,fontWeight:700,fontFamily:F.sans}}>⬇ Excel</button>
+              style={{marginLeft:"auto",padding:"7px 11px",background:C.bg2,border:`1px solid ${C.b0}`,borderRadius:8,color:C.t0,fontSize:12,width:160,fontFamily:F.sans}}/>
             <Btn onClick={openAddP} size="sm">+ Tambah</Btn>
           </div>
-          {/* Scan cari produk */}
-          <div style={{display:"flex",gap:8,alignItems:"center",padding:"10px 14px",background:C.bg2,borderRadius:12,border:`1px solid ${C.bo0}`}}>
-            <span style={{fontSize:12,color:C.t2,fontWeight:600,whiteSpace:"nowrap"}}>🔍 Scan/Cari:</span>
-            <input value={adminScanQ} onChange={e=>setAdminScanQ(e.target.value)}
-              onKeyDown={e=>{if(e.key==="Enter"){const bc=adminScanQ.trim();
-                const found=prods.find(p=>p.barcode===bc&&p.business===adminBiz)||prods.find(p=>p.name.toLowerCase().includes(bc.toLowerCase())&&p.business===adminBiz);
-                if(found){openEditP(found);setAdminScanQ("");}else toast("Produk tidak ditemukan: "+bc,"warn");}}}
-              placeholder="Scan barcode atau ketik nama → Enter"
-              style={{flex:1,padding:"10px 12px",background:C.bg3,border:`1.5px solid ${C.bo1}`,borderRadius:9,color:C.t0,fontSize:13,fontFamily:F.mono}}/>
-            <button onClick={()=>{const bc=adminScanQ.trim();const found=prods.find(p=>p.barcode===bc&&p.business===adminBiz)||prods.find(p=>p.name.toLowerCase().includes(bc.toLowerCase())&&p.business===adminBiz);if(found){openEditP(found);setAdminScanQ("");}else toast("Tidak ditemukan","warn");}} className="press"
-              style={{padding:"10px 14px",background:C.b,border:"none",borderRadius:9,color:"#fff",fontWeight:700,fontSize:12,flexShrink:0}}>Cari</button>
-          </div>
+
           {pModal&&<Card accent={C.g} style={{padding:16}}>
             <h3 style={{fontSize:13,fontWeight:800,marginBottom:14,color:C.g}}>{editPid===null?"➕ Tambah Produk":"✏️ Edit Produk"}</h3>
             <div style={{display:"grid",gridTemplateColumns:"repeat(2,1fr)",gap:9}}>
-              {[{k:"barcode",l:"Barcode *",full:true,dis:editPid!==null},{k:"name",l:"Nama Produk *",full:true},{k:"category",l:"Kategori"},{k:"stock",l:"Stok *",t:"number"}].map(f=>(
+              {[{k:"barcode",l:"Barcode *",full:true,dis:editPid!==null},{k:"name",l:"Nama Produk *",full:true},
+                {k:"category",l:"Kategori"},{k:"stock",l:"Stok *",t:"number"}].map(f=>(
                 <div key={f.k} style={{gridColumn:f.full?"span 2":""}}>
                   <div style={{fontSize:9.5,fontWeight:700,color:C.t2,textTransform:"uppercase",letterSpacing:.5,marginBottom:4}}>{f.l}</div>
-                  <input type={f.t||"text"} value={pForm[f.k]||""} disabled={f.dis} onChange={e=>setPForm(x=>({...x,[f.k]:e.target.value}))}
-                    style={{...IS,color:f.dis?C.t2:C.t0}} onFocus={e=>!f.dis&&(e.target.style.borderColor=C.g+"88")} onBlur={e=>e.target.style.borderColor=C.bo0}/>
-                </div>))}
+                  <input type={f.t||"text"} value={pForm[f.k]||""} disabled={f.dis}
+                    onChange={e=>setPForm(x=>({...x,[f.k]:e.target.value}))}
+                    style={{...IS,color:f.dis?C.t2:C.t0}}
+                    onFocus={e=>!f.dis&&(e.target.style.borderColor=C.g+"88")} onBlur={e=>e.target.style.borderColor=C.b0}/>
+                </div>
+              ))}
               <div>
                 <div style={{fontSize:9.5,fontWeight:700,color:C.t2,textTransform:"uppercase",letterSpacing:.5,marginBottom:4}}>Harga Jual *</div>
-                <input type="number" value={pForm.price||""} onChange={e=>setPForm(x=>({...x,price:e.target.value}))} style={IS} onFocus={e=>e.target.style.borderColor=C.g+"88"} onBlur={e=>e.target.style.borderColor=C.bo0}/>
+                <input type="number" value={pForm.price||""} onChange={e=>setPForm(x=>({...x,price:e.target.value}))} style={IS}
+                  onFocus={e=>e.target.style.borderColor=C.g+"88"} onBlur={e=>e.target.style.borderColor=C.b0}/>
               </div>
               <div>
-                <div style={{fontSize:9.5,fontWeight:700,color:C.a,textTransform:"uppercase",letterSpacing:.5,marginBottom:4}}>HPP / Modal</div>
-                <input type="number" value={pForm.hpp||""} onChange={e=>setPForm(x=>({...x,hpp:e.target.value}))} style={{...IS,borderColor:C.a+"44"}} onFocus={e=>e.target.style.borderColor=C.a+"88"} onBlur={e=>e.target.style.borderColor=C.a+"44"}/>
+                <div style={{fontSize:9.5,fontWeight:700,color:C.a,textTransform:"uppercase",letterSpacing:.5,marginBottom:4}}>HPP / Modal — admin only</div>
+                <input type="number" value={pForm.hpp||""} onChange={e=>setPForm(x=>({...x,hpp:e.target.value}))}
+                  style={{...IS,borderColor:C.a+"44"}}
+                  onFocus={e=>e.target.style.borderColor=C.a+"88"} onBlur={e=>e.target.style.borderColor=C.a+"44"}/>
               </div>
             </div>
             {pForm.price&&pForm.hpp&&+pForm.price>0&&+pForm.hpp>0&&(
               <div style={{marginTop:9,padding:"7px 11px",background:C.bg3,borderRadius:7,fontSize:11.5,display:"flex",gap:14}}>
                 <span style={{color:C.t2}}>Margin: <b style={{color:C.g}}>{((+pForm.price-+pForm.hpp)/+pForm.price*100).toFixed(1)}%</b></span>
                 <span style={{color:C.t2}}>Laba/pcs: <b style={{color:C.cy}}>{rp(+pForm.price-+pForm.hpp)}</b></span>
-              </div>)}
-            <div style={{display:"flex",gap:8,marginTop:12}}><Btn onClick={saveProd}>Simpan</Btn><Btn onClick={()=>setPModal(false)} outline>Batal</Btn></div>
+              </div>
+            )}
+            <div style={{display:"flex",gap:8,marginTop:12}}>
+              <Btn onClick={saveProd}>Simpan</Btn><Btn onClick={()=>setPModal(false)} outline>Batal</Btn>
+            </div>
           </Card>}
+
           <Card noPad style={{overflow:"hidden"}}>
-            <TableWrap>
-              <table style={{width:"100%",borderCollapse:"collapse",fontSize:12,minWidth:580}}>
+            <div style={{overflowX:"auto"}}>
+              <table style={{width:"100%",borderCollapse:"collapse",fontSize:12,minWidth:560}}>
                 <THead cols={["Barcode","Nama","Kategori","HPP","Harga Jual","Margin","Stok","Aksi"]}/>
-                <tbody>{adminPs.map((p,i)=>{const mg=p.price>0?((p.price-(p.hpp||0))/p.price*100).toFixed(0)+"%":"-";
-                  return <tr key={p.id} className="hrow" style={{borderTop:`1px solid ${C.bo0}`,background:i%2===0?"transparent":C.bg0}}>
-                    <td style={{padding:"14px 13px",fontFamily:F.mono,fontSize:10,color:C.t2}}>{p.barcode}</td>
-                    <td style={{padding:"14px 13px",fontWeight:600}}>{p.name}</td>
-                    <td style={{padding:"14px 13px",color:C.t2,fontSize:11}}>{p.category}</td>
-                    <td style={{padding:"14px 13px",fontFamily:F.mono,color:C.a,fontSize:11}}>{rp(p.hpp||0)}</td>
-                    <td style={{padding:"14px 13px",fontFamily:F.mono,color:C.g,fontSize:11}}>{rp(p.price)}</td>
-                    <td style={{padding:"14px 13px",fontFamily:F.mono,fontSize:11,color:C.cy}}>{mg}</td>
-                    <td style={{padding:"14px 13px"}}><StockBadge s={p.stock}/></td>
-                    <td style={{padding:"14px 13px",whiteSpace:"nowrap"}}>
-                      <button onClick={()=>openEditP(p)} className="press" style={{marginRight:4,padding:"3px 9px",background:"transparent",border:`1px solid ${C.bo1}`,borderRadius:6,color:C.t0,fontSize:10}}>Edit</button>
-                      <button onClick={()=>fbDeleteProduct(p.id,p.name,p.business,user.name).then(()=>toast("Produk dihapus")).catch(e=>toast(e.message,"err"))} className="press" style={{padding:"3px 9px",background:C.r1,border:`1px solid ${C.r}22`,borderRadius:6,color:C.r,fontSize:10}}>Hapus</button>
+                <tbody>{adminPs.map((p,i)=>{
+                  const mg=p.price>0?((p.price-(p.hpp||0))/p.price*100).toFixed(0)+"%":"-";
+                  return <tr key={p.id} className="hrow" style={{borderTop:`1px solid ${C.b0}`,background:i%2===0?"transparent":C.bg0}}>
+                    <td style={{padding:"12px 13px",fontFamily:F.mono,fontSize:10,color:C.t2}}>{p.barcode}</td>
+                    <td style={{padding:"12px 13px",fontWeight:600}}>{p.name}</td>
+                    <td style={{padding:"12px 13px",color:C.t2,fontSize:11}}>{p.category}</td>
+                    <td style={{padding:"12px 13px",fontFamily:F.mono,color:C.a,fontSize:11}}>{rp(p.hpp||0)}</td>
+                    <td style={{padding:"12px 13px",fontFamily:F.mono,color:C.g,fontSize:11}}>{rp(p.price)}</td>
+                    <td style={{padding:"12px 13px",fontFamily:F.mono,fontSize:11,color:C.cy}}>{mg}</td>
+                    <td style={{padding:"12px 13px"}}><StockBadge s={p.stock}/></td>
+                    <td style={{padding:"12px 13px",whiteSpace:"nowrap"}}>
+                      <button onClick={()=>openEditP(p)} className="press" style={{marginRight:4,padding:"3px 9px",background:"transparent",border:`1px solid ${C.b1}`,borderRadius:6,color:C.t0,fontSize:10}}>Edit</button>
+                      <button onClick={()=>fbDeleteProduct(p.id).then(()=>toast("Produk dihapus")).catch(e=>toast(e.message,"err"))} className="press" style={{padding:"3px 9px",background:C.r1,border:`1px solid ${C.r}22`,borderRadius:6,color:C.r,fontSize:10}}>Hapus</button>
                     </td>
                   </tr>;})}
                 </tbody>
               </table>
-            </TableWrap>
+            </div>
           </Card>
         </div>}
 
-
-        {/* ── LAPORAN ── */}
+        {/* ── LAPORAN KEUANGAN ── */}
         {adminTab==="laporan"&&<div style={{display:"flex",flexDirection:"column",gap:10}}>
+          {/* Filter */}
           <div style={{display:"flex",gap:7,alignItems:"center",flexWrap:"wrap"}}>
-            <div style={{flex:1}}><h2 style={{fontSize:15,fontWeight:800}}>Laporan Keuangan</h2></div>
-            <button onClick={()=>downloadXLSX(filtTrx,[
-              {key:"id",label:"ID Transaksi",w:22},{key:"date",label:"Tanggal",w:22},
-              {key:"kasir",label:"Kasir",w:20},{key:"business",label:"Bisnis",fn:r=>BIZ[r.business]?.name||r.business,w:14},
-              {key:"subtotal",label:"Subtotal (Rp)",fn:r=>r.subtotal||r.total,num:true,w:18},
-              {key:"discount",label:"Diskon (Rp)",fn:r=>r.discount||0,num:true,w:14},
-              {key:"total",label:"Total (Rp)",fn:r=>r.total,num:true,w:18},
-              {key:"totalHpp",label:"HPP (Rp)",fn:r=>r.totalHpp||0,num:true,w:16},
-              {key:"profit",label:"Laba (Rp)",fn:r=>r.profit||0,num:true,w:16},
-              {key:"payment",label:"Pembayaran",w:14},
-              {key:"items",label:"Jumlah Item",fn:r=>r.items?.length||0,num:true,w:14},
-            ],"Transaksi","laporan_keuangan")} className="press"
-              style={{padding:"7px 13px",background:C.g1,border:`1px solid ${C.g}33`,borderRadius:8,color:C.g,fontSize:12,fontWeight:700,fontFamily:F.sans}}>⬇ Excel Transaksi</button>
-            <button onClick={()=>downloadXLSX(prodPerf,[
-              {key:"barcode",label:"Barcode",w:14},{key:"name",label:"Nama Produk",w:28},
-              {key:"qty",label:"Qty Terjual",fn:r=>r.qty,num:true,w:14},{key:"rev",label:"Pendapatan (Rp)",fn:r=>r.rev,num:true,w:18},
-              {key:"hpp",label:"HPP (Rp)",fn:r=>r.hpp,num:true,w:16},{key:"laba",label:"Laba (Rp)",fn:r=>r.rev-r.hpp,num:true,w:16},
-              {key:"margin",label:"Margin %",fn:r=>r.rev>0?(((r.rev-r.hpp)/r.rev)*100).toFixed(1)+"%":"0%",w:12},
-            ],"Produk Terlaris","laporan_produk")} className="press"
-              style={{padding:"7px 13px",background:C.cy1,border:`1px solid ${C.cy}33`,borderRadius:8,color:C.cy,fontSize:12,fontWeight:700,fontFamily:F.sans}}>⬇ Excel Produk</button>
+            <div>
+              <h2 style={{fontSize:15,fontWeight:800}}>Laporan Keuangan</h2>
+              <p style={{fontSize:11.5,color:C.t2,marginTop:2}}>Analisis pendapatan, HPP & laba per periode</p>
+            </div>
           </div>
-          {/* Filters */}
           <div style={{display:"flex",gap:7,flexWrap:"wrap",alignItems:"center"}}>
+            {/* Bisnis filter */}
             {["ALL","JS_CLOTHING","JB_STORE"].map(b2=><button key={b2} onClick={()=>setReportBiz(b2)} className="press"
               style={{padding:"6px 12px",borderRadius:8,fontSize:11.5,fontWeight:600,cursor:"pointer",
                 background:reportBiz===b2?(b2==="JB_STORE"?C.p1:b2==="JS_CLOTHING"?C.b1:C.g1):"transparent",
-                border:`1.5px solid ${reportBiz===b2?(b2==="JB_STORE"?C.p:b2==="JS_CLOTHING"?C.b:C.g):C.bo0}`,
+                border:`1.5px solid ${reportBiz===b2?(b2==="JB_STORE"?C.p:b2==="JS_CLOTHING"?C.b:C.g):C.b0}`,
                 color:reportBiz===b2?(b2==="JB_STORE"?C.p:b2==="JS_CLOTHING"?C.b:C.g):C.t2,fontFamily:F.sans}}>
               {b2==="ALL"?"Semua":BIZ[b2]?.name}</button>)}
-            {/* Kasir filter */}
-            <select value={reportKasir} onChange={e=>setReportKasir(e.target.value)}
-              style={{padding:"6px 10px",background:C.bg2,border:`1.5px solid ${C.bo0}`,borderRadius:8,color:C.t0,fontSize:11.5,fontFamily:F.sans,cursor:"pointer"}}>
-              <option value="ALL">Semua Kasir</option>
-              {users.filter(u=>u.role==="kasir"||u.role==="admin").map(u=><option key={u.id} value={String(u.id)}>{u.name}</option>)}
-            </select>
-            {[["all","Semua"],["today","Hari Ini"],["week","7 Hari"],["month","Bulan Ini"],["custom","Rentang"]].map(([v,l])=><button key={v}
+            {/* Range filter */}
+            {[["all","Semua"],["today","Hari Ini"],["week","7 Hari"],["month","Bulan Ini"]].map(([v,l])=><button key={v}
               onClick={()=>setReportRange(v)} className="press"
               style={{padding:"6px 12px",borderRadius:8,fontSize:11.5,fontWeight:600,cursor:"pointer",
-                background:reportRange===v?C.g1:"transparent",border:`1.5px solid ${reportRange===v?C.g:C.bo0}`,
+                background:reportRange===v?C.g1:"transparent",border:`1.5px solid ${reportRange===v?C.g:C.b0}`,
                 color:reportRange===v?C.g:C.t2,fontFamily:F.sans}}>{l}</button>)}
-            {reportRange==="custom"&&<><input type="date" value={lapFrom} onChange={e=>setLapFrom(e.target.value)}
-              style={{padding:"6px 10px",background:C.bg3,border:`1.5px solid ${C.bo1}`,borderRadius:8,color:C.t0,fontSize:12,fontFamily:F.sans}}/>
-              <span style={{color:C.t2,fontSize:12}}>s/d</span>
-              <input type="date" value={lapTo} onChange={e=>setLapTo(e.target.value)}
-                style={{padding:"6px 10px",background:C.bg3,border:`1.5px solid ${C.bo1}`,borderRadius:8,color:C.t0,fontSize:12,fontFamily:F.sans}}/></>}
           </div>
-          {/* KPI */}
-          <div className="stat-grid-4" style={{display:"grid",gap:8}}>
-            <Stat icon="💰" label="Total Pendapatan" value={rp(totalRev)} color={C.g} sub={`${filtTrx.length} transaksi`}/>
-            <Stat icon="📦" label="Total HPP" value={rp(totalHppAll)} color={C.a}/>
+
+          {/* KPI cards */}
+          <div style={{display:"grid",gridTemplateColumns:"repeat(2,1fr)",gap:8}}>
+            <Stat icon="💰" label="Total Pendapatan" value={rp(totalRev)} color={C.g}
+              sub={`${filtTrx.length} transaksi`}/>
+            <Stat icon="📦" label="Total HPP / Modal" value={rp(totalHppAll)} color={C.a}/>
             <Stat icon="📈" label="Laba Kotor" value={rp(grossProfit)} color={C.cy}/>
-            <Stat icon="🎯" label="Margin" value={margin} color={C.b} sub={`Diskon: ${rp(totalDisc)}`}/>
+            <Stat icon="🎯" label="Margin Laba" value={margin} color={C.b}
+              sub={`Rata-rata per trx: ${filtTrx.length?rp(Math.floor(totalRev/filtTrx.length)):rp(0)}`}/>
           </div>
-          {/* Pie */}
-          {bizRevData.length>1&&<ChartBoundary key="pie"><Card>
+
+          {/* Pie per bisnis */}
+          {bizRevData.length>1&&<Card>
             <div style={{fontSize:10,fontWeight:700,color:C.t2,textTransform:"uppercase",letterSpacing:1,marginBottom:12}}>Kontribusi per Bisnis</div>
-            <div style={{minHeight:160}}>
-            <ResponsiveContainer width="100%" height={160}>
-              <PieChart>
-                <Pie data={bizRevData} isAnimationActive={false} cx="50%" cy="50%" innerRadius={45} outerRadius={70} paddingAngle={3} dataKey="value">
-                  {bizRevData.map((entry,index)=><Cell key={index} fill={entry.color}/>)}
-                </Pie>
-                <Tooltip formatter={v=>rp(v||0)} contentStyle={{background:C.bg2,border:`1px solid ${C.bo1}`,borderRadius:8,fontSize:12}}/>
-                <Legend formatter={(v,e)=><span style={{color:C.t1,fontSize:11}}>{v}: {rp(e?.payload?.value||0)}</span>}/>
-              </PieChart>
-            </ResponsiveContainer>
+            <div style={{display:"flex",alignItems:"center",gap:12,flexWrap:"wrap"}}>
+              <ResponsiveContainer width="100%" height={160}>
+                <PieChart>
+                  <Pie data={bizRevData} cx="50%" cy="50%" innerRadius={45} outerRadius={70} paddingAngle={3} dataKey="value">
+                    {bizRevData.map((entry,index)=><Cell key={index} fill={entry.color}/>)}
+                  </Pie>
+                  <Tooltip formatter={v=>rp(v)} contentStyle={{background:C.bg2,border:`1px solid ${C.b1}`,borderRadius:8,fontSize:12}}/>
+                  <Legend formatter={(v,entry)=><span style={{color:C.t1,fontSize:11}}>{v}: {rp(entry.payload.value)}</span>}/>
+                </PieChart>
+              </ResponsiveContainer>
             </div>
-          </Card></ChartBoundary>}
+          </Card>}
+
           {/* Daily chart */}
-          {dailyData.length>0&&<ChartBoundary key="bar"><Card>
-            <div style={{fontSize:10,fontWeight:700,color:C.t2,textTransform:"uppercase",letterSpacing:1,marginBottom:12}}>Tren Harian</div>
-            <div style={{minHeight:190}}>
+          {dailyData.length>0&&<Card>
+            <div style={{fontSize:10,fontWeight:700,color:C.t2,textTransform:"uppercase",letterSpacing:1,marginBottom:12}}>Tren Harian (Pendapatan & Laba)</div>
             <ResponsiveContainer width="100%" height={190}>
               <BarChart data={dailyData} barGap={2} barCategoryGap="30%">
-                <CartesianGrid strokeDasharray="3 3" stroke={C.bo0} vertical={false}/>
+                <CartesianGrid strokeDasharray="3 3" stroke={C.b0} vertical={false}/>
                 <XAxis dataKey="date" tick={{fill:C.t3,fontSize:9.5}} axisLine={false} tickLine={false}/>
                 <YAxis tick={{fill:C.t3,fontSize:9}} axisLine={false} tickLine={false} tickFormatter={v=>"Rp"+Math.floor(v/1000)+"k"}/>
-                <Tooltip contentStyle={{background:C.bg2,border:`1px solid ${C.bo1}`,borderRadius:9,fontSize:12}} formatter={(v,n)=>[rp(v),n==="rev"?"Pendapatan":"Laba"]}/>
-                <Bar dataKey="rev" name="rev" fill={C.g} radius={[4,4,0,0]} opacity={.8} isAnimationActive={false}/>
-                <Bar dataKey="profit" name="profit" fill={C.cy} radius={[4,4,0,0]} opacity={.7} isAnimationActive={false}/>
+                <Tooltip contentStyle={{background:C.bg2,border:`1px solid ${C.b1}`,borderRadius:9,fontSize:12}}
+                  formatter={(v,n)=>[rp(v),n==="rev"?"Pendapatan":"Laba Kotor"]}/>
+                <Bar dataKey="rev"    name="rev"    fill={C.g}  radius={[4,4,0,0]} opacity={.8}/>
+                <Bar dataKey="profit" name="profit" fill={C.cy} radius={[4,4,0,0]} opacity={.7}/>
               </BarChart>
             </ResponsiveContainer>
-            </div>
-          </Card></ChartBoundary>}
-          {/* Per kasir */}
-          {kasirBreakdown.length>0&&<Card noPad style={{overflow:"hidden"}}>
-            <div style={{padding:"12px 14px",borderBottom:`1px solid ${C.bo0}`}}>
-              <span style={{fontSize:10,fontWeight:700,color:C.t2,textTransform:"uppercase",letterSpacing:1}}>Performa per Kasir</span>
-            </div>
-            <TableWrap>
-              <table style={{width:"100%",borderCollapse:"collapse",fontSize:12,minWidth:500}}>
-                <THead cols={["Kasir","Transaksi","Pendapatan","Laba","Diskon","Rata-rata/Trx"]}/>
-                <tbody>{kasirBreakdown.map((k,i)=><tr key={k.name} className="hrow" style={{borderTop:`1px solid ${C.bo0}`,background:i%2===0?"transparent":C.bg0}}>
-                  <td style={{padding:"14px 13px",fontWeight:700}}>{k.name}</td>
-                  <td style={{padding:"14px 13px",fontFamily:F.mono}}>{k.trx}</td>
-                  <td style={{padding:"14px 13px",fontFamily:F.mono,color:C.g,fontSize:11}}>{rp(k.rev)}</td>
-                  <td style={{padding:"14px 13px",fontFamily:F.mono,color:C.cy,fontSize:11}}>{rp(k.profit)}</td>
-                  <td style={{padding:"14px 13px",fontFamily:F.mono,color:C.r,fontSize:11}}>{rp(k.discount)}</td>
-                  <td style={{padding:"14px 13px",fontFamily:F.mono,fontSize:11}}>{k.trx>0?rp(Math.floor(k.rev/k.trx)):"-"}</td>
-                </tr>)}</tbody>
-              </table>
-            </TableWrap>
           </Card>}
-          {/* Produk performa */}
+
+          {/* Performa produk */}
           {prodPerf.length>0&&<Card noPad style={{overflow:"hidden"}}>
-            <div style={{padding:"12px 14px",borderBottom:`1px solid ${C.bo0}`}}>
+            <div style={{padding:"13px 14px",borderBottom:`1px solid ${C.b0}`,display:"flex",alignItems:"center",justifyContent:"space-between"}}>
               <span style={{fontSize:10,fontWeight:700,color:C.t2,textTransform:"uppercase",letterSpacing:1}}>Performa Produk (Top {Math.min(prodPerf.length,20)})</span>
             </div>
-            <TableWrap>
-              <table style={{width:"100%",borderCollapse:"collapse",fontSize:12,minWidth:500}}>
-                <THead cols={["Produk","Qty","Pendapatan","HPP","Laba","Margin"]}/>
-                <tbody>{prodPerf.slice(0,20).map((p,i)=>{const laba=p.rev-p.hpp,mg=p.rev>0?((laba/p.rev)*100).toFixed(1)+"%":"0%";
-                  return <tr key={p.barcode} className="hrow" style={{borderTop:`1px solid ${C.bo0}`,background:i%2===0?"transparent":C.bg0}}>
-                    <td style={{padding:"14px 13px",fontWeight:600,fontSize:12}}>{p.name}<div className="mn" style={{fontSize:9.5,color:C.t3,marginTop:1}}>{p.barcode}</div></td>
-                    <td style={{padding:"14px 13px",fontFamily:F.mono,fontWeight:700}}>{p.qty}</td>
-                    <td style={{padding:"14px 13px",fontFamily:F.mono,color:C.g,fontSize:11}}>{rp(p.rev)}</td>
-                    <td style={{padding:"14px 13px",fontFamily:F.mono,color:C.a,fontSize:11}}>{rp(p.hpp)}</td>
-                    <td style={{padding:"14px 13px",fontFamily:F.mono,color:C.cy,fontSize:11}}>{rp(laba)}</td>
-                    <td style={{padding:"14px 13px",fontFamily:F.mono,fontSize:11}}>
+            <div style={{overflowX:"auto"}}>
+              <table style={{width:"100%",borderCollapse:"collapse",fontSize:11.5,minWidth:480}}>
+                <THead cols={["Produk","Qty Terjual","Pendapatan","HPP","Laba","Margin"]}/>
+                <tbody>{prodPerf.slice(0,20).map((p,i)=>{
+                  const laba=p.rev-p.hpp,mg=p.rev>0?((laba/p.rev)*100).toFixed(1)+"%":"0%";
+                  return <tr key={p.barcode} className="hrow" style={{borderTop:`1px solid ${C.b0}`,background:i%2===0?"transparent":C.bg0}}>
+                    <td style={{padding:"12px 13px",fontWeight:600,fontSize:12}}>{p.name}
+                      <div className="mn" style={{fontSize:9.5,color:C.t3,marginTop:1}}>{p.barcode}</div></td>
+                    <td style={{padding:"12px 13px",fontFamily:F.mono,fontWeight:700}}>{p.qty}</td>
+                    <td style={{padding:"12px 13px",fontFamily:F.mono,color:C.g,fontSize:11}}>{rp(p.rev)}</td>
+                    <td style={{padding:"12px 13px",fontFamily:F.mono,color:C.a,fontSize:11}}>{rp(p.hpp)}</td>
+                    <td style={{padding:"12px 13px",fontFamily:F.mono,color:C.cy,fontSize:11}}>{rp(laba)}</td>
+                    <td style={{padding:"12px 13px",fontFamily:F.mono,fontSize:11}}>
                       <span style={{color:parseFloat(mg)>30?C.g:parseFloat(mg)>15?C.a:C.r}}>{mg}</span>
                     </td>
                   </tr>;})}
                 </tbody>
               </table>
-              <div style={{padding:"12px 14px",borderTop:`1px solid ${C.bo0}`,display:"flex",gap:16,fontSize:11,flexWrap:"wrap"}}>
+              <div style={{padding:"12px 13px",borderTop:`1px solid ${C.b0}`,display:"flex",gap:16,fontSize:11,flexWrap:"wrap"}}>
                 <span style={{color:C.t2}}>Pendapatan: <b className="mn" style={{color:C.g}}>{rp(totalRev)}</b></span>
                 <span style={{color:C.t2}}>Laba: <b className="mn" style={{color:C.cy}}>{rp(grossProfit)}</b></span>
-                <span style={{color:C.t2}}>Margin: <b className="mn" style={{color:C.b}}>{margin}</b> <span className="mn" style={{color:C.cy}}>({rp(grossProfit)})</span></span>
+                <span style={{color:C.t2}}>Margin: <b className="mn" style={{color:C.b}}>{margin}</b></span>
               </div>
-            </TableWrap>
+            </div>
           </Card>}
-          {/* Transaksi */}
+
+          {/* Riwayat transaksi */}
           <Card noPad style={{overflow:"hidden"}}>
-            <div style={{padding:"12px 14px",borderBottom:`1px solid ${C.bo0}`}}>
+            <div style={{padding:"13px 14px",borderBottom:`1px solid ${C.b0}`}}>
               <span style={{fontSize:10,fontWeight:700,color:C.t2,textTransform:"uppercase",letterSpacing:1}}>Riwayat Transaksi ({filtTrx.length})</span>
             </div>
             {filtTrx.length===0?<div style={{padding:"24px",textAlign:"center",color:C.t3,fontSize:12}}>Belum ada transaksi</div>
-            :<TableWrap>
-              <table style={{width:"100%",borderCollapse:"collapse",fontSize:12,minWidth:540}}>
-                <THead cols={["ID","Tanggal","Kasir","Bisnis","Subtotal","Diskon","Total","Laba","Bayar","Retur"]}/>
-                <tbody>{filtTrx.slice(0,100).map((t,i)=><tr key={t.id} className="hrow" style={{borderTop:`1px solid ${C.bo0}`,background:i%2===0?"transparent":C.bg0}}>
-                  <td style={{padding:"12px 13px",fontFamily:F.mono,fontSize:9.5,color:C.t3}}>{t.id?.slice(-10)}</td>
-                  <td style={{padding:"12px 13px",fontSize:10,color:C.t2,whiteSpace:"nowrap"}}>{t.date}</td>
-                  <td style={{padding:"12px 13px",fontWeight:500,fontSize:11}}>{t.kasir}</td>
-                  <td style={{padding:"12px 13px"}}><BizChip biz={t.business} sm/></td>
-                  <td style={{padding:"12px 13px",fontFamily:F.mono,fontSize:11}}>{rp(t.subtotal||t.total)}</td>
-                  <td style={{padding:"12px 13px",fontFamily:F.mono,color:C.r,fontSize:11}}>{t.discount>0?`−${rp(t.discount)}`:"-"}</td>
-                  <td style={{padding:"12px 13px",fontFamily:F.mono,color:C.g,fontSize:11,fontWeight:700}}>{rp(t.total)}</td>
-                  <td style={{padding:"12px 13px",fontFamily:F.mono,color:C.cy,fontSize:11}}>{rp(t.profit||0)}</td>
-                  <td style={{padding:"12px 13px",fontSize:10,color:C.t2}}>{t.payment||"Tunai"}</td>
-                  <td style={{padding:"12px 13px"}}>
-                    {t.returned?<span style={{fontSize:10,color:C.a,fontWeight:600}}>✓ Retur</span>
-                    :<button onClick={()=>{if(window.confirm(`Retur transaksi ${t.id}?\nStok akan dikembalikan.`))doReturn(t);}} className="press"
-                      style={{padding:"3px 9px",background:C.a1,border:`1px solid ${C.a}22`,borderRadius:6,color:C.a,fontSize:10,fontWeight:700}}>Retur</button>}
-                  </td>
+            :<div style={{overflowX:"auto"}}>
+              <table style={{width:"100%",borderCollapse:"collapse",fontSize:11.5,minWidth:500}}>
+                <THead cols={["ID","Tanggal","Kasir","Bisnis","Total","HPP","Laba","Item"]}/>
+                <tbody>{filtTrx.slice(0,50).map((t,i)=><tr key={t.id} className="hrow" style={{borderTop:`1px solid ${C.b0}`,background:i%2===0?"transparent":C.bg0}}>
+                  <td style={{padding:"11px 13px",fontFamily:F.mono,fontSize:9.5,color:C.t3}}>{t.id?.slice(-10)}</td>
+                  <td style={{padding:"11px 13px",fontSize:10,color:C.t2,whiteSpace:"nowrap"}}>{t.date}</td>
+                  <td style={{padding:"11px 13px",fontWeight:500}}>{t.kasir}</td>
+                  <td style={{padding:"11px 13px"}}><BizChip biz={t.business} sm/></td>
+                  <td style={{padding:"11px 13px",fontFamily:F.mono,color:C.g,fontSize:11,fontWeight:700}}>{rp(t.total)}</td>
+                  <td style={{padding:"11px 13px",fontFamily:F.mono,color:C.a,fontSize:11}}>{rp(t.totalHpp||0)}</td>
+                  <td style={{padding:"11px 13px",fontFamily:F.mono,color:C.cy,fontSize:11}}>{rp(t.profit||0)}</td>
+                  <td style={{padding:"11px 13px",fontFamily:F.mono,fontSize:10}}>{t.items?.length||0}</td>
                 </tr>)}</tbody>
               </table>
-            </TableWrap>}
+            </div>}
           </Card>
         </div>}
-
 
         {/* ── ABSENSI ── */}
         {adminTab==="absensi"&&<div style={{display:"flex",flexDirection:"column",gap:10}}>
           <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",flexWrap:"wrap",gap:8}}>
             <h2 style={{fontSize:15,fontWeight:800}}>Laporan Absensi</h2>
-            <div style={{display:"flex",gap:7,flexWrap:"wrap"}}>
-              <button onClick={()=>downloadXLSX([...attFiltered].sort((a,b)=>{try{return new Date(b.checkInISO||b.checkIn)-new Date(a.checkInISO||a.checkIn);}catch{return 0;}}),[
-                {key:"date",label:"Tanggal",w:18},{key:"name",label:"Nama Pegawai",w:22},
-                {key:"role",label:"Role",w:10},{key:"business",label:"Bisnis",fn:r=>BIZ[r.business]?.name||r.business,w:14},
-                {key:"checkIn",label:"Jam Masuk",w:24},{key:"checkOut",label:"Jam Pulang",fn:r=>r.checkOut||"-",w:24},
-                {key:"dur",label:"Durasi",fn:r=>calcDur(r),w:14},
-              ],"Absensi","absensi")} className="press"
-                style={{padding:"7px 14px",background:C.g1,border:`1px solid ${C.g}33`,borderRadius:8,color:C.g,fontSize:12,fontWeight:700,fontFamily:F.sans}}>⬇ Excel</button>
-              <button onClick={async()=>{if(!window.confirm("Reset absensi hari ini?")) return;await fbClearAttendanceByDate(todayDate()).catch(()=>{});toast("Absensi hari ini direset","warn");}} className="press"
-                style={{padding:"7px 14px",background:C.r1,border:`1px solid ${C.r}33`,borderRadius:8,color:C.r,fontSize:12,fontWeight:700,fontFamily:F.sans}}>🗑 Reset Hari Ini</button>
-            </div>
+            <button onClick={async()=>{
+              if(!window.confirm("Reset semua absensi hari ini? Data akan dihapus permanen.")) return;
+              await fbClearAttendanceByDate(todayDate()).catch(()=>{});
+              toast("✅ Absensi hari ini direset","warn");
+            }} className="press" style={{padding:"7px 14px",background:C.r1,border:`1px solid ${C.r}33`,
+              borderRadius:9,color:C.r,fontSize:12,fontWeight:700,fontFamily:F.sans}}>
+              🗑 Reset Absensi Hari Ini
+            </button>
           </div>
+
+          {/* Filter */}
           <Card style={{padding:"12px 14px"}}>
-            <div style={{display:"flex",gap:7,flexWrap:"wrap",alignItems:"flex-end"}}>
-              <div style={{flex:"1 1 180px",minWidth:160}}>
-                <div style={{fontSize:9.5,fontWeight:700,color:C.t2,textTransform:"uppercase",letterSpacing:.5,marginBottom:5}}>Pegawai</div>
-                <select value={selUser} onChange={e=>setSelUser(e.target.value)} style={{width:"100%",padding:"10px 12px",background:C.bg3,border:`1.5px solid ${C.bo0}`,borderRadius:10,color:C.t0,fontSize:13,fontFamily:F.sans,cursor:"pointer"}}>
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,alignItems:"end"}}>
+              <div>
+                <div style={{fontSize:9.5,fontWeight:700,color:C.t2,textTransform:"uppercase",letterSpacing:.5,marginBottom:5}}>Filter Pegawai</div>
+                <select value={selUser} onChange={e=>setSelUser(e.target.value)}
+                  style={{width:"100%",padding:"10px 12px",background:C.bg3,border:`1.5px solid ${C.b0}`,
+                    borderRadius:10,color:C.t0,fontSize:13,fontFamily:F.sans,cursor:"pointer"}}>
                   <option value="ALL">Semua Pegawai</option>
                   {users.filter(u=>u.role!=="admin").map(u=><option key={u.id} value={String(u.id)}>{u.avatar} {u.name}</option>)}
                 </select>
               </div>
-              <div style={{flex:"2 1 300px"}}>
-                <div style={{fontSize:9.5,fontWeight:700,color:C.t2,textTransform:"uppercase",letterSpacing:.5,marginBottom:5}}>Rentang Waktu</div>
-                <div style={{display:"flex",gap:6,flexWrap:"wrap",alignItems:"center"}}>
-                  {[["all","Semua"],["today","Hari Ini"],["week","7 Hari"],["month","Bulan Ini"],["custom","Rentang"]].map(([v,l])=>(
-                    <button key={v} onClick={()=>setAttRange(v)} className="press"
-                      style={{padding:"8px 13px",borderRadius:8,fontSize:12,fontWeight:600,cursor:"pointer",background:attRange===v?C.g1:"transparent",border:`1.5px solid ${attRange===v?C.g:C.bo0}`,color:attRange===v?C.g:C.t2,fontFamily:F.sans}}>{l}</button>))}
-                  {attRange==="custom"&&<>
-                    <input type="date" value={attFrom} onChange={e=>setAttFrom(e.target.value)} style={{padding:"8px 10px",background:C.bg3,border:`1.5px solid ${C.bo1}`,borderRadius:8,color:C.t0,fontSize:12,fontFamily:F.sans}}/>
-                    <span style={{color:C.t2,fontSize:12,fontWeight:600}}>s/d</span>
-                    <input type="date" value={attTo} onChange={e=>setAttTo(e.target.value)} style={{padding:"8px 10px",background:C.bg3,border:`1.5px solid ${C.bo1}`,borderRadius:8,color:C.t0,fontSize:12,fontFamily:F.sans}}/>
-                  </>}
-                </div>
+              <div>
+                <div style={{fontSize:9.5,fontWeight:700,color:C.t2,textTransform:"uppercase",letterSpacing:.5,marginBottom:5}}>Bulan</div>
+                <input type="month" value={selMonth} onChange={e=>setSelMonth(e.target.value)}
+                  style={{width:"100%",padding:"10px 12px",background:C.bg3,border:`1.5px solid ${C.b0}`,
+                    borderRadius:10,color:C.t0,fontSize:13,cursor:"pointer",fontFamily:F.sans}}/>
               </div>
             </div>
-            <div style={{marginTop:10,padding:"7px 11px",background:C.bg3,borderRadius:8,fontSize:11,color:C.t2,border:`1px solid ${C.bo0}`}}>
-              Filter berlaku untuk ringkasan dan detail sekaligus
-              <span style={{float:"right",fontFamily:F.mono,color:C.g,fontWeight:700}}>{attFiltered.length} record</span>
-            </div>
           </Card>
-          {/* Ringkasan */}
+
+          {/* Ringkasan per pegawai bulan ini */}
           <Card noPad style={{overflow:"hidden"}}>
-            <div style={{padding:"12px 14px",borderBottom:`1px solid ${C.bo0}`}}>
-              <span style={{fontSize:10,fontWeight:700,color:C.t2,textTransform:"uppercase",letterSpacing:1}}>Ringkasan Kehadiran ({Object.keys(attByUser).length} pegawai)</span>
+            <div style={{padding:"13px 14px",borderBottom:`1px solid ${C.b0}`}}>
+              <span style={{fontSize:10,fontWeight:700,color:C.t2,textTransform:"uppercase",letterSpacing:1}}>
+                Ringkasan Kehadiran — {new Date(selMonth+"-01").toLocaleDateString("id-ID",{month:"long",year:"numeric"})}
+              </span>
             </div>
             {Object.keys(attByUser).length===0
-              ?<div style={{padding:"24px",textAlign:"center",color:C.t3,fontSize:12}}>Belum ada data untuk periode ini</div>
-              :<TableWrap>
+              ?<div style={{padding:"24px",textAlign:"center",color:C.t3,fontSize:12}}>Belum ada data bulan ini</div>
+              :<div style={{overflowX:"auto"}}>
                 <table style={{width:"100%",borderCollapse:"collapse",fontSize:12}}>
                   <THead cols={["Pegawai","Role","Hadir (Hari)","Total Jam Kerja","Rata-rata/Hari","Terakhir Masuk"]}/>
                   <tbody>{Object.values(attByUser).map((au,i)=>{
                     const avgMin=au.days>0?Math.floor(au.totalMinutes/au.days):0;
                     const totalJam=`${Math.floor(au.totalMinutes/60)}j ${au.totalMinutes%60}m`;
                     const avgJam=`${Math.floor(avgMin/60)}j ${avgMin%60}m`;
-                    return <tr key={au.userId} className="hrow" style={{borderTop:`1px solid ${C.bo0}`,background:i%2===0?"transparent":C.bg0}}>
-                      <td style={{padding:"14px 13px",fontWeight:700,display:"flex",alignItems:"center",gap:6}}>
-                        <span>{users.find(u=>u.id===au.userId)?.avatar||"🧑"}</span>{au.name}</td>
-                      <td style={{padding:"14px 13px"}}><RoleTag role={au.role}/></td>
-                      <td style={{padding:"14px 13px",fontFamily:F.mono,fontWeight:700,color:C.g,fontSize:14}}>{au.days}</td>
-                      <td style={{padding:"14px 13px",fontFamily:F.mono,color:C.cy}}>{au.totalMinutes>0?totalJam:"-"}</td>
-                      <td style={{padding:"14px 13px",fontFamily:F.mono,color:C.t1}}>{au.totalMinutes>0?avgJam:"-"}</td>
-                      <td style={{padding:"14px 13px",fontSize:10.5,color:C.t2}}>{au.records[au.records.length-1]?.checkIn||"-"}</td>
+                    return <tr key={au.userId} className="hrow" style={{borderTop:`1px solid ${C.b0}`,background:i%2===0?"transparent":C.bg0}}>
+                      <td style={{padding:"13px 14px",fontWeight:700,display:"flex",alignItems:"center",gap:6}}>
+                        <span>{users.find(u=>u.id===au.userId)?.avatar||"🧑"}</span>{au.name}
+                      </td>
+                      <td style={{padding:"13px 14px"}}><RoleTag role={au.role}/></td>
+                      <td style={{padding:"13px 14px",fontFamily:F.mono,fontWeight:700,color:C.g,fontSize:14}}>{au.days}</td>
+                      <td style={{padding:"13px 14px",fontFamily:F.mono,color:C.cy}}>{au.totalMinutes>0?totalJam:"-"}</td>
+                      <td style={{padding:"13px 14px",fontFamily:F.mono,color:C.t1}}>{au.totalMinutes>0?avgJam:"-"}</td>
+                      <td style={{padding:"13px 14px",fontSize:10.5,color:C.t2}}>{au.records[au.records.length-1]?.checkIn||"-"}</td>
                     </tr>;})}
                   </tbody>
                 </table>
-              </TableWrap>}
+              </div>}
           </Card>
-          {/* Detail */}
+
+          {/* Detail records */}
           <Card noPad style={{overflow:"hidden"}}>
-            <div style={{padding:"12px 14px",borderBottom:`1px solid ${C.bo0}`}}>
-              <span style={{fontSize:10,fontWeight:700,color:C.t2,textTransform:"uppercase",letterSpacing:1}}>Detail Absensi ({attFiltered.length})</span>
+            <div style={{padding:"13px 14px",borderBottom:`1px solid ${C.b0}`,display:"flex",alignItems:"center",gap:8}}>
+              <span style={{flex:1,fontSize:10,fontWeight:700,color:C.t2,textTransform:"uppercase",letterSpacing:1}}>
+                Detail Absensi ({attFiltered.length} record)
+              </span>
             </div>
-            {attFiltered.length===0?<div style={{padding:"24px",textAlign:"center",color:C.t3,fontSize:12}}>Tidak ada data</div>
-            :<TableWrap>
-              <table style={{width:"100%",borderCollapse:"collapse",fontSize:12,minWidth:540}}>
-                <THead cols={["Tanggal","Pegawai","Role","Bisnis","Jam Masuk","Jam Pulang","Durasi"]}/>
-                <tbody>{[...attFiltered].sort((a,b)=>{try{return new Date(b.checkInISO||b.checkIn)-new Date(a.checkInISO||a.checkIn);}catch{return 0;}}).map((a,i)=>(
-                  <tr key={a.id} className="hrow" style={{borderTop:`1px solid ${C.bo0}`,background:i%2===0?"transparent":C.bg0}}>
-                    <td style={{padding:"14px 13px",fontFamily:F.mono,fontSize:10,color:C.t2,whiteSpace:"nowrap"}}>{a.date}</td>
-                    <td style={{padding:"14px 13px",fontWeight:600,display:"flex",alignItems:"center",gap:5}}>
-                      <span>{users.find(u=>u.id===a.userId)?.avatar||"🧑"}</span>{a.name}</td>
-                    <td style={{padding:"14px 13px"}}><RoleTag role={a.role}/></td>
-                    <td style={{padding:"14px 13px"}}><BizChip biz={a.business} sm/></td>
-                    <td style={{padding:"14px 13px",fontFamily:F.mono,fontSize:11,color:C.g}}>{a.checkIn}</td>
-                    <td style={{padding:"14px 13px",fontFamily:F.mono,fontSize:11,color:a.checkOut?C.t1:C.a}}>
-                      {a.checkOut||<span style={{fontSize:10,color:C.a,fontWeight:700}}>● Masih hadir</span>}</td>
-                    <td style={{padding:"14px 13px",fontFamily:F.mono,fontSize:11,color:C.cy}}>{calcDur(a)}</td>
-                  </tr>))}
-                </tbody>
-              </table>
-            </TableWrap>}
+            {attFiltered.length===0
+              ?<div style={{padding:"24px",textAlign:"center",color:C.t3,fontSize:12}}>Tidak ada data untuk filter ini</div>
+              :<div style={{overflowX:"auto"}}>
+                <table style={{width:"100%",borderCollapse:"collapse",fontSize:11.5,minWidth:520}}>
+                  <THead cols={["Tanggal","Pegawai","Role","Bisnis","Jam Masuk","Jam Pulang","Durasi"]}/>
+                  <tbody>{attFiltered.sort((a,b)=>{try{return new Date(b.checkIn)-new Date(a.checkIn);}catch{return 0;}}).map((a,i)=>(
+                    <tr key={a.id} className="hrow" style={{borderTop:`1px solid ${C.b0}`,background:i%2===0?"transparent":C.bg0}}>
+                      <td style={{padding:"12px 13px",fontFamily:F.mono,fontSize:10,color:C.t2,whiteSpace:"nowrap"}}>{a.date}</td>
+                      <td style={{padding:"12px 13px",fontWeight:600,display:"flex",alignItems:"center",gap:5}}>
+                        <span>{users.find(u=>u.id===a.userId)?.avatar||"🧑"}</span>{a.name}
+                      </td>
+                      <td style={{padding:"12px 13px"}}><RoleTag role={a.role}/></td>
+                      <td style={{padding:"12px 13px"}}><BizChip biz={a.business} sm/></td>
+                      <td style={{padding:"12px 13px",fontFamily:F.mono,fontSize:11,color:C.g}}>{a.checkIn}</td>
+                      <td style={{padding:"12px 13px",fontFamily:F.mono,fontSize:11,color:a.checkOut?C.t1:C.a}}>
+                        {a.checkOut||<span style={{fontSize:10,color:C.a,fontWeight:700}}>● Masih hadir</span>}
+                      </td>
+                      <td style={{padding:"12px 13px",fontFamily:F.mono,fontSize:11,color:C.cy}}>
+                        {calcDur(a)}
+                      </td>
+                    </tr>
+                  ))}</tbody>
+                </table>
+              </div>}
           </Card>
         </div>}
-
 
         {/* ── LOG STOK ── */}
-        {adminTab==="stoklog"&&(()=>{
-          const now3=new Date();
-          const slogsFiltered=slogs.filter(l=>{
-            const matchBiz=slogBiz==="ALL"||l.business===slogBiz;
-            const matchType=slogType==="ALL"||l.type===slogType;
-            let matchDate=true;
-            if(slogRange!=="all"){try{
-              const d=parseD(l.date);if(!d) return false;
-              if(slogRange==="today") matchDate=d.toDateString()===now3.toDateString();
-              else if(slogRange==="week"){const w=new Date(now3);w.setDate(w.getDate()-7);matchDate=d>=w;}
-              else if(slogRange==="month") matchDate=d.getMonth()===now3.getMonth()&&d.getFullYear()===now3.getFullYear();
-              else if(slogRange==="custom"){const fr=slogFrom?new Date(slogFrom):null,to=slogTo?new Date(slogTo+"T23:59:59"):null;if(fr&&d<fr)matchDate=false;if(to&&d>to)matchDate=false;}
-            }catch{matchDate=false;}}
-            return matchBiz&&matchType&&matchDate;
-          });
-          return <div style={{display:"flex",flexDirection:"column",gap:10}}>
-            <div style={{display:"flex",alignItems:"center",gap:8,flexWrap:"wrap"}}>
-              <h2 style={{fontSize:15,fontWeight:800,flex:1}}>Log Stok <span style={{color:C.t2,fontWeight:500,fontSize:13}}>({slogsFiltered.length}/{slogs.length})</span></h2>
-              <button onClick={()=>downloadXLSX(slogsFiltered,[
-                {key:"date",label:"Waktu",w:24},{key:"barcode",label:"Barcode",w:14},
-                {key:"name",label:"Nama Produk",w:28},{key:"business",label:"Bisnis",fn:r=>BIZ[r.business]?.name||r.business,w:14},
-                {key:"type",label:"Tipe",w:10},{key:"qty",label:"Qty",fn:r=>r.qty,num:true,w:8},
-                {key:"before",label:"Stok Sebelum",fn:r=>r.before,num:true,w:14},{key:"after",label:"Stok Sesudah",fn:r=>r.after,num:true,w:14},
-                {key:"by",label:"Oleh",w:20},
-              ],"Log Stok","log_stok")} className="press"
-                style={{padding:"7px 14px",background:C.g1,border:`1px solid ${C.g}33`,borderRadius:8,color:C.g,fontSize:12,fontWeight:700,fontFamily:F.sans}}>⬇ Excel</button>
-            </div>
-            <Card style={{padding:"12px 14px"}}>
-              <div style={{display:"flex",gap:7,flexWrap:"wrap",alignItems:"center"}}>
-                {["ALL","JS_CLOTHING","JB_STORE"].map(b2=><button key={b2} onClick={()=>setSlogBiz(b2)} className="press"
-                  style={{padding:"5px 11px",borderRadius:7,fontSize:11.5,fontWeight:600,cursor:"pointer",background:slogBiz===b2?(b2==="JB_STORE"?C.p1:b2==="JS_CLOTHING"?C.b1:C.g1):"transparent",border:`1.5px solid ${slogBiz===b2?(b2==="JB_STORE"?C.p:b2==="JS_CLOTHING"?C.b:C.g):C.bo0}`,color:slogBiz===b2?(b2==="JB_STORE"?C.p:b2==="JS_CLOTHING"?C.b:C.g):C.t2,fontFamily:F.sans}}>{b2==="ALL"?"Semua":BIZ[b2]?.name}</button>)}
-                <div style={{width:1,height:20,background:C.bo0}}/>
-                {["ALL","masuk","keluar"].map(t=><button key={t} onClick={()=>setSlogType(t)} className="press"
-                  style={{padding:"5px 11px",borderRadius:7,fontSize:11.5,fontWeight:600,cursor:"pointer",background:slogType===t?(t==="masuk"?C.g1:t==="keluar"?C.r1:C.a1):"transparent",border:`1.5px solid ${slogType===t?(t==="masuk"?C.g:t==="keluar"?C.r:C.a):C.bo0}`,color:slogType===t?(t==="masuk"?C.g:t==="keluar"?C.r:C.a):C.t2,fontFamily:F.sans}}>
-                  {t==="ALL"?"Semua":t==="masuk"?"↑ Masuk":"↓ Keluar"}</button>)}
-                <div style={{width:1,height:20,background:C.bo0}}/>
-                {[["all","Semua"],["today","Hari Ini"],["week","7 Hari"],["month","Bulan Ini"],["custom","Rentang"]].map(([v,l])=>(
-                  <button key={v} onClick={()=>setSlogRange(v)} className="press"
-                    style={{padding:"5px 11px",borderRadius:7,fontSize:11.5,fontWeight:600,cursor:"pointer",background:slogRange===v?C.g1:"transparent",border:`1.5px solid ${slogRange===v?C.g:C.bo0}`,color:slogRange===v?C.g:C.t2,fontFamily:F.sans}}>{l}</button>))}
-                {slogRange==="custom"&&<>
-                  <input type="date" value={slogFrom} onChange={e=>setSlogFrom(e.target.value)} style={{padding:"5px 9px",background:C.bg3,border:`1.5px solid ${C.bo1}`,borderRadius:8,color:C.t0,fontSize:12,fontFamily:F.sans}}/>
-                  <span style={{color:C.t2,fontSize:12}}>s/d</span>
-                  <input type="date" value={slogTo} onChange={e=>setSlogTo(e.target.value)} style={{padding:"5px 9px",background:C.bg3,border:`1.5px solid ${C.bo1}`,borderRadius:8,color:C.t0,fontSize:12,fontFamily:F.sans}}/>
-                </>}
-              </div>
-            </Card>
-            {slogsFiltered.length===0?<div style={{textAlign:"center",padding:"48px",color:C.t3}}><div style={{fontSize:40,opacity:.08,marginBottom:10}}>📋</div><p>Tidak ada data</p></div>
+        {adminTab==="stoklog"&&<div style={{display:"flex",flexDirection:"column",gap:10}}>
+          <h2 style={{fontSize:15,fontWeight:800}}>Log Stok <span style={{color:C.t2,fontWeight:500,fontSize:13}}>({slogs.length})</span></h2>
+          {slogs.length===0
+            ?<div style={{textAlign:"center",padding:"48px",color:C.t3}}><div style={{fontSize:40,opacity:.08,marginBottom:10}}>📋</div><p>Belum ada log</p></div>
             :<Card noPad style={{overflow:"hidden"}}>
-              <TableWrap>
+              <div style={{overflowX:"auto"}}>
                 <table style={{width:"100%",borderCollapse:"collapse",fontSize:11.5,minWidth:540}}>
                   <THead cols={["Waktu","Produk","Bisnis","Tipe","Qty","Sblm","Ssdh","Oleh"]}/>
-                  <tbody>{slogsFiltered.map((l,i)=><tr key={l.id||i} className="hrow" style={{borderTop:`1px solid ${C.bo0}`,background:i%2===0?"transparent":C.bg0}}>
-                    <td style={{padding:"14px 13px",color:C.t2,fontSize:10,whiteSpace:"nowrap"}}>{l.date}</td>
-                    <td style={{padding:"14px 13px",fontWeight:500,fontSize:12}}>{l.name}<div className="mn" style={{fontSize:9,color:C.t3}}>{l.barcode}</div></td>
-                    <td style={{padding:"14px 13px"}}><BizChip biz={l.business} sm/></td>
-                    <td style={{padding:"14px 13px"}}><span style={{padding:"2px 8px",borderRadius:20,fontSize:9.5,fontWeight:700,background:l.type==="masuk"?C.g1:C.r1,color:l.type==="masuk"?C.g:C.r,textTransform:"uppercase"}}>{l.type}</span></td>
-                    <td style={{padding:"14px 13px",fontFamily:F.mono,fontWeight:700,color:l.type==="masuk"?C.g:C.r}}>{l.type==="masuk"?"+":"-"}{l.qty}</td>
-                    <td style={{padding:"14px 13px",fontFamily:F.mono,fontSize:11}}>{l.before}</td>
-                    <td style={{padding:"14px 13px",fontFamily:F.mono,fontWeight:700}}>{l.after}</td>
-                    <td style={{padding:"14px 13px",color:C.t2,fontSize:11}}>{l.by}</td>
+                  <tbody>{slogs.map((l,i)=><tr key={l.id||i} className="hrow" style={{borderTop:`1px solid ${C.b0}`,background:i%2===0?"transparent":C.bg0}}>
+                    <td style={{padding:"11px 13px",color:C.t2,fontSize:10,whiteSpace:"nowrap"}}>{l.date}</td>
+                    <td style={{padding:"11px 13px",fontWeight:500,fontSize:12}}>{l.name}<div className="mn" style={{fontSize:9,color:C.t3}}>{l.barcode}</div></td>
+                    <td style={{padding:"11px 13px"}}><BizChip biz={l.business} sm/></td>
+                    <td style={{padding:"11px 13px"}}>
+                      <span style={{padding:"2px 8px",borderRadius:20,fontSize:9.5,fontWeight:700,
+                        background:l.type==="masuk"?C.g1:C.r1,color:l.type==="masuk"?C.g:C.r,textTransform:"uppercase"}}>{l.type}</span>
+                    </td>
+                    <td style={{padding:"11px 13px",fontFamily:F.mono,fontWeight:700,color:l.type==="masuk"?C.g:C.r}}>{l.type==="masuk"?"+":"-"}{l.qty}</td>
+                    <td style={{padding:"11px 13px",fontFamily:F.mono,fontSize:11}}>{l.before}</td>
+                    <td style={{padding:"11px 13px",fontFamily:F.mono,fontWeight:700}}>{l.after}</td>
+                    <td style={{padding:"11px 13px",color:C.t2,fontSize:11}}>{l.by}</td>
                   </tr>)}</tbody>
                 </table>
-              </TableWrap>
+              </div>
             </Card>}
-          </div>;
-        })()}
-
-        {/* ── RETUR ── */}
-        {adminTab==="returns"&&<div style={{display:"flex",flexDirection:"column",gap:10}}>
-          <h2 style={{fontSize:15,fontWeight:800}}>Riwayat Retur <span style={{color:C.t2,fontWeight:500,fontSize:13}}>({returns.length})</span></h2>
-          {returns.length===0?<div style={{textAlign:"center",padding:"48px",color:C.t3}}>
-            <div style={{fontSize:40,opacity:.08,marginBottom:10}}>↩</div>
-            <p>Belum ada retur</p>
-            <p style={{fontSize:12,marginTop:8,color:C.t3}}>Retur dilakukan dari tab Laporan → kolom Retur di tabel transaksi</p>
-          </div>:<Card noPad style={{overflow:"hidden"}}>
-            <TableWrap>
-              <table style={{width:"100%",borderCollapse:"collapse",fontSize:12,minWidth:520}}>
-                <THead cols={["ID Retur","Tanggal","Kasir","Bisnis","TRX Asal","Total","Item"]}/>
-                <tbody>{returns.map((r,i)=><tr key={r.id} className="hrow" style={{borderTop:`1px solid ${C.bo0}`,background:i%2===0?"transparent":C.bg0}}>
-                  <td style={{padding:"14px 13px",fontFamily:F.mono,fontSize:10,color:C.a}}>{r.id}</td>
-                  <td style={{padding:"14px 13px",fontSize:10,color:C.t2,whiteSpace:"nowrap"}}>{r.date}</td>
-                  <td style={{padding:"14px 13px",fontWeight:500}}>{r.kasir}</td>
-                  <td style={{padding:"14px 13px"}}><BizChip biz={r.business} sm/></td>
-                  <td style={{padding:"14px 13px",fontFamily:F.mono,fontSize:10,color:C.t3}}>{r.originalTrxId?.slice(-12)}</td>
-                  <td style={{padding:"14px 13px",fontFamily:F.mono,color:C.r,fontSize:11,fontWeight:700}}>{rp(r.total)}</td>
-                  <td style={{padding:"14px 13px",fontFamily:F.mono,fontSize:11}}>{r.items?.length||0}</td>
-                </tr>)}</tbody>
-              </table>
-            </TableWrap>
-          </Card>}
         </div>}
 
-        {/* ── AKTIVITAS ── */}
-        {adminTab==="actlog"&&<div style={{display:"flex",flexDirection:"column",gap:10}}>
-          <h2 style={{fontSize:15,fontWeight:800}}>Log Aktivitas <span style={{color:C.t2,fontWeight:500,fontSize:13}}>({actLogs.length})</span></h2>
-          <Card noPad style={{overflow:"hidden"}}>
-            <TableWrap>
-              <table style={{width:"100%",borderCollapse:"collapse",fontSize:12,minWidth:520}}>
-                <THead cols={["Waktu","Aktor","Aksi","Detail","Bisnis"]}/>
-                <tbody>{actLogs.map((l,i)=><tr key={l._docId||i} className="hrow" style={{borderTop:`1px solid ${C.bo0}`,background:i%2===0?"transparent":C.bg0}}>
-                  <td style={{padding:"12px 13px",fontSize:10,color:C.t2,whiteSpace:"nowrap"}}>{l.date}</td>
-                  <td style={{padding:"12px 13px",fontWeight:600,fontSize:11}}>{l.actor}</td>
-                  <td style={{padding:"12px 13px"}}>
-                    <span style={{padding:"2px 8px",borderRadius:20,fontSize:10,fontWeight:700,
-                      background:l.action.includes("Transaksi")?C.g1:l.action.includes("Retur")?C.a1:l.action.includes("Hapus")?C.r1:C.b1,
-                      color:l.action.includes("Transaksi")?C.g:l.action.includes("Retur")?C.a:l.action.includes("Hapus")?C.r:C.b}}>
-                      {l.action}</span>
-                  </td>
-                  <td style={{padding:"12px 13px",fontSize:11,color:C.t1,maxWidth:200,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{l.detail}</td>
-                  <td style={{padding:"12px 13px"}}>{l.business?<BizChip biz={l.business} sm/>:"-"}</td>
-                </tr>)}</tbody>
-              </table>
-            </TableWrap>
-          </Card>
-        </div>}
-
-
-        {/* ── SHEETS ── */}
+        {/* ── GOOGLE SHEETS ── */}
         {adminTab==="sheets"&&<div style={{maxWidth:640,display:"flex",flexDirection:"column",gap:10}}>
           <h2 style={{fontSize:15,fontWeight:800}}>Google Sheets Sync</h2>
+
+          {/* Setup guide */}
           <Card>
-            <div style={{fontSize:10,fontWeight:700,color:C.g,textTransform:"uppercase",letterSpacing:1,marginBottom:12}}>📋 Cara Setup</div>
-            {[{n:1,t:"Buat Google Spreadsheet baru",d:"sheets.google.com → Blank spreadsheet → nama: 'Kasir JE Grup'"},
-              {n:2,t:"Buka Apps Script",d:"menu Extensions → Apps Script → hapus kode yang ada"},
-              {n:3,t:"Paste kode berikut",d:"Salin kode di bawah dan paste ke editor"},
-              {n:4,t:"Deploy sebagai Web App",d:"Deploy → New deployment → Web app → Execute as: Me → Anyone → Deploy"},
-              {n:5,t:"Salin URL Web App",d:"Salin URL (https://script.google.com/macros/s/.../exec) dan paste di bawah"},
+            <div style={{fontSize:10,fontWeight:700,color:C.g,textTransform:"uppercase",letterSpacing:1,marginBottom:12}}>📋 Cara Setup Google Sheets</div>
+            {[
+              {n:1,t:"Buat Google Spreadsheet baru",d:"Buka sheets.google.com → Blank spreadsheet → beri nama 'Kasir JE Grup'"},
+              {n:2,t:"Buka Apps Script",d:"Di spreadsheet: menu Extensions → Apps Script → hapus kode yang ada"},
+              {n:3,t:"Paste kode berikut",d:"Salin kode di bawah dan paste ke editor Apps Script"},
+              {n:4,t:"Deploy sebagai Web App",d:"Klik Deploy → New deployment → tipe: Web app → Execute as: Me → Who has access: Anyone → Deploy"},
+              {n:5,t:"Salin URL Web App",d:"Salin URL yang muncul (bentuk: https://script.google.com/macros/s/.../exec) dan paste di field di bawah"},
             ].map(s=><div key={s.n} style={{display:"flex",gap:10,marginBottom:10,alignItems:"flex-start"}}>
-              <div style={{minWidth:22,height:22,borderRadius:"50%",background:C.g1,border:`1px solid ${C.g}44`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:10,fontWeight:700,color:C.g,flexShrink:0}}>{s.n}</div>
+              <div style={{minWidth:22,height:22,borderRadius:"50%",background:C.g1,border:`1px solid ${C.g}44`,
+                display:"flex",alignItems:"center",justifyContent:"center",fontSize:10,fontWeight:700,color:C.g,flexShrink:0}}>{s.n}</div>
               <div><div style={{fontSize:12.5,fontWeight:600}}>{s.t}</div><div style={{fontSize:11.5,color:C.t2,marginTop:2,lineHeight:1.6}}>{s.d}</div></div>
             </div>)}
           </Card>
+
+          {/* Apps Script code */}
           <Card noPad style={{overflow:"hidden"}}>
-            <div style={{padding:"12px 14px",borderBottom:`1px solid ${C.bo0}`,display:"flex",alignItems:"center",gap:8}}>
+            <div style={{padding:"13px 14px",borderBottom:`1px solid ${C.b0}`,display:"flex",alignItems:"center",gap:8}}>
               <span style={{flex:1,fontSize:10,fontWeight:700,color:C.t2,textTransform:"uppercase",letterSpacing:1}}>Kode Apps Script</span>
-              <button onClick={()=>{navigator.clipboard.writeText(APPSCRIPT_CODE.trim());setCopyDone(true);setTimeout(()=>setCopyDone(false),2000);toast("✓ Kode disalin!");}} className="press"
-                style={{padding:"4px 12px",background:copyDone?C.g1:C.bg4,border:`1px solid ${copyDone?C.g:C.bo1}`,borderRadius:7,color:copyDone?C.g:C.t1,fontSize:11,fontWeight:700}}>
+              <button onClick={()=>{navigator.clipboard.writeText(APPSCRIPT_CODE.trim());setCopyDone(true);setTimeout(()=>setCopyDone(false),2000);toast("✓ Kode disalin!","ok");}}
+                className="press" style={{padding:"4px 12px",background:copyDone?C.g1:C.bg4,border:`1px solid ${copyDone?C.g:C.b1}`,borderRadius:7,color:copyDone?C.g:C.t1,fontSize:11,fontWeight:700}}>
                 {copyDone?"✓ Disalin":"📋 Salin"}
               </button>
             </div>
-            <pre style={{padding:"12px 14px",fontSize:11,fontFamily:F.mono,color:C.t2,overflowX:"auto",lineHeight:1.7,background:C.bg0,maxHeight:260,overflowY:"auto",whiteSpace:"pre-wrap"}}>{APPSCRIPT_CODE.trim()}</pre>
+            <pre style={{padding:"12px 14px",fontSize:11,fontFamily:F.mono,color:C.t2,overflowX:"auto",
+              lineHeight:1.7,background:C.bg0,maxHeight:260,overflowY:"auto",whiteSpace:"pre-wrap"}}>
+              {APPSCRIPT_CODE.trim()}
+            </pre>
           </Card>
+
+          {/* URL & Sync */}
           <Card>
-            <div style={{fontSize:10,fontWeight:700,color:C.t2,textTransform:"uppercase",letterSpacing:1,marginBottom:10}}>URL Web App</div>
+            <div style={{fontSize:10,fontWeight:700,color:C.t2,textTransform:"uppercase",letterSpacing:1,marginBottom:10}}>Hubungkan & Sinkronkan</div>
             <div style={{display:"flex",gap:8,marginBottom:10,flexWrap:"wrap"}}>
               <input value={gsUrl} onChange={e=>{setGsUrl(e.target.value);localStorage.setItem("je_gs_url",e.target.value);}}
                 placeholder="https://script.google.com/macros/s/…/exec"
-                style={{flex:1,minWidth:200,padding:"11px 13px",background:C.bg3,border:`1.5px solid ${C.bo0}`,borderRadius:10,color:C.t0,fontSize:12,fontFamily:F.mono}}
-                onFocus={e=>e.target.style.borderColor=C.g+"88"} onBlur={e=>e.target.style.borderColor=C.bo0}/>
+                style={{flex:1,minWidth:200,padding:"11px 13px",background:C.bg3,border:`1.5px solid ${C.b0}`,
+                  borderRadius:10,color:C.t0,fontSize:12,fontFamily:F.mono,transition:"border-color .15s"}}
+                onFocus={e=>e.target.style.borderColor=C.g+"88"} onBlur={e=>e.target.style.borderColor=C.b0}/>
               <Btn onClick={async()=>{
                 if(!gsUrl){toast("Masukkan URL dulu","warn");return;}
                 setGsLoad(true);
@@ -2294,24 +1940,29 @@ function AppInner() {
               }} disabled={gsLoad}>{gsLoad?"⏳ Proses...":"↑ Ekspor"}</Btn>
             </div>
             <div style={{padding:"9px 11px",background:C.a1,borderRadius:8,border:`1px solid ${C.a}22`,fontSize:11.5,color:C.a}}>
-              💡 Firebase adalah database utama. Google Sheets untuk backup & laporan offline.
+              💡 Firebase adalah database utama. Google Sheets bersifat opsional untuk backup & laporan offline.
             </div>
           </Card>
+
+          {/* Data status */}
           <Card>
-            <div style={{fontSize:10,fontWeight:700,color:C.t2,textTransform:"uppercase",letterSpacing:1,marginBottom:10}}>Status Data</div>
+            <div style={{fontSize:10,fontWeight:700,color:C.t2,textTransform:"uppercase",letterSpacing:1,marginBottom:10}}>Status Data Firebase</div>
             <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:7}}>
               {[{i:"👥",l:"Pengguna",v:users.length},{i:"📦",l:"Produk",v:prods.length},{i:"💳",l:"Transaksi",v:trxs.length},
-                {i:"📋",l:"Log Stok",v:slogs.length},{i:"🕐",l:"Absensi",v:attend.length},{i:"↩",l:"Retur",v:returns.length}].map(s=>(
-                <div key={s.l} style={{padding:"10px",background:C.bg3,borderRadius:9,border:`1px solid ${C.bo0}`,textAlign:"center"}}>
+                {i:"📋",l:"Log Stok",v:slogs.length},{i:"🕐",l:"Absensi",v:attend.length}].map(s=>(
+                <div key={s.l} style={{padding:"10px",background:C.bg3,borderRadius:9,border:`1px solid ${C.b0}`,textAlign:"center"}}>
                   <div style={{fontSize:17,marginBottom:3}}>{s.i}</div>
                   <div className="mn" style={{fontWeight:700,fontSize:17}}>{s.v}</div>
                   <div style={{fontSize:9.5,color:C.t2,marginTop:2}}>{s.l}</div>
-                </div>))}
+                </div>
+              ))}
             </div>
-            <div style={{marginTop:10,padding:"9px 11px",background:C.bg3,borderRadius:8,border:`1px solid ${C.bo0}`,fontSize:11.5,color:C.t2,display:"flex",alignItems:"center",gap:8,flexWrap:"wrap"}}>
+            <div style={{marginTop:10,padding:"9px 11px",background:C.bg3,borderRadius:8,border:`1px solid ${C.b0}`,fontSize:11.5,color:C.t2,display:"flex",alignItems:"center",gap:8,flexWrap:"wrap"}}>
               <span>Project: <b className="mn" style={{color:C.g}}>{loadConfig()?.projectId||"-"}</b></span>
               <button onClick={()=>{clearConfig();setFbReady(false);setFbSetup(true);setScreen("login");}} className="press"
-                style={{marginLeft:"auto",padding:"4px 10px",background:C.r1,border:`1px solid ${C.r}33`,borderRadius:6,color:C.r,fontSize:10.5,fontWeight:700}}>Reset Config</button>
+                style={{marginLeft:"auto",padding:"4px 10px",background:C.r1,border:`1px solid ${C.r}33`,borderRadius:6,color:C.r,fontSize:10.5,fontWeight:700}}>
+                Reset Config
+              </button>
             </div>
           </Card>
         </div>}
@@ -2320,8 +1971,4 @@ function AppInner() {
     </div>;
   }
   return null;
-}
-
-export default function App() {
-  return <ErrorBoundary><AppInner/></ErrorBoundary>;
 }
