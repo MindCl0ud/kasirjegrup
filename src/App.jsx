@@ -1500,133 +1500,140 @@ export default function App() {
     const IS={width:"100%",padding:"11px 13px",background:C.bg3,border:`1.5px solid ${C.b0}`,borderRadius:10,color:C.t0,fontSize:13,fontFamily:F.mono,transition:"border-color .15s"};
     const TABS=[
       {id:"dashboard",l:"📊 Dashboard"},{id:"users",l:"👥 Pengguna"},{id:"products",l:"📦 Produk"},
-      {id:"laporan",l:"💰 Laporan"},{id:"kasirperf",l:"🧑 Per Kasir"},{id:"target",l:"🎯 Target"},
-      {id:"absensi",l:"🕐 Absensi"},{id:"retur",l:"↩ Retur"},{id:"stoklog",l:"📋 Log Stok"},
-      {id:"actlog",l:"🔍 Aktivitas"},{id:"sheets",l:"🔗 Sheets"},
+      {id:"laporan",l:"💰 Laporan"},{id:"absensi",l:"🕐 Absensi"},{id:"stoklog",l:"📋 Log Stok"},
+      {id:"returns",l:"↩ Retur"},{id:"actlog",l:"🔍 Aktivitas"},{id:"sheets",l:"🔗 Sheets"},
     ];
     const adminPs=prods.filter(p=>p.business===adminBiz&&(!searchQ||p.name.toLowerCase().includes(searchQ.toLowerCase())||p.barcode.includes(searchQ)));
 
     return <div style={{fontFamily:F.sans,background:C.bg1,color:C.t0,height:"100vh",display:"flex",flexDirection:"column"}}>
       <style>{CSS}</style><Toast n={notif}/>
-      <Header title="Admin Panel" user={user} online={online} onLogout={doLogout} onToggleTheme={toggleTheme} isDark={isDark} lowStockCount={lowStockCount}/>
+      <Header title="Admin Panel" user={user} online={online} onLogout={doLogout} lowStockCount={lowStockCount} onToggleTheme={toggleTheme} isDark={isDark}/>
 
-      {/* User Modal */}
+      {/* Change password modal */}
+      {cpwdModal&&<div style={{position:"fixed",inset:0,background:"rgba(2,8,24,.85)",zIndex:500,display:"flex",alignItems:"flex-end",justifyContent:"center"}} onClick={()=>setCpwdModal(null)}>
+        <div style={{width:"100%",maxWidth:420,background:C.bg2,borderRadius:"22px 22px 0 0",padding:"18px 20px 32px",border:`1px solid ${C.b1}`,borderBottom:"none",animation:"slideUp .25s ease"}} onClick={e=>e.stopPropagation()}>
+          <div style={{width:36,height:4,background:C.b1,borderRadius:2,margin:"0 auto 16px"}}/>
+          <h3 style={{fontSize:14,fontWeight:800,marginBottom:14,color:C.a}}>🔑 Ganti Password</h3>
+          <p style={{fontSize:12,color:C.t2,marginBottom:14}}>Untuk: <b style={{color:C.t0}}>{users.find(u=>u.id===cpwdModal)?.name}</b></p>
+          <div style={{display:"flex",flexDirection:"column",gap:10}}>
+            {user.role!=="admin"&&<div>
+              <div style={{fontSize:9.5,fontWeight:700,color:C.t2,textTransform:"uppercase",letterSpacing:.5,marginBottom:4}}>Password Lama</div>
+              <input type="password" value={cpwdForm.old} onChange={e=>setCpwdForm(x=>({...x,old:e.target.value}))} style={IS}
+                onFocus={e=>e.target.style.borderColor=C.g+"88"} onBlur={e=>e.target.style.borderColor=C.b0}/>
+            </div>}
+            <div>
+              <div style={{fontSize:9.5,fontWeight:700,color:C.t2,textTransform:"uppercase",letterSpacing:.5,marginBottom:4}}>Password Baru *</div>
+              <input type="password" value={cpwdForm.n1} onChange={e=>setCpwdForm(x=>({...x,n1:e.target.value}))} style={IS}
+                onFocus={e=>e.target.style.borderColor=C.g+"88"} onBlur={e=>e.target.style.borderColor=C.b0}/>
+            </div>
+            <div>
+              <div style={{fontSize:9.5,fontWeight:700,color:C.t2,textTransform:"uppercase",letterSpacing:.5,marginBottom:4}}>Konfirmasi Password *</div>
+              <input type="password" value={cpwdForm.n2} onChange={e=>setCpwdForm(x=>({...x,n2:e.target.value}))} style={IS}
+                onFocus={e=>e.target.style.borderColor=C.g+"88"} onBlur={e=>e.target.style.borderColor=C.b0}/>
+            </div>
+          </div>
+          <div style={{display:"flex",gap:8,marginTop:16}}>
+            <Btn onClick={doChangePassword} full>Simpan</Btn>
+            <Btn onClick={()=>setCpwdModal(null)} outline>Batal</Btn>
+          </div>
+        </div>
+      </div>}
+
+      {/* User modal */}
       {uModal&&<div style={{position:"fixed",inset:0,background:"rgba(2,8,24,.85)",zIndex:500,display:"flex",alignItems:"flex-end",justifyContent:"center"}} onClick={()=>setUModal(false)}>
         <div style={{width:"100%",maxWidth:500,background:C.bg2,borderRadius:"22px 22px 0 0",padding:"18px 20px 32px",border:`1px solid ${C.b1}`,borderBottom:"none",animation:"slideUp .25s ease",maxHeight:"90vh",overflowY:"auto"}} onClick={e=>e.stopPropagation()}>
           <div style={{width:36,height:4,background:C.b1,borderRadius:2,margin:"0 auto 16px"}}/>
           <h3 style={{fontSize:14,fontWeight:800,marginBottom:16,color:C.g}}>{editUid===null?"➕ Tambah Pengguna":"✏️ Edit Pengguna"}</h3>
           <div style={{display:"flex",flexDirection:"column",gap:10}}>
             <div>
-              <div style={{fontSize:9.5,fontWeight:700,color:C.t2,textTransform:"uppercase",letterSpacing:1,marginBottom:4}}>Nama Lengkap *</div>
+              <div style={{fontSize:9.5,fontWeight:700,color:C.t2,textTransform:"uppercase",letterSpacing:.5,marginBottom:4}}>Nama Lengkap *</div>
               <input value={uForm.name||""} onChange={e=>setUForm(x=>({...x,name:e.target.value}))} style={IS} onFocus={e=>e.target.style.borderColor=C.g+"88"} onBlur={e=>e.target.style.borderColor=C.b0}/>
             </div>
             <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
               <div>
-                <div style={{fontSize:9.5,fontWeight:700,color:C.t2,textTransform:"uppercase",letterSpacing:1,marginBottom:4}}>Username *</div>
+                <div style={{fontSize:9.5,fontWeight:700,color:C.t2,textTransform:"uppercase",letterSpacing:.5,marginBottom:4}}>Username *</div>
                 <input value={uForm.username||""} onChange={e=>setUForm(x=>({...x,username:e.target.value}))} disabled={editUid!==null} style={{...IS,color:editUid!==null?C.t2:C.t0}} onFocus={e=>editUid===null&&(e.target.style.borderColor=C.g+"88")} onBlur={e=>e.target.style.borderColor=C.b0}/>
               </div>
               <div>
-                <div style={{fontSize:9.5,fontWeight:700,color:C.t2,textTransform:"uppercase",letterSpacing:1,marginBottom:4}}>Password *</div>
+                <div style={{fontSize:9.5,fontWeight:700,color:C.t2,textTransform:"uppercase",letterSpacing:.5,marginBottom:4}}>Password *</div>
                 <input type="password" value={uForm.password||""} onChange={e=>setUForm(x=>({...x,password:e.target.value}))} style={IS} onFocus={e=>e.target.style.borderColor=C.g+"88"} onBlur={e=>e.target.style.borderColor=C.b0}/>
               </div>
               <div>
-                <div style={{fontSize:9.5,fontWeight:700,color:C.t2,textTransform:"uppercase",letterSpacing:1,marginBottom:4}}>Avatar</div>
+                <div style={{fontSize:9.5,fontWeight:700,color:C.t2,textTransform:"uppercase",letterSpacing:.5,marginBottom:4}}>Avatar Emoji</div>
                 <input value={uForm.avatar||""} onChange={e=>setUForm(x=>({...x,avatar:e.target.value}))} style={IS} onFocus={e=>e.target.style.borderColor=C.g+"88"} onBlur={e=>e.target.style.borderColor=C.b0}/>
               </div>
               <div>
-                <div style={{fontSize:9.5,fontWeight:700,color:C.t2,textTransform:"uppercase",letterSpacing:1,marginBottom:4}}>Role</div>
+                <div style={{fontSize:9.5,fontWeight:700,color:C.t2,textTransform:"uppercase",letterSpacing:.5,marginBottom:4}}>Role</div>
                 <select value={uForm.role||"kasir"} onChange={e=>setUForm(x=>({...x,role:e.target.value}))} style={{...IS,fontFamily:F.sans}}>
                   <option value="kasir">Kasir</option><option value="stok">Stok</option><option value="admin">Admin</option>
                 </select>
               </div>
             </div>
             <div>
-              <div style={{fontSize:9.5,fontWeight:700,color:C.t2,textTransform:"uppercase",letterSpacing:1,marginBottom:8}}>Akses Bisnis *</div>
+              <div style={{fontSize:9.5,fontWeight:700,color:C.t2,textTransform:"uppercase",letterSpacing:.5,marginBottom:8}}>Akses Bisnis *</div>
               <div style={{display:"flex",gap:8}}>
                 {Object.values(BIZ).map(b2=>{const chk=uForm.access?.includes(b2.id),isJ=b2.id==="JS_CLOTHING";
                   return <button key={b2.id} onClick={()=>setUForm(x=>({...x,access:chk?x.access.filter(a=>a!==b2.id):[...(x.access||[]),b2.id]}))}
-                    style={{flex:1,padding:"10px",borderRadius:10,cursor:"pointer",fontWeight:700,fontSize:12,
-                      background:chk?(isJ?C.b1:C.p1):"transparent",border:`2px solid ${chk?(isJ?C.b:C.p):C.b0}`,
-                      color:chk?(isJ?C.b:C.p):C.t2,fontFamily:F.sans}}>{b2.icon} {b2.name}</button>;})}
+                    style={{flex:1,padding:"10px",borderRadius:10,cursor:"pointer",fontWeight:700,fontSize:12,background:chk?(isJ?C.b1:C.p1):"transparent",border:`2px solid ${chk?(isJ?C.b:C.p):C.b0}`,color:chk?(isJ?C.b:C.p):C.t2,fontFamily:F.sans}}>
+                    {b2.icon} {b2.name}</button>;})}
               </div>
             </div>
             <div style={{display:"flex",alignItems:"center",gap:8}}>
-              <input type="checkbox" id="uac" checked={!!uForm.active} onChange={e=>setUForm(x=>({...x,active:e.target.checked}))} style={{width:16,height:16,cursor:"pointer",accentColor:C.g}}/>
+              <input type="checkbox" id="uac" checked={!!uForm.active} onChange={e=>setUForm(x=>({...x,active:e.target.checked}))} style={{width:16,height:16,accentColor:C.g}}/>
               <label htmlFor="uac" style={{fontSize:12.5,cursor:"pointer"}}>Akun Aktif</label>
             </div>
           </div>
-          <div style={{display:"flex",gap:8,marginTop:16}}>
-            <Btn onClick={saveUser} full>Simpan</Btn>
-            <Btn onClick={()=>setUModal(false)} outline>Batal</Btn>
-          </div>
-        </div>
-      </div>}
-
-      {/* Change Password Modal */}
-      {cpwdModal&&<div style={{position:"fixed",inset:0,background:"rgba(2,8,24,.85)",zIndex:500,display:"flex",alignItems:"center",justifyContent:"center",padding:16}} onClick={()=>setCpwdModal(null)}>
-        <div style={{width:"100%",maxWidth:360,background:C.bg2,borderRadius:18,padding:"22px 20px",border:`1px solid ${C.b1}`,animation:"fadeUp .2s ease"}} onClick={e=>e.stopPropagation()}>
-          <h3 style={{fontSize:14,fontWeight:800,marginBottom:16,color:C.a}}>🔑 Ganti Password</h3>
-          {[{k:"n1",l:"Password Baru *",t:"password"},{k:"n2",l:"Konfirmasi Password *",t:"password"}].map(f=>(
-            <div key={f.k} style={{marginBottom:10}}>
-              <div style={{fontSize:9.5,fontWeight:700,color:C.t2,textTransform:"uppercase",letterSpacing:1,marginBottom:4}}>{f.l}</div>
-              <input type={f.t} value={cpwdForm[f.k]||""} onChange={e=>setCpwdForm(x=>({...x,[f.k]:e.target.value}))}
-                style={IS} onFocus={e=>e.target.style.borderColor=C.g+"88"} onBlur={e=>e.target.style.borderColor=C.b0}/>
-            </div>))}
-          <div style={{display:"flex",gap:8,marginTop:14}}>
-            <Btn onClick={async()=>{
-              if(!cpwdForm.n1||!cpwdForm.n2){toast("Isi semua field","warn");return;}
-              if(cpwdForm.n1!==cpwdForm.n2){toast("Password tidak sama","err");return;}
-              if(cpwdForm.n1.length<6){toast("Password min 6 karakter","warn");return;}
-              await fbChangePassword(cpwdModal,cpwdForm.n1,user.name);
-              toast("✅ Password berhasil diganti");setCpwdModal(null);setCpwdForm({old:"",n1:"",n2:""});
-            }} full>Simpan Password</Btn>
-            <Btn onClick={()=>setCpwdModal(null)} outline>Batal</Btn>
-          </div>
+          <div style={{display:"flex",gap:8,marginTop:16}}><Btn onClick={saveUser} full>Simpan</Btn><Btn onClick={()=>setUModal(false)} outline>Batal</Btn></div>
         </div>
       </div>}
 
       {/* Tab bar */}
       <div style={{background:C.bg2,borderBottom:`1px solid ${C.b0}`,display:"flex",overflowX:"auto",flexShrink:0,gap:0,padding:"0 4px"}}>
-        {TABS.map(t=><button key={t.id} onClick={()=>{setAdminTab(t.id);setSearchQ("");setPModal(false);}} className={`atab${adminTab===t.id?" on":""}`}>{t.l}</button>)}
+        {TABS.map(t=><button key={t.id} onClick={()=>{setAdminTab(t.id);setSearchQ("");setPModal(false);}}
+          className={`atab${adminTab===t.id?" on":""}`}>{t.l}</button>)}
       </div>
 
-      <div style={{flex:1,overflowY:"auto",padding:"10px 12px",paddingBottom:`calc(16px + var(--safe-b))`,minHeight:0}}>
+      <div style={{flex:1,overflowY:"auto",padding:10,paddingBottom:`calc(16px + var(--safe-b))`,minHeight:0}}>
+
 
         {/* ── DASHBOARD ── */}
         {adminTab==="dashboard"&&<div style={{display:"flex",flexDirection:"column",gap:10}}>
           <h2 style={{fontSize:15,fontWeight:800}}>Dashboard</h2>
           <div className="stat-grid-4" style={{display:"grid",gap:8}}>
             <Stat icon="💰" label="Pendapatan Hari Ini" color={C.g}
-              value={rp(trxs.filter(t=>{try{const d=parseD(t.date);return d&&d.toDateString()===new Date().toDateString();}catch{return false;}}).reduce((s,t)=>s+t.total,0))}/>
+              value={rp(trxs.filter(t=>{const d=parseD(t.date);return d&&d.toDateString()===new Date().toDateString();}).reduce((s,t)=>s+t.total,0))}/>
             <Stat icon="🧾" label="Transaksi Hari Ini" color={C.cy}
-              value={trxs.filter(t=>{try{const d=parseD(t.date);return d&&d.toDateString()===new Date().toDateString();}catch{return false;}}).length}/>
+              value={trxs.filter(t=>{const d=parseD(t.date);return d&&d.toDateString()===new Date().toDateString();}).length}/>
             <Stat icon="📦" label="Total Produk" color={C.b} value={prods.length} sub={`${lowStockCount} stok menipis`}/>
             <Stat icon="🕐" label="Hadir Hari Ini" color={C.a} value={attend.filter(a=>a.date===todayDate()).length}/>
           </div>
-          {/* Target progress */}
-          {targets.length>0&&<Card>
-            <div style={{fontSize:10,fontWeight:700,color:C.t2,textTransform:"uppercase",letterSpacing:1,marginBottom:12}}>🎯 Target Bulan Ini</div>
-            {targets.filter(t=>t.period===currMonth).map(t=>(
-              <div key={t.id} style={{marginBottom:12}}>
-                <div style={{display:"flex",justifyContent:"space-between",alignItems:"baseline",marginBottom:6}}>
-                  <span style={{fontSize:13,fontWeight:600}}>{BIZ[t.business]?.icon} {BIZ[t.business]?.name}</span>
-                  <span className="mn" style={{fontSize:12,color:C.t2}}>{rp(monthRevByBiz[t.business]||0)} / {rp(t.amount)}</span>
+          {/* Targets */}
+          {Object.values(BIZ).some(b2=>currentTarget(b2.id))&&<Card>
+            <div style={{fontSize:10,fontWeight:700,color:C.t2,textTransform:"uppercase",letterSpacing:1,marginBottom:12}}>🎯 Target Penjualan Bulan Ini</div>
+            {Object.values(BIZ).map(b2=>{
+              const tgt=currentTarget(b2.id);if(!tgt) return null;
+              const rev=monthRevBiz(b2.id);const isJ=b2.id==="JS_CLOTHING";
+              return <div key={b2.id} style={{marginBottom:12}}>
+                <div style={{display:"flex",justifyContent:"space-between",fontSize:12,marginBottom:6}}>
+                  <span style={{fontWeight:600}}>{b2.icon} {b2.name}</span>
+                  <span className="mn" style={{color:isJ?C.b:C.p}}>{rp(rev)} / {rp(tgt.amount)}</span>
                 </div>
-                <ProgressBar value={monthRevByBiz[t.business]||0} max={t.amount}
-                  color={(monthRevByBiz[t.business]||0)>=t.amount?C.g:(monthRevByBiz[t.business]||0)>=t.amount*0.7?C.a:C.r}/>
-              </div>))}
+                <ProgressBar value={rev} max={tgt.amount} color={isJ?C.b:C.p}/>
+              </div>;})}
           </Card>}
-          {prods.filter(p=>p.stock<10).length>0&&<Card accent={C.r}>
-            <div style={{fontSize:10,fontWeight:700,color:C.r,textTransform:"uppercase",letterSpacing:1,marginBottom:10}}>⚠ Stok Menipis</div>
+          {/* Stok menipis */}
+          {lowStockCount>0&&<Card accent={C.r}>
+            <div style={{fontSize:10,fontWeight:700,color:C.r,textTransform:"uppercase",letterSpacing:1,marginBottom:10}}>⚠ Stok Menipis ({lowStockCount})</div>
             {prods.filter(p=>p.stock<10).map(p=><div key={p.id} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"6px 0",borderTop:`1px solid ${C.b0}`,fontSize:12.5}}>
               <span style={{fontWeight:600}}>{p.name}</span>
               <div style={{display:"flex",gap:8,alignItems:"center"}}><BizChip biz={p.business} sm/><StockBadge s={p.stock}/></div>
             </div>)}
           </Card>}
+          {/* Today attendance */}
           <Card>
             <div style={{fontSize:10,fontWeight:700,color:C.t2,textTransform:"uppercase",letterSpacing:1,marginBottom:10}}>🕐 Kehadiran Hari Ini</div>
             {attend.filter(a=>a.date===todayDate()).length===0
-              ?<p style={{fontSize:12,color:C.t3}}>Belum ada absensi hari ini</p>
+              ?<p style={{fontSize:12,color:C.t3}}>Belum ada pegawai yang absen hari ini</p>
               :attend.filter(a=>a.date===todayDate()).map(a=><div key={a.id} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"7px 0",borderTop:`1px solid ${C.b0}`,fontSize:12.5}}>
                 <div style={{display:"flex",alignItems:"center",gap:8}}>
                   <span>{users.find(u=>u.id===a.userId)?.avatar||"🧑"}</span>
@@ -1638,12 +1645,57 @@ export default function App() {
                 </div>
               </div>)}
           </Card>
+          {/* Target management */}
+          <Card>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}}>
+              <div style={{fontSize:10,fontWeight:700,color:C.t2,textTransform:"uppercase",letterSpacing:1}}>🎯 Kelola Target</div>
+              <button onClick={()=>setTargetModal(true)} className="press" style={{padding:"5px 12px",background:C.g1,border:`1px solid ${C.g}33`,borderRadius:7,color:C.g,fontSize:11,fontWeight:700,fontFamily:F.sans}}>+ Set Target</button>
+            </div>
+            {targetModal&&<div style={{background:C.bg3,borderRadius:10,padding:"12px 14px",marginBottom:12,border:`1px solid ${C.b0}`}}>
+              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:8,marginBottom:10}}>
+                <div>
+                  <div style={{fontSize:9.5,fontWeight:700,color:C.t2,marginBottom:4,textTransform:"uppercase",letterSpacing:.5}}>Bisnis</div>
+                  <select value={targetForm.business} onChange={e=>setTargetForm(x=>({...x,business:e.target.value}))} style={{width:"100%",padding:"10px",background:C.bg2,border:`1.5px solid ${C.b0}`,borderRadius:8,color:C.t0,fontSize:12,fontFamily:F.sans}}>
+                    {Object.values(BIZ).map(b2=><option key={b2.id} value={b2.id}>{b2.icon} {b2.name}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <div style={{fontSize:9.5,fontWeight:700,color:C.t2,marginBottom:4,textTransform:"uppercase",letterSpacing:.5}}>Periode</div>
+                  <input type="month" value={targetForm.period} onChange={e=>setTargetForm(x=>({...x,period:e.target.value}))}
+                    style={{width:"100%",padding:"10px",background:C.bg2,border:`1.5px solid ${C.b0}`,borderRadius:8,color:C.t0,fontSize:12}}/>
+                </div>
+                <div>
+                  <div style={{fontSize:9.5,fontWeight:700,color:C.t2,marginBottom:4,textTransform:"uppercase",letterSpacing:.5}}>Target (Rp)</div>
+                  <input type="number" value={targetForm.amount} onChange={e=>setTargetForm(x=>({...x,amount:e.target.value}))}
+                    placeholder="0" style={{width:"100%",padding:"10px",background:C.bg2,border:`1.5px solid ${C.b0}`,borderRadius:8,color:C.t0,fontSize:12,fontFamily:F.mono}}/>
+                </div>
+              </div>
+              <div style={{display:"flex",gap:8}}>
+                <Btn onClick={async()=>{
+                  if(!targetForm.period||!targetForm.amount){toast("Isi semua field","warn");return;}
+                  await fbSetTarget({id:`${targetForm.business}-${targetForm.period}`,
+                    business:targetForm.business,period:targetForm.period,amount:+targetForm.amount});
+                  setTargetModal(false);toast("✓ Target disimpan");
+                }}>Simpan</Btn>
+                <Btn onClick={()=>setTargetModal(false)} outline>Batal</Btn>
+              </div>
+            </div>}
+            {targets.length===0?<p style={{fontSize:12,color:C.t3}}>Belum ada target tersimpan</p>
+            :targets.map(t=><div key={t.id} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"7px 0",borderTop:`1px solid ${C.b0}`,fontSize:12}}>
+              <div><BizChip biz={t.business} sm/><span style={{marginLeft:8,color:C.t2}}>{t.period}</span></div>
+              <div style={{display:"flex",alignItems:"center",gap:8}}>
+                <span className="mn" style={{color:C.g}}>{rp(t.amount)}</span>
+                <button onClick={()=>fbDeleteTarget(t.id).then(()=>toast("Target dihapus","warn"))} className="press" style={{padding:"2px 8px",background:C.r1,border:`1px solid ${C.r}22`,borderRadius:5,color:C.r,fontSize:10}}>×</button>
+              </div>
+            </div>)}
+          </Card>
         </div>}
+
 
         {/* ── PENGGUNA ── */}
         {adminTab==="users"&&<div style={{display:"flex",flexDirection:"column",gap:10}}>
           <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",flexWrap:"wrap",gap:8}}>
-            <div><h2 style={{fontSize:15,fontWeight:800}}>Database Pengguna</h2><p style={{fontSize:11.5,color:C.t2,marginTop:2}}>Kelola akun & biometrik wajah</p></div>
+            <div><h2 style={{fontSize:15,fontWeight:800}}>Database Pengguna</h2></div>
             <Btn onClick={openAddU} size="sm">+ Tambah</Btn>
           </div>
           <Card noPad style={{overflow:"hidden"}}>
@@ -1651,23 +1703,23 @@ export default function App() {
               <table style={{width:"100%",borderCollapse:"collapse",fontSize:12,minWidth:600}}>
                 <THead cols={["#","Username","Nama","Role","Akses","Wajah","Status","Aksi"]}/>
                 <tbody>{users.map((u,i)=><tr key={u.id} className="hrow" style={{borderTop:`1px solid ${C.b0}`,background:i%2===0?"transparent":C.bg0}}>
-                  <td style={{padding:"12px 13px",fontFamily:F.mono,color:C.t3,fontSize:10}}>{u.id}</td>
-                  <td style={{padding:"12px 13px",fontFamily:F.mono,fontSize:11}}>{u.avatar} {u.username}</td>
-                  <td style={{padding:"12px 13px",fontWeight:600}}>{u.name}</td>
-                  <td style={{padding:"12px 13px"}}><RoleTag role={u.role}/></td>
-                  <td style={{padding:"12px 13px"}}><div style={{display:"flex",gap:4,flexWrap:"wrap"}}>{u.access?.map(a=><BizChip key={a} biz={a} sm/>)}</div></td>
-                  <td style={{padding:"12px 13px"}}>
+                  <td style={{padding:"14px 13px",fontFamily:F.mono,color:C.t3,fontSize:10}}>{u.id}</td>
+                  <td style={{padding:"14px 13px",fontFamily:F.mono,fontSize:11}}>{u.avatar} {u.username}</td>
+                  <td style={{padding:"14px 13px",fontWeight:600}}>{u.name}</td>
+                  <td style={{padding:"14px 13px"}}><RoleTag role={u.role}/></td>
+                  <td style={{padding:"14px 13px"}}><div style={{display:"flex",gap:4,flexWrap:"wrap"}}>{u.access?.map(a=><BizChip key={a} biz={a} sm/>)}</div></td>
+                  <td style={{padding:"14px 13px"}}>
                     {u.role==="admin"?<span style={{fontSize:10,color:C.t3}}>N/A</span>
-                    :u.faceDescriptor?<span style={{fontSize:10,color:C.g,fontWeight:700}}>✓ Terdaftar</span>
+                    :u.faceDescriptor?<span style={{fontSize:10,color:C.g,fontWeight:700}}>✓ Ada</span>
                     :<button onClick={()=>setFaceReg(u.id)} className="press" style={{padding:"3px 9px",background:C.a1,border:`1px solid ${C.a}33`,borderRadius:6,color:C.a,fontSize:10,fontWeight:700}}>Daftarkan</button>}
                   </td>
-                  <td style={{padding:"12px 13px"}}>
-                    <span style={{padding:"2px 8px",borderRadius:20,fontSize:9.5,fontWeight:700,background:u.active?C.g1:C.r1,color:u.active?C.g:C.r}}>{u.active?"AKTIF":"NONAKTIF"}</span>
+                  <td style={{padding:"14px 13px"}}>
+                    <span style={{padding:"2px 8px",borderRadius:20,fontSize:9.5,fontWeight:700,background:u.active?C.g1:C.r1,color:u.active?C.g:C.r}}>{u.active?"AKTIF":"OFF"}</span>
                   </td>
-                  <td style={{padding:"12px 13px",whiteSpace:"nowrap"}}>
+                  <td style={{padding:"14px 13px",whiteSpace:"nowrap"}}>
                     <button onClick={()=>openEditU(u)} className="press" style={{marginRight:4,padding:"3px 9px",background:"transparent",border:`1px solid ${C.b1}`,borderRadius:6,color:C.t0,fontSize:10}}>Edit</button>
-                    <button onClick={()=>{setCpwdModal(u.id);setCpwdForm({n1:"",n2:""});}} className="press" style={{marginRight:4,padding:"3px 9px",background:C.a1,border:`1px solid ${C.a}22`,borderRadius:6,color:C.a,fontSize:10}}>🔑</button>
-                    {u.faceDescriptor&&u.role!=="admin"&&<button onClick={()=>{fbUpdateUser(u.id,{...u,faceDescriptor:null},user.name);toast("Wajah direset","warn");}} className="press" style={{marginRight:4,padding:"3px 9px",background:C.cy1,border:`1px solid ${C.cy}22`,borderRadius:6,color:C.cy,fontSize:10}}>Reset</button>}
+                    <button onClick={()=>{setCpwdModal(u.id);setCpwdForm({old:"",n1:"",n2:""}); }} className="press" style={{marginRight:4,padding:"3px 9px",background:C.a1,border:`1px solid ${C.a}22`,borderRadius:6,color:C.a,fontSize:10}}>🔑</button>
+                    {u.faceDescriptor&&u.role!=="admin"&&<button onClick={()=>{fbUpdateUser(u.id,{...u,faceDescriptor:null},user.name);toast("Wajah direset","warn");}} className="press" style={{marginRight:4,padding:"3px 9px",background:C.b1,border:`1px solid ${C.b}22`,borderRadius:6,color:C.b,fontSize:10}}>Reset</button>}
                     <button onClick={()=>delUser(u)} className="press" style={{padding:"3px 9px",background:C.r1,border:`1px solid ${C.r}22`,borderRadius:6,color:C.r,fontSize:10}}>Hapus</button>
                   </td>
                 </tr>)}</tbody>
@@ -1681,8 +1733,7 @@ export default function App() {
           <div style={{display:"flex",gap:7,alignItems:"center",flexWrap:"wrap"}}>
             {Object.values(BIZ).map(b2=>{const isJ=b2.id==="JS_CLOTHING",active=adminBiz===b2.id;
               return <button key={b2.id} onClick={()=>{setAdminBiz(b2.id);setSearchQ("");setPModal(false);}} className="press"
-                style={{padding:"7px 14px",borderRadius:9,cursor:"pointer",fontWeight:700,fontSize:12,
-                  background:active?(isJ?C.b1:C.p1):"transparent",border:`2px solid ${active?(isJ?C.b:C.p):C.b0}`,color:active?(isJ?C.b:C.p):C.t2,fontFamily:F.sans}}>
+                style={{padding:"7px 14px",borderRadius:9,cursor:"pointer",fontWeight:700,fontSize:12,background:active?(isJ?C.b1:C.p1):"transparent",border:`2px solid ${active?(isJ?C.b:C.p):C.b0}`,color:active?(isJ?C.b:C.p):C.t2,fontFamily:F.sans}}>
                 {b2.icon} {b2.name}</button>;})}
             <input value={searchQ} onChange={e=>setSearchQ(e.target.value)} placeholder="Cari produk..."
               style={{padding:"7px 11px",background:C.bg2,border:`1px solid ${C.b0}`,borderRadius:8,color:C.t0,fontSize:12,width:140,fontFamily:F.sans}}/>
@@ -1692,18 +1743,21 @@ export default function App() {
               {key:"price",label:"Harga Jual (Rp)",fn:r=>r.price,num:true,w:18},{key:"stock",label:"Stok",fn:r=>r.stock,num:true,w:10},
               {key:"business",label:"Bisnis",fn:r=>BIZ[r.business]?.name||r.business,w:14},
               {key:"margin",label:"Margin %",fn:r=>r.price>0?(((r.price-(r.hpp||0))/r.price)*100).toFixed(1)+"%":"0%",w:12},
-            ],"Produk","produk_"+adminBiz)} className="press" style={{padding:"7px 12px",background:C.g1,border:`1px solid ${C.g}33`,borderRadius:8,color:C.g,fontSize:12,fontWeight:700,fontFamily:F.sans}}>⬇ Excel</button>
+            ],"Produk","produk_"+adminBiz)} className="press"
+              style={{padding:"7px 12px",background:C.g1,border:`1px solid ${C.g}33`,borderRadius:8,color:C.g,fontSize:12,fontWeight:700,fontFamily:F.sans}}>⬇ Excel</button>
             <Btn onClick={openAddP} size="sm">+ Tambah</Btn>
           </div>
-          {/* Scan bar */}
+          {/* Scan cari produk */}
           <div style={{display:"flex",gap:8,alignItems:"center",padding:"10px 14px",background:C.bg2,borderRadius:12,border:`1px solid ${C.b0}`}}>
             <span style={{fontSize:12,color:C.t2,fontWeight:600,whiteSpace:"nowrap"}}>🔍 Scan/Cari:</span>
             <input value={adminScanQ} onChange={e=>setAdminScanQ(e.target.value)}
-              onKeyDown={e=>{if(e.key==="Enter"){const bc=adminScanQ.trim();const found=prods.find(p=>p.barcode===bc&&p.business===adminBiz)||prods.find(p=>p.name.toLowerCase().includes(bc.toLowerCase())&&p.business===adminBiz);if(found){openEditP(found);setAdminScanQ("");}else toast("Tidak ditemukan: "+bc,"warn");}}}
-              placeholder="Scan barcode atau ketik nama → Enter untuk edit..."
+              onKeyDown={e=>{if(e.key==="Enter"){const bc=adminScanQ.trim();
+                const found=prods.find(p=>p.barcode===bc&&p.business===adminBiz)||prods.find(p=>p.name.toLowerCase().includes(bc.toLowerCase())&&p.business===adminBiz);
+                if(found){openEditP(found);setAdminScanQ("");}else toast("Produk tidak ditemukan: "+bc,"warn");}}}
+              placeholder="Scan barcode atau ketik nama → Enter"
               style={{flex:1,padding:"10px 12px",background:C.bg3,border:`1.5px solid ${C.b1}`,borderRadius:9,color:C.t0,fontSize:13,fontFamily:F.mono}}/>
-            <button onClick={()=>{const bc=adminScanQ.trim();const found=prods.find(p=>p.barcode===bc&&p.business===adminBiz)||prods.find(p=>p.name.toLowerCase().includes(bc.toLowerCase())&&p.business===adminBiz);if(found){openEditP(found);setAdminScanQ("");}else toast("Tidak ditemukan","warn");}}
-              className="press" style={{padding:"10px 14px",background:C.b,border:"none",borderRadius:9,color:"#fff",fontWeight:700,fontSize:12,flexShrink:0}}>Cari</button>
+            <button onClick={()=>{const bc=adminScanQ.trim();const found=prods.find(p=>p.barcode===bc&&p.business===adminBiz)||prods.find(p=>p.name.toLowerCase().includes(bc.toLowerCase())&&p.business===adminBiz);if(found){openEditP(found);setAdminScanQ("");}else toast("Tidak ditemukan","warn");}} className="press"
+              style={{padding:"10px 14px",background:C.b,border:"none",borderRadius:9,color:"#fff",fontWeight:700,fontSize:12,flexShrink:0}}>Cari</button>
           </div>
           {pModal&&<Card accent={C.g} style={{padding:16}}>
             <h3 style={{fontSize:13,fontWeight:800,marginBottom:14,color:C.g}}>{editPid===null?"➕ Tambah Produk":"✏️ Edit Produk"}</h3>
@@ -1728,25 +1782,22 @@ export default function App() {
                 <span style={{color:C.t2}}>Margin: <b style={{color:C.g}}>{((+pForm.price-+pForm.hpp)/+pForm.price*100).toFixed(1)}%</b></span>
                 <span style={{color:C.t2}}>Laba/pcs: <b style={{color:C.cy}}>{rp(+pForm.price-+pForm.hpp)}</b></span>
               </div>)}
-            <div style={{display:"flex",gap:8,marginTop:12}}>
-              <Btn onClick={saveProd}>Simpan</Btn><Btn onClick={()=>setPModal(false)} outline>Batal</Btn>
-            </div>
+            <div style={{display:"flex",gap:8,marginTop:12}}><Btn onClick={saveProd}>Simpan</Btn><Btn onClick={()=>setPModal(false)} outline>Batal</Btn></div>
           </Card>}
           <Card noPad style={{overflow:"hidden"}}>
             <TableWrap>
               <table style={{width:"100%",borderCollapse:"collapse",fontSize:12,minWidth:580}}>
                 <THead cols={["Barcode","Nama","Kategori","HPP","Harga Jual","Margin","Stok","Aksi"]}/>
-                <tbody>{adminPs.map((p,i)=>{
-                  const mg=p.price>0?((p.price-(p.hpp||0))/p.price*100).toFixed(0)+"%":"-";
+                <tbody>{adminPs.map((p,i)=>{const mg=p.price>0?((p.price-(p.hpp||0))/p.price*100).toFixed(0)+"%":"-";
                   return <tr key={p.id} className="hrow" style={{borderTop:`1px solid ${C.b0}`,background:i%2===0?"transparent":C.bg0}}>
-                    <td style={{padding:"12px 13px",fontFamily:F.mono,fontSize:10,color:C.t2}}>{p.barcode}</td>
-                    <td style={{padding:"12px 13px",fontWeight:600}}>{p.name}</td>
-                    <td style={{padding:"12px 13px",color:C.t2,fontSize:11}}>{p.category}</td>
-                    <td style={{padding:"12px 13px",fontFamily:F.mono,color:C.a,fontSize:11}}>{rp(p.hpp||0)}</td>
-                    <td style={{padding:"12px 13px",fontFamily:F.mono,color:C.g,fontSize:11}}>{rp(p.price)}</td>
-                    <td style={{padding:"12px 13px",fontFamily:F.mono,fontSize:11,color:C.cy}}>{mg}</td>
-                    <td style={{padding:"12px 13px"}}><StockBadge s={p.stock}/></td>
-                    <td style={{padding:"12px 13px",whiteSpace:"nowrap"}}>
+                    <td style={{padding:"14px 13px",fontFamily:F.mono,fontSize:10,color:C.t2}}>{p.barcode}</td>
+                    <td style={{padding:"14px 13px",fontWeight:600}}>{p.name}</td>
+                    <td style={{padding:"14px 13px",color:C.t2,fontSize:11}}>{p.category}</td>
+                    <td style={{padding:"14px 13px",fontFamily:F.mono,color:C.a,fontSize:11}}>{rp(p.hpp||0)}</td>
+                    <td style={{padding:"14px 13px",fontFamily:F.mono,color:C.g,fontSize:11}}>{rp(p.price)}</td>
+                    <td style={{padding:"14px 13px",fontFamily:F.mono,fontSize:11,color:C.cy}}>{mg}</td>
+                    <td style={{padding:"14px 13px"}}><StockBadge s={p.stock}/></td>
+                    <td style={{padding:"14px 13px",whiteSpace:"nowrap"}}>
                       <button onClick={()=>openEditP(p)} className="press" style={{marginRight:4,padding:"3px 9px",background:"transparent",border:`1px solid ${C.b1}`,borderRadius:6,color:C.t0,fontSize:10}}>Edit</button>
                       <button onClick={()=>fbDeleteProduct(p.id,p.name,p.business,user.name).then(()=>toast("Produk dihapus")).catch(e=>toast(e.message,"err"))} className="press" style={{padding:"3px 9px",background:C.r1,border:`1px solid ${C.r}22`,borderRadius:6,color:C.r,fontSize:10}}>Hapus</button>
                     </td>
@@ -1757,10 +1808,11 @@ export default function App() {
           </Card>
         </div>}
 
-        {/* ── LAPORAN KEUANGAN ── */}
+
+        {/* ── LAPORAN ── */}
         {adminTab==="laporan"&&<div style={{display:"flex",flexDirection:"column",gap:10}}>
           <div style={{display:"flex",gap:7,alignItems:"center",flexWrap:"wrap"}}>
-            <div style={{flex:1}}><h2 style={{fontSize:15,fontWeight:800}}>Laporan Keuangan</h2><p style={{fontSize:11.5,color:C.t2,marginTop:2}}>Pendapatan, HPP & laba per periode</p></div>
+            <div style={{flex:1}}><h2 style={{fontSize:15,fontWeight:800}}>Laporan Keuangan</h2></div>
             <button onClick={()=>downloadXLSX(filtTrx,[
               {key:"id",label:"ID Transaksi",w:22},{key:"date",label:"Tanggal",w:22},
               {key:"kasir",label:"Kasir",w:20},{key:"business",label:"Bisnis",fn:r=>BIZ[r.business]?.name||r.business,w:14},
@@ -1769,15 +1821,17 @@ export default function App() {
               {key:"total",label:"Total (Rp)",fn:r=>r.total,num:true,w:18},
               {key:"totalHpp",label:"HPP (Rp)",fn:r=>r.totalHpp||0,num:true,w:16},
               {key:"profit",label:"Laba (Rp)",fn:r=>r.profit||0,num:true,w:16},
-              {key:"payment",label:"Pembayaran",fn:r=>r.payment||"Tunai",w:14},
-              {key:"items",label:"Item",fn:r=>r.items?.length||0,num:true,w:8},
-            ],"Transaksi","laporan_keuangan")} className="press" style={{padding:"8px 14px",background:C.g1,border:`1px solid ${C.g}33`,borderRadius:9,color:C.g,fontSize:12,fontWeight:700,fontFamily:F.sans}}>⬇ Excel Transaksi</button>
+              {key:"payment",label:"Pembayaran",w:14},
+              {key:"items",label:"Jumlah Item",fn:r=>r.items?.length||0,num:true,w:14},
+            ],"Transaksi","laporan_keuangan")} className="press"
+              style={{padding:"7px 13px",background:C.g1,border:`1px solid ${C.g}33`,borderRadius:8,color:C.g,fontSize:12,fontWeight:700,fontFamily:F.sans}}>⬇ Excel Transaksi</button>
             <button onClick={()=>downloadXLSX(prodPerf,[
               {key:"barcode",label:"Barcode",w:14},{key:"name",label:"Nama Produk",w:28},
-              {key:"qty",label:"Qty",fn:r=>r.qty,num:true,w:10},{key:"rev",label:"Pendapatan (Rp)",fn:r=>r.rev,num:true,w:18},
+              {key:"qty",label:"Qty Terjual",fn:r=>r.qty,num:true,w:14},{key:"rev",label:"Pendapatan (Rp)",fn:r=>r.rev,num:true,w:18},
               {key:"hpp",label:"HPP (Rp)",fn:r=>r.hpp,num:true,w:16},{key:"laba",label:"Laba (Rp)",fn:r=>r.rev-r.hpp,num:true,w:16},
               {key:"margin",label:"Margin %",fn:r=>r.rev>0?(((r.rev-r.hpp)/r.rev)*100).toFixed(1)+"%":"0%",w:12},
-            ],"Produk Terlaris","laporan_produk")} className="press" style={{padding:"8px 14px",background:C.cy1,border:`1px solid ${C.cy}33`,borderRadius:9,color:C.cy,fontSize:12,fontWeight:700,fontFamily:F.sans}}>⬇ Excel Produk</button>
+            ],"Produk Terlaris","laporan_produk")} className="press"
+              style={{padding:"7px 13px",background:C.cy1,border:`1px solid ${C.cy}33`,borderRadius:8,color:C.cy,fontSize:12,fontWeight:700,fontFamily:F.sans}}>⬇ Excel Produk</button>
           </div>
           {/* Filters */}
           <div style={{display:"flex",gap:7,flexWrap:"wrap",alignItems:"center"}}>
@@ -1787,36 +1841,31 @@ export default function App() {
                 border:`1.5px solid ${reportBiz===b2?(b2==="JB_STORE"?C.p:b2==="JS_CLOTHING"?C.b:C.g):C.b0}`,
                 color:reportBiz===b2?(b2==="JB_STORE"?C.p:b2==="JS_CLOTHING"?C.b:C.g):C.t2,fontFamily:F.sans}}>
               {b2==="ALL"?"Semua":BIZ[b2]?.name}</button>)}
+            {/* Kasir filter */}
+            <select value={reportKasir} onChange={e=>setReportKasir(e.target.value)}
+              style={{padding:"6px 10px",background:C.bg2,border:`1.5px solid ${C.b0}`,borderRadius:8,color:C.t0,fontSize:11.5,fontFamily:F.sans,cursor:"pointer"}}>
+              <option value="ALL">Semua Kasir</option>
+              {users.filter(u=>u.role==="kasir"||u.role==="admin").map(u=><option key={u.id} value={String(u.id)}>{u.name}</option>)}
+            </select>
             {[["all","Semua"],["today","Hari Ini"],["week","7 Hari"],["month","Bulan Ini"],["custom","Rentang"]].map(([v,l])=><button key={v}
               onClick={()=>setReportRange(v)} className="press"
               style={{padding:"6px 12px",borderRadius:8,fontSize:11.5,fontWeight:600,cursor:"pointer",
                 background:reportRange===v?C.g1:"transparent",border:`1.5px solid ${reportRange===v?C.g:C.b0}`,
                 color:reportRange===v?C.g:C.t2,fontFamily:F.sans}}>{l}</button>)}
-            {reportRange==="custom"&&<>
-              <input type="date" value={lapFrom} onChange={e=>setLapFrom(e.target.value)} style={{padding:"6px 10px",background:C.bg3,border:`1.5px solid ${C.b1}`,borderRadius:8,color:C.t0,fontSize:12,fontFamily:F.sans}}/>
+            {reportRange==="custom"&&<><input type="date" value={lapFrom} onChange={e=>setLapFrom(e.target.value)}
+              style={{padding:"6px 10px",background:C.bg3,border:`1.5px solid ${C.b1}`,borderRadius:8,color:C.t0,fontSize:12,fontFamily:F.sans}}/>
               <span style={{color:C.t2,fontSize:12}}>s/d</span>
-              <input type="date" value={lapTo} onChange={e=>setLapTo(e.target.value)} style={{padding:"6px 10px",background:C.bg3,border:`1.5px solid ${C.b1}`,borderRadius:8,color:C.t0,fontSize:12,fontFamily:F.sans}}/>
-            </>}
+              <input type="date" value={lapTo} onChange={e=>setLapTo(e.target.value)}
+                style={{padding:"6px 10px",background:C.bg3,border:`1.5px solid ${C.b1}`,borderRadius:8,color:C.t0,fontSize:12,fontFamily:F.sans}}/></>}
           </div>
           {/* KPI */}
           <div className="stat-grid-4" style={{display:"grid",gap:8}}>
             <Stat icon="💰" label="Total Pendapatan" value={rp(totalRev)} color={C.g} sub={`${filtTrx.length} transaksi`}/>
             <Stat icon="📦" label="Total HPP" value={rp(totalHppAll)} color={C.a}/>
             <Stat icon="📈" label="Laba Kotor" value={rp(grossProfit)} color={C.cy}/>
-            <Stat icon="🎯" label="Margin Laba" value={margin} color={C.b} sub={`Nilai: ${rp(grossProfit)}`}/>
+            <Stat icon="🎯" label="Margin" value={margin} color={C.b} sub={`Diskon: ${rp(totalDisc)}`}/>
           </div>
-          {/* Payment breakdown */}
-          {filtTrx.length>0&&<Card>
-            <div style={{fontSize:10,fontWeight:700,color:C.t2,textTransform:"uppercase",letterSpacing:1,marginBottom:10}}>Metode Pembayaran</div>
-            <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
-              {PAYMENT_METHODS.map(pm=>{const cnt=filtTrx.filter(t=>t.payment===pm).length;if(!cnt) return null;const tot=filtTrx.filter(t=>t.payment===pm).reduce((s,t)=>s+t.total,0);
-                return <div key={pm} style={{padding:"8px 12px",background:C.bg3,borderRadius:9,border:`1px solid ${C.b0}`,flex:"1 1 120px"}}>
-                  <div style={{fontSize:12,fontWeight:700}}>{pm}</div>
-                  <div className="mn" style={{fontSize:13,color:C.g,marginTop:2}}>{rp(tot)}</div>
-                  <div style={{fontSize:10,color:C.t2,marginTop:1}}>{cnt} trx</div>
-                </div>;})}
-            </div>
-          </Card>}
+          {/* Pie */}
           {bizRevData.length>1&&<Card>
             <div style={{fontSize:10,fontWeight:700,color:C.t2,textTransform:"uppercase",letterSpacing:1,marginBottom:12}}>Kontribusi per Bisnis</div>
             <ResponsiveContainer width="100%" height={160}>
@@ -1825,10 +1874,11 @@ export default function App() {
                   {bizRevData.map((entry,index)=><Cell key={index} fill={entry.color}/>)}
                 </Pie>
                 <Tooltip formatter={v=>rp(v)} contentStyle={{background:C.bg2,border:`1px solid ${C.b1}`,borderRadius:8,fontSize:12}}/>
-                <Legend formatter={(v,entry)=><span style={{color:C.t1,fontSize:11}}>{v}: {rp(entry.payload.value)}</span>}/>
+                <Legend formatter={(v,e)=><span style={{color:C.t1,fontSize:11}}>{v}: {rp(e.payload.value)}</span>}/>
               </PieChart>
             </ResponsiveContainer>
           </Card>}
+          {/* Daily chart */}
           {dailyData.length>0&&<Card>
             <div style={{fontSize:10,fontWeight:700,color:C.t2,textTransform:"uppercase",letterSpacing:1,marginBottom:12}}>Tren Harian</div>
             <ResponsiveContainer width="100%" height={190}>
@@ -1842,6 +1892,26 @@ export default function App() {
               </BarChart>
             </ResponsiveContainer>
           </Card>}
+          {/* Per kasir */}
+          {kasirBreakdown.length>0&&<Card noPad style={{overflow:"hidden"}}>
+            <div style={{padding:"12px 14px",borderBottom:`1px solid ${C.b0}`}}>
+              <span style={{fontSize:10,fontWeight:700,color:C.t2,textTransform:"uppercase",letterSpacing:1}}>Performa per Kasir</span>
+            </div>
+            <TableWrap>
+              <table style={{width:"100%",borderCollapse:"collapse",fontSize:12,minWidth:500}}>
+                <THead cols={["Kasir","Transaksi","Pendapatan","Laba","Diskon","Rata-rata/Trx"]}/>
+                <tbody>{kasirBreakdown.map((k,i)=><tr key={k.name} className="hrow" style={{borderTop:`1px solid ${C.b0}`,background:i%2===0?"transparent":C.bg0}}>
+                  <td style={{padding:"14px 13px",fontWeight:700}}>{k.name}</td>
+                  <td style={{padding:"14px 13px",fontFamily:F.mono}}>{k.trx}</td>
+                  <td style={{padding:"14px 13px",fontFamily:F.mono,color:C.g,fontSize:11}}>{rp(k.rev)}</td>
+                  <td style={{padding:"14px 13px",fontFamily:F.mono,color:C.cy,fontSize:11}}>{rp(k.profit)}</td>
+                  <td style={{padding:"14px 13px",fontFamily:F.mono,color:C.r,fontSize:11}}>{rp(k.discount)}</td>
+                  <td style={{padding:"14px 13px",fontFamily:F.mono,fontSize:11}}>{k.trx>0?rp(Math.floor(k.rev/k.trx)):"-"}</td>
+                </tr>)}</tbody>
+              </table>
+            </TableWrap>
+          </Card>}
+          {/* Produk performa */}
           {prodPerf.length>0&&<Card noPad style={{overflow:"hidden"}}>
             <div style={{padding:"12px 14px",borderBottom:`1px solid ${C.b0}`}}>
               <span style={{fontSize:10,fontWeight:700,color:C.t2,textTransform:"uppercase",letterSpacing:1}}>Performa Produk (Top {Math.min(prodPerf.length,20)})</span>
@@ -1849,46 +1919,49 @@ export default function App() {
             <TableWrap>
               <table style={{width:"100%",borderCollapse:"collapse",fontSize:12,minWidth:500}}>
                 <THead cols={["Produk","Qty","Pendapatan","HPP","Laba","Margin"]}/>
-                <tbody>{prodPerf.slice(0,20).map((p,i)=>{
-                  const laba=p.rev-p.hpp,mg=p.rev>0?((laba/p.rev)*100).toFixed(1)+"%":"0%";
+                <tbody>{prodPerf.slice(0,20).map((p,i)=>{const laba=p.rev-p.hpp,mg=p.rev>0?((laba/p.rev)*100).toFixed(1)+"%":"0%";
                   return <tr key={p.barcode} className="hrow" style={{borderTop:`1px solid ${C.b0}`,background:i%2===0?"transparent":C.bg0}}>
-                    <td style={{padding:"12px 13px",fontWeight:600,fontSize:12}}>{p.name}<div className="mn" style={{fontSize:9.5,color:C.t3,marginTop:1}}>{p.barcode}</div></td>
-                    <td style={{padding:"12px 13px",fontFamily:F.mono,fontWeight:700}}>{p.qty}</td>
-                    <td style={{padding:"12px 13px",fontFamily:F.mono,color:C.g,fontSize:11}}>{rp(p.rev)}</td>
-                    <td style={{padding:"12px 13px",fontFamily:F.mono,color:C.a,fontSize:11}}>{rp(p.hpp)}</td>
-                    <td style={{padding:"12px 13px",fontFamily:F.mono,color:C.cy,fontSize:11}}>{rp(laba)}</td>
-                    <td style={{padding:"12px 13px",fontFamily:F.mono,fontSize:11}}><span style={{color:parseFloat(mg)>30?C.g:parseFloat(mg)>15?C.a:C.r}}>{mg}</span></td>
+                    <td style={{padding:"14px 13px",fontWeight:600,fontSize:12}}>{p.name}<div className="mn" style={{fontSize:9.5,color:C.t3,marginTop:1}}>{p.barcode}</div></td>
+                    <td style={{padding:"14px 13px",fontFamily:F.mono,fontWeight:700}}>{p.qty}</td>
+                    <td style={{padding:"14px 13px",fontFamily:F.mono,color:C.g,fontSize:11}}>{rp(p.rev)}</td>
+                    <td style={{padding:"14px 13px",fontFamily:F.mono,color:C.a,fontSize:11}}>{rp(p.hpp)}</td>
+                    <td style={{padding:"14px 13px",fontFamily:F.mono,color:C.cy,fontSize:11}}>{rp(laba)}</td>
+                    <td style={{padding:"14px 13px",fontFamily:F.mono,fontSize:11}}>
+                      <span style={{color:parseFloat(mg)>30?C.g:parseFloat(mg)>15?C.a:C.r}}>{mg}</span>
+                    </td>
                   </tr>;})}
                 </tbody>
               </table>
-              <div style={{padding:"12px 13px",borderTop:`1px solid ${C.b0}`,display:"flex",gap:16,fontSize:11,flexWrap:"wrap"}}>
+              <div style={{padding:"12px 14px",borderTop:`1px solid ${C.b0}`,display:"flex",gap:16,fontSize:11,flexWrap:"wrap"}}>
                 <span style={{color:C.t2}}>Pendapatan: <b className="mn" style={{color:C.g}}>{rp(totalRev)}</b></span>
                 <span style={{color:C.t2}}>Laba: <b className="mn" style={{color:C.cy}}>{rp(grossProfit)}</b></span>
                 <span style={{color:C.t2}}>Margin: <b className="mn" style={{color:C.b}}>{margin}</b> <span className="mn" style={{color:C.cy}}>({rp(grossProfit)})</span></span>
               </div>
             </TableWrap>
           </Card>}
+          {/* Transaksi */}
           <Card noPad style={{overflow:"hidden"}}>
             <div style={{padding:"12px 14px",borderBottom:`1px solid ${C.b0}`}}>
               <span style={{fontSize:10,fontWeight:700,color:C.t2,textTransform:"uppercase",letterSpacing:1}}>Riwayat Transaksi ({filtTrx.length})</span>
             </div>
             {filtTrx.length===0?<div style={{padding:"24px",textAlign:"center",color:C.t3,fontSize:12}}>Belum ada transaksi</div>
             :<TableWrap>
-              <table style={{width:"100%",borderCollapse:"collapse",fontSize:12,minWidth:560}}>
-                <THead cols={["ID","Tanggal","Kasir","Bisnis","Subtotal","Diskon","Total","Bayar","Retur"]}/>
-                <tbody>{filtTrx.slice(0,50).map((t,i)=><tr key={t.id} className="hrow" style={{borderTop:`1px solid ${C.b0}`,background:i%2===0?"transparent":C.bg0}}>
+              <table style={{width:"100%",borderCollapse:"collapse",fontSize:12,minWidth:540}}>
+                <THead cols={["ID","Tanggal","Kasir","Bisnis","Subtotal","Diskon","Total","Laba","Bayar","Retur"]}/>
+                <tbody>{filtTrx.slice(0,100).map((t,i)=><tr key={t.id} className="hrow" style={{borderTop:`1px solid ${C.b0}`,background:i%2===0?"transparent":C.bg0}}>
                   <td style={{padding:"12px 13px",fontFamily:F.mono,fontSize:9.5,color:C.t3}}>{t.id?.slice(-10)}</td>
                   <td style={{padding:"12px 13px",fontSize:10,color:C.t2,whiteSpace:"nowrap"}}>{t.date}</td>
                   <td style={{padding:"12px 13px",fontWeight:500,fontSize:11}}>{t.kasir}</td>
                   <td style={{padding:"12px 13px"}}><BizChip biz={t.business} sm/></td>
-                  <td style={{padding:"12px 13px",fontFamily:F.mono,color:C.t1,fontSize:11}}>{rp(t.subtotal||t.total)}</td>
-                  <td style={{padding:"12px 13px",fontFamily:F.mono,color:C.r,fontSize:11}}>{t.discount>0?`-${rp(t.discount)}`:"-"}</td>
+                  <td style={{padding:"12px 13px",fontFamily:F.mono,fontSize:11}}>{rp(t.subtotal||t.total)}</td>
+                  <td style={{padding:"12px 13px",fontFamily:F.mono,color:C.r,fontSize:11}}>{t.discount>0?`−${rp(t.discount)}`:"-"}</td>
                   <td style={{padding:"12px 13px",fontFamily:F.mono,color:C.g,fontSize:11,fontWeight:700}}>{rp(t.total)}</td>
-                  <td style={{padding:"12px 13px",fontSize:10}}><span style={{padding:"2px 7px",borderRadius:20,background:C.cy1,color:C.cy,fontWeight:700,fontSize:9.5}}>{t.payment||"Tunai"}</span></td>
+                  <td style={{padding:"12px 13px",fontFamily:F.mono,color:C.cy,fontSize:11}}>{rp(t.profit||0)}</td>
+                  <td style={{padding:"12px 13px",fontSize:10,color:C.t2}}>{t.payment||"Tunai"}</td>
                   <td style={{padding:"12px 13px"}}>
-                    {t.returned?<span style={{fontSize:10,color:C.t3,fontWeight:600}}>✓ Diretur</span>
-                    :<button onClick={()=>{if(window.confirm(`Retur transaksi ${t.id}?\nStok akan dikembalikan.`))doRetur(t);}}
-                      className="press" style={{padding:"3px 9px",background:C.r1,border:`1px solid ${C.r}22`,borderRadius:6,color:C.r,fontSize:10,fontWeight:700}}>↩ Retur</button>}
+                    {t.returned?<span style={{fontSize:10,color:C.a,fontWeight:600}}>✓ Retur</span>
+                    :<button onClick={()=>{if(window.confirm(`Retur transaksi ${t.id}?\nStok akan dikembalikan.`))doReturn(t);}} className="press"
+                      style={{padding:"3px 9px",background:C.a1,border:`1px solid ${C.a}22`,borderRadius:6,color:C.a,fontSize:10,fontWeight:700}}>Retur</button>}
                   </td>
                 </tr>)}</tbody>
               </table>
@@ -1896,120 +1969,6 @@ export default function App() {
           </Card>
         </div>}
 
-        {/* ── LAPORAN PER KASIR ── */}
-        {adminTab==="kasirperf"&&<div style={{display:"flex",flexDirection:"column",gap:10}}>
-          <div style={{display:"flex",alignItems:"center",gap:8,flexWrap:"wrap"}}>
-            <div style={{flex:1}}><h2 style={{fontSize:15,fontWeight:800}}>Performa per Kasir</h2><p style={{fontSize:11.5,color:C.t2,marginTop:2}}>Analisis penjualan per individu</p></div>
-            <button onClick={()=>downloadXLSX(kasirPerf,[
-              {key:"kasir",label:"Nama Kasir",w:22},{key:"trxCount",label:"Jumlah Transaksi",num:true,w:18},
-              {key:"total",label:"Total Penjualan (Rp)",fn:r=>r.total,num:true,w:22},
-              {key:"profit",label:"Total Laba (Rp)",fn:r=>r.profit,num:true,w:20},
-              {key:"avg",label:"Rata-rata/Transaksi",fn:r=>r.trxCount>0?Math.floor(r.total/r.trxCount):0,num:true,w:22},
-            ],"Per Kasir","laporan_kasir")} className="press" style={{padding:"8px 14px",background:C.g1,border:`1px solid ${C.g}33`,borderRadius:9,color:C.g,fontSize:12,fontWeight:700,fontFamily:F.sans}}>⬇ Excel</button>
-          </div>
-          {/* Range filter */}
-          <div style={{display:"flex",gap:7,flexWrap:"wrap",alignItems:"center"}}>
-            {["ALL","JS_CLOTHING","JB_STORE"].map(b2=><button key={b2} onClick={()=>setReportBiz(b2)} className="press"
-              style={{padding:"6px 12px",borderRadius:8,fontSize:11.5,fontWeight:600,cursor:"pointer",
-                background:reportBiz===b2?(b2==="JB_STORE"?C.p1:b2==="JS_CLOTHING"?C.b1:C.g1):"transparent",
-                border:`1.5px solid ${reportBiz===b2?(b2==="JB_STORE"?C.p:b2==="JS_CLOTHING"?C.b:C.g):C.b0}`,
-                color:reportBiz===b2?(b2==="JB_STORE"?C.p:b2==="JS_CLOTHING"?C.b:C.g):C.t2,fontFamily:F.sans}}>
-              {b2==="ALL"?"Semua":BIZ[b2]?.name}</button>)}
-            {[["all","Semua"],["today","Hari Ini"],["week","7 Hari"],["month","Bulan Ini"],["custom","Rentang"]].map(([v,l])=><button key={v}
-              onClick={()=>setReportRange(v)} className="press"
-              style={{padding:"6px 12px",borderRadius:8,fontSize:11.5,fontWeight:600,cursor:"pointer",
-                background:reportRange===v?C.g1:"transparent",border:`1.5px solid ${reportRange===v?C.g:C.b0}`,
-                color:reportRange===v?C.g:C.t2,fontFamily:F.sans}}>{l}</button>)}
-          </div>
-          {kasirPerf.length===0?<div style={{textAlign:"center",padding:"48px",color:C.t3}}><div style={{fontSize:40,opacity:.08,marginBottom:10}}>🧑</div><p>Belum ada data</p></div>
-          :<div style={{display:"flex",flexDirection:"column",gap:8}}>
-            {kasirPerf.map((k,i)=>{
-              const avg=k.trxCount>0?Math.floor(k.total/k.trxCount):0;
-              return <Card key={k.kasir} style={{display:"flex",alignItems:"center",gap:12,flexWrap:"wrap"}}>
-                <div style={{width:36,height:36,borderRadius:10,background:C.g1,border:`1px solid ${C.g}33`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:16,flexShrink:0,fontWeight:800,color:C.g}}>{i+1}</div>
-                <div style={{flex:1,minWidth:120}}>
-                  <div style={{fontWeight:700,fontSize:14}}>{k.kasir}</div>
-                  <div style={{fontSize:11,color:C.t2,marginTop:2}}>{k.trxCount} transaksi · avg {rp(avg)}/trx</div>
-                </div>
-                <div style={{textAlign:"right"}}>
-                  <div className="mn" style={{fontSize:18,fontWeight:800,color:C.g}}>{rp(k.total)}</div>
-                  <div className="mn" style={{fontSize:11,color:C.cy,marginTop:2}}>Laba: {rp(k.profit)}</div>
-                </div>
-              </Card>;})}
-          </div>}
-        </div>}
-
-        {/* ── TARGET ── */}
-        {adminTab==="target"&&<div style={{display:"flex",flexDirection:"column",gap:10}}>
-          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",flexWrap:"wrap",gap:8}}>
-            <div><h2 style={{fontSize:15,fontWeight:800}}>Target Penjualan</h2><p style={{fontSize:11.5,color:C.t2,marginTop:2}}>Pantau pencapaian bulanan per bisnis</p></div>
-            <Btn onClick={()=>{setTargetForm({business:"JS_CLOTHING",period:currMonth,amount:""});setTargetModal(true);}} size="sm">+ Set Target</Btn>
-          </div>
-          {targetModal&&<Card accent={C.g}>
-            <h3 style={{fontSize:13,fontWeight:800,marginBottom:12,color:C.g}}>🎯 Set Target Penjualan</h3>
-            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:9}}>
-              <div>
-                <div style={{fontSize:9.5,fontWeight:700,color:C.t2,textTransform:"uppercase",letterSpacing:.5,marginBottom:5}}>Bisnis</div>
-                <select value={targetForm.business} onChange={e=>setTargetForm(x=>({...x,business:e.target.value}))}
-                  style={{width:"100%",padding:"11px 13px",background:C.bg3,border:`1.5px solid ${C.b0}`,borderRadius:10,color:C.t0,fontSize:13,fontFamily:F.sans}}>
-                  {Object.values(BIZ).map(b=><option key={b.id} value={b.id}>{b.icon} {b.name}</option>)}
-                </select>
-              </div>
-              <div>
-                <div style={{fontSize:9.5,fontWeight:700,color:C.t2,textTransform:"uppercase",letterSpacing:.5,marginBottom:5}}>Periode (Bulan)</div>
-                <input type="month" value={targetForm.period} onChange={e=>setTargetForm(x=>({...x,period:e.target.value}))}
-                  style={{width:"100%",padding:"11px 13px",background:C.bg3,border:`1.5px solid ${C.b0}`,borderRadius:10,color:C.t0,fontSize:13,fontFamily:F.sans}}/>
-              </div>
-              <div style={{gridColumn:"span 2"}}>
-                <div style={{fontSize:9.5,fontWeight:700,color:C.t2,textTransform:"uppercase",letterSpacing:.5,marginBottom:5}}>Target Pendapatan (Rp) *</div>
-                <input type="number" value={targetForm.amount} onChange={e=>setTargetForm(x=>({...x,amount:e.target.value}))}
-                  placeholder="Contoh: 10000000"
-                  style={{width:"100%",padding:"11px 13px",background:C.bg3,border:`1.5px solid ${C.b0}`,borderRadius:10,color:C.t0,fontSize:14,fontFamily:F.mono}}
-                  onFocus={e=>e.target.style.borderColor=C.g+"88"} onBlur={e=>e.target.style.borderColor=C.b0}/>
-                {targetForm.amount&&<div style={{marginTop:6,fontSize:12,color:C.g}}>= {rp(targetForm.amount)}</div>}
-              </div>
-            </div>
-            <div style={{display:"flex",gap:8,marginTop:12}}>
-              <Btn onClick={async()=>{
-                if(!targetForm.amount||!targetForm.period){toast("Semua field wajib diisi","warn");return;}
-                const id=`${targetForm.business}_${targetForm.period}`;
-                await fbSetTarget({id,...targetForm,amount:+targetForm.amount});
-                toast("✅ Target disimpan");setTargetModal(false);
-              }}>Simpan Target</Btn>
-              <Btn onClick={()=>setTargetModal(false)} outline>Batal</Btn>
-            </div>
-          </Card>}
-          {targets.length===0?<div style={{textAlign:"center",padding:"48px",color:C.t3}}><div style={{fontSize:48,opacity:.08,marginBottom:10}}>🎯</div><p>Belum ada target</p></div>
-          :<div style={{display:"flex",flexDirection:"column",gap:10}}>
-            {targets.sort((a,b)=>b.period.localeCompare(a.period)).map(t=>{
-              const actual=trxs.filter(x=>{
-                if(x.business!==t.business) return false;
-                try{const d=parseD(x.date);return d&&d.toISOString().slice(0,7)===t.period;}catch{return false;}
-              }).reduce((s,x)=>s+x.total,0);
-              const pct=Math.min((actual/t.amount)*100,100);
-              return <Card key={t.id}>
-                <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
-                  <div style={{display:"flex",alignItems:"center",gap:8}}>
-                    <span style={{fontSize:20}}>{BIZ[t.business]?.icon}</span>
-                    <div>
-                      <div style={{fontWeight:700,fontSize:13}}>{BIZ[t.business]?.name}</div>
-                      <div style={{fontSize:11,color:C.t2,marginTop:1}}>{new Date(t.period+"-01").toLocaleDateString("id-ID",{month:"long",year:"numeric"})}</div>
-                    </div>
-                  </div>
-                  <div style={{display:"flex",alignItems:"center",gap:8}}>
-                    <div style={{textAlign:"right"}}>
-                      <div className="mn" style={{fontSize:16,fontWeight:800,color:pct>=100?C.g:pct>=70?C.a:C.r}}>{pct.toFixed(0)}%</div>
-                      <div style={{fontSize:10,color:C.t2}}>{rp(actual)} / {rp(t.amount)}</div>
-                    </div>
-                    <button onClick={()=>fbDeleteTarget(t.id).then(()=>toast("Target dihapus"))} className="press"
-                      style={{padding:"4px 9px",background:C.r1,border:`1px solid ${C.r}22`,borderRadius:6,color:C.r,fontSize:10,fontWeight:700}}>Hapus</button>
-                  </div>
-                </div>
-                <ProgressBar value={actual} max={t.amount} color={pct>=100?C.g:pct>=70?C.a:C.r}/>
-                {pct>=100&&<div style={{marginTop:6,fontSize:11,color:C.g,fontWeight:700}}>🎉 Target tercapai! +{rp(actual-t.amount)}</div>}
-              </Card>;})}
-          </div>}
-        </div>}
 
         {/* ── ABSENSI ── */}
         {adminTab==="absensi"&&<div style={{display:"flex",flexDirection:"column",gap:10}}>
@@ -2020,18 +1979,18 @@ export default function App() {
                 {key:"date",label:"Tanggal",w:18},{key:"name",label:"Nama Pegawai",w:22},
                 {key:"role",label:"Role",w:10},{key:"business",label:"Bisnis",fn:r=>BIZ[r.business]?.name||r.business,w:14},
                 {key:"checkIn",label:"Jam Masuk",w:24},{key:"checkOut",label:"Jam Pulang",fn:r=>r.checkOut||"-",w:24},
-                {key:"durasi",label:"Durasi",fn:r=>calcDur(r),w:14},
-              ],"Absensi","absensi")} className="press" style={{padding:"7px 14px",background:C.g1,border:`1px solid ${C.g}33`,borderRadius:8,color:C.g,fontSize:12,fontWeight:700,fontFamily:F.sans}}>⬇ Excel</button>
-              <button onClick={async()=>{if(!window.confirm("Reset absensi hari ini?")) return;await fbClearAttendanceByDate(todayDate()).catch(()=>{});toast("✅ Absensi direset","warn");}}
-                className="press" style={{padding:"7px 14px",background:C.r1,border:`1px solid ${C.r}33`,borderRadius:9,color:C.r,fontSize:12,fontWeight:700,fontFamily:F.sans}}>🗑 Reset Hari Ini</button>
+                {key:"dur",label:"Durasi",fn:r=>calcDur(r),w:14},
+              ],"Absensi","absensi")} className="press"
+                style={{padding:"7px 14px",background:C.g1,border:`1px solid ${C.g}33`,borderRadius:8,color:C.g,fontSize:12,fontWeight:700,fontFamily:F.sans}}>⬇ Excel</button>
+              <button onClick={async()=>{if(!window.confirm("Reset absensi hari ini?")) return;await fbClearAttendanceByDate(todayDate()).catch(()=>{});toast("Absensi hari ini direset","warn");}} className="press"
+                style={{padding:"7px 14px",background:C.r1,border:`1px solid ${C.r}33`,borderRadius:8,color:C.r,fontSize:12,fontWeight:700,fontFamily:F.sans}}>🗑 Reset Hari Ini</button>
             </div>
           </div>
           <Card style={{padding:"12px 14px"}}>
             <div style={{display:"flex",gap:7,flexWrap:"wrap",alignItems:"flex-end"}}>
               <div style={{flex:"1 1 180px",minWidth:160}}>
                 <div style={{fontSize:9.5,fontWeight:700,color:C.t2,textTransform:"uppercase",letterSpacing:.5,marginBottom:5}}>Pegawai</div>
-                <select value={selUser} onChange={e=>setSelUser(e.target.value)}
-                  style={{width:"100%",padding:"10px 12px",background:C.bg3,border:`1.5px solid ${C.b0}`,borderRadius:10,color:C.t0,fontSize:13,fontFamily:F.sans,cursor:"pointer"}}>
+                <select value={selUser} onChange={e=>setSelUser(e.target.value)} style={{width:"100%",padding:"10px 12px",background:C.bg3,border:`1.5px solid ${C.b0}`,borderRadius:10,color:C.t0,fontSize:13,fontFamily:F.sans,cursor:"pointer"}}>
                   <option value="ALL">Semua Pegawai</option>
                   {users.filter(u=>u.role!=="admin").map(u=><option key={u.id} value={String(u.id)}>{u.avatar} {u.name}</option>)}
                 </select>
@@ -2041,48 +2000,46 @@ export default function App() {
                 <div style={{display:"flex",gap:6,flexWrap:"wrap",alignItems:"center"}}>
                   {[["all","Semua"],["today","Hari Ini"],["week","7 Hari"],["month","Bulan Ini"],["custom","Rentang"]].map(([v,l])=>(
                     <button key={v} onClick={()=>setAttRange(v)} className="press"
-                      style={{padding:"8px 13px",borderRadius:8,fontSize:12,fontWeight:600,cursor:"pointer",
-                        background:attRange===v?C.g1:"transparent",border:`1.5px solid ${attRange===v?C.g:C.b0}`,
-                        color:attRange===v?C.g:C.t2,fontFamily:F.sans}}>{l}</button>))}
+                      style={{padding:"8px 13px",borderRadius:8,fontSize:12,fontWeight:600,cursor:"pointer",background:attRange===v?C.g1:"transparent",border:`1.5px solid ${attRange===v?C.g:C.b0}`,color:attRange===v?C.g:C.t2,fontFamily:F.sans}}>{l}</button>))}
                   {attRange==="custom"&&<>
-                    <input type="date" value={attFrom} onChange={e=>setAttFrom(e.target.value)}
-                      style={{padding:"8px 10px",background:C.bg3,border:`1.5px solid ${C.b1}`,borderRadius:8,color:C.t0,fontSize:12,fontFamily:F.sans}}/>
+                    <input type="date" value={attFrom} onChange={e=>setAttFrom(e.target.value)} style={{padding:"8px 10px",background:C.bg3,border:`1.5px solid ${C.b1}`,borderRadius:8,color:C.t0,fontSize:12,fontFamily:F.sans}}/>
                     <span style={{color:C.t2,fontSize:12,fontWeight:600}}>s/d</span>
-                    <input type="date" value={attTo} onChange={e=>setAttTo(e.target.value)}
-                      style={{padding:"8px 10px",background:C.bg3,border:`1.5px solid ${C.b1}`,borderRadius:8,color:C.t0,fontSize:12,fontFamily:F.sans}}/>
+                    <input type="date" value={attTo} onChange={e=>setAttTo(e.target.value)} style={{padding:"8px 10px",background:C.bg3,border:`1.5px solid ${C.b1}`,borderRadius:8,color:C.t0,fontSize:12,fontFamily:F.sans}}/>
                   </>}
                 </div>
               </div>
             </div>
-            <div style={{marginTop:10,padding:"7px 11px",background:C.bg3,borderRadius:8,fontSize:11,color:C.t2,border:`1px solid ${C.b0}`,display:"flex",justifyContent:"space-between"}}>
-              <span>Filter berlaku untuk ringkasan dan detail sekaligus</span>
-              <span className="mn" style={{color:C.g,fontWeight:700}}>{attFiltered.length} record</span>
+            <div style={{marginTop:10,padding:"7px 11px",background:C.bg3,borderRadius:8,fontSize:11,color:C.t2,border:`1px solid ${C.b0}`}}>
+              Filter berlaku untuk ringkasan dan detail sekaligus
+              <span style={{float:"right",fontFamily:F.mono,color:C.g,fontWeight:700}}>{attFiltered.length} record</span>
             </div>
           </Card>
           {/* Ringkasan */}
           <Card noPad style={{overflow:"hidden"}}>
             <div style={{padding:"12px 14px",borderBottom:`1px solid ${C.b0}`}}>
-              <span style={{fontSize:10,fontWeight:700,color:C.t2,textTransform:"uppercase",letterSpacing:1}}>
-                Ringkasan ({Object.keys(attByUser).length} pegawai · {attFiltered.length} record)
-              </span>
+              <span style={{fontSize:10,fontWeight:700,color:C.t2,textTransform:"uppercase",letterSpacing:1}}>Ringkasan Kehadiran ({Object.keys(attByUser).length} pegawai)</span>
             </div>
-            {Object.keys(attByUser).length===0?<div style={{padding:"24px",textAlign:"center",color:C.t3,fontSize:12}}>Belum ada data</div>
-            :<TableWrap>
-              <table style={{width:"100%",borderCollapse:"collapse",fontSize:12}}>
-                <THead cols={["Pegawai","Role","Hadir","Total Jam","Rata-rata","Terakhir Masuk"]}/>
-                <tbody>{Object.values(attByUser).map((au,i)=>{
-                  const avgMin=au.days>0?Math.floor(au.totalMinutes/au.days):0;
-                  return <tr key={au.userId} className="hrow" style={{borderTop:`1px solid ${C.b0}`,background:i%2===0?"transparent":C.bg0}}>
-                    <td style={{padding:"12px 14px",fontWeight:700,whiteSpace:"nowrap"}}><span style={{marginRight:6}}>{users.find(u=>u.id===au.userId)?.avatar||"🧑"}</span>{au.name}</td>
-                    <td style={{padding:"12px 14px"}}><RoleTag role={au.role}/></td>
-                    <td style={{padding:"12px 14px",fontFamily:F.mono,fontWeight:700,color:C.g,fontSize:14}}>{au.days}</td>
-                    <td style={{padding:"12px 14px",fontFamily:F.mono,color:C.cy}}>{au.totalMinutes>0?`${Math.floor(au.totalMinutes/60)}j ${au.totalMinutes%60}m`:"-"}</td>
-                    <td style={{padding:"12px 14px",fontFamily:F.mono,color:C.t1}}>{au.totalMinutes>0?`${Math.floor(avgMin/60)}j ${avgMin%60}m`:"-"}</td>
-                    <td style={{padding:"12px 14px",fontSize:10.5,color:C.t2}}>{au.records[au.records.length-1]?.checkIn||"-"}</td>
-                  </tr>;})}
-                </tbody>
-              </table>
-            </TableWrap>}
+            {Object.keys(attByUser).length===0
+              ?<div style={{padding:"24px",textAlign:"center",color:C.t3,fontSize:12}}>Belum ada data untuk periode ini</div>
+              :<TableWrap>
+                <table style={{width:"100%",borderCollapse:"collapse",fontSize:12}}>
+                  <THead cols={["Pegawai","Role","Hadir (Hari)","Total Jam Kerja","Rata-rata/Hari","Terakhir Masuk"]}/>
+                  <tbody>{Object.values(attByUser).map((au,i)=>{
+                    const avgMin=au.days>0?Math.floor(au.totalMinutes/au.days):0;
+                    const totalJam=`${Math.floor(au.totalMinutes/60)}j ${au.totalMinutes%60}m`;
+                    const avgJam=`${Math.floor(avgMin/60)}j ${avgMin%60}m`;
+                    return <tr key={au.userId} className="hrow" style={{borderTop:`1px solid ${C.b0}`,background:i%2===0?"transparent":C.bg0}}>
+                      <td style={{padding:"14px 13px",fontWeight:700,display:"flex",alignItems:"center",gap:6}}>
+                        <span>{users.find(u=>u.id===au.userId)?.avatar||"🧑"}</span>{au.name}</td>
+                      <td style={{padding:"14px 13px"}}><RoleTag role={au.role}/></td>
+                      <td style={{padding:"14px 13px",fontFamily:F.mono,fontWeight:700,color:C.g,fontSize:14}}>{au.days}</td>
+                      <td style={{padding:"14px 13px",fontFamily:F.mono,color:C.cy}}>{au.totalMinutes>0?totalJam:"-"}</td>
+                      <td style={{padding:"14px 13px",fontFamily:F.mono,color:C.t1}}>{au.totalMinutes>0?avgJam:"-"}</td>
+                      <td style={{padding:"14px 13px",fontSize:10.5,color:C.t2}}>{au.records[au.records.length-1]?.checkIn||"-"}</td>
+                    </tr>;})}
+                  </tbody>
+                </table>
+              </TableWrap>}
           </Card>
           {/* Detail */}
           <Card noPad style={{overflow:"hidden"}}>
@@ -2091,54 +2048,26 @@ export default function App() {
             </div>
             {attFiltered.length===0?<div style={{padding:"24px",textAlign:"center",color:C.t3,fontSize:12}}>Tidak ada data</div>
             :<TableWrap>
-              <table style={{width:"100%",borderCollapse:"collapse",fontSize:12,minWidth:520}}>
+              <table style={{width:"100%",borderCollapse:"collapse",fontSize:12,minWidth:540}}>
                 <THead cols={["Tanggal","Pegawai","Role","Bisnis","Jam Masuk","Jam Pulang","Durasi"]}/>
                 <tbody>{[...attFiltered].sort((a,b)=>{try{return new Date(b.checkInISO||b.checkIn)-new Date(a.checkInISO||a.checkIn);}catch{return 0;}}).map((a,i)=>(
                   <tr key={a.id} className="hrow" style={{borderTop:`1px solid ${C.b0}`,background:i%2===0?"transparent":C.bg0}}>
-                    <td style={{padding:"12px 13px",fontFamily:F.mono,fontSize:10,color:C.t2,whiteSpace:"nowrap"}}>{a.date}</td>
-                    <td style={{padding:"12px 13px",fontWeight:600,whiteSpace:"nowrap"}}><span style={{marginRight:5}}>{users.find(u=>u.id===a.userId)?.avatar||"🧑"}</span>{a.name}</td>
-                    <td style={{padding:"12px 13px"}}><RoleTag role={a.role}/></td>
-                    <td style={{padding:"12px 13px"}}><BizChip biz={a.business} sm/></td>
-                    <td style={{padding:"12px 13px",fontFamily:F.mono,fontSize:11,color:C.g}}>{a.checkIn}</td>
-                    <td style={{padding:"12px 13px",fontFamily:F.mono,fontSize:11,color:a.checkOut?C.t1:C.a}}>
-                      {a.checkOut||<span style={{fontSize:10,color:C.a,fontWeight:700}}>● Hadir</span>}
-                    </td>
-                    <td style={{padding:"12px 13px",fontFamily:F.mono,fontSize:11,color:C.cy}}>{calcDur(a)}</td>
-                  </tr>))}</tbody>
+                    <td style={{padding:"14px 13px",fontFamily:F.mono,fontSize:10,color:C.t2,whiteSpace:"nowrap"}}>{a.date}</td>
+                    <td style={{padding:"14px 13px",fontWeight:600,display:"flex",alignItems:"center",gap:5}}>
+                      <span>{users.find(u=>u.id===a.userId)?.avatar||"🧑"}</span>{a.name}</td>
+                    <td style={{padding:"14px 13px"}}><RoleTag role={a.role}/></td>
+                    <td style={{padding:"14px 13px"}}><BizChip biz={a.business} sm/></td>
+                    <td style={{padding:"14px 13px",fontFamily:F.mono,fontSize:11,color:C.g}}>{a.checkIn}</td>
+                    <td style={{padding:"14px 13px",fontFamily:F.mono,fontSize:11,color:a.checkOut?C.t1:C.a}}>
+                      {a.checkOut||<span style={{fontSize:10,color:C.a,fontWeight:700}}>● Masih hadir</span>}</td>
+                    <td style={{padding:"14px 13px",fontFamily:F.mono,fontSize:11,color:C.cy}}>{calcDur(a)}</td>
+                  </tr>))}
+                </tbody>
               </table>
             </TableWrap>}
           </Card>
         </div>}
 
-        {/* ── RETUR ── */}
-        {adminTab==="retur"&&<div style={{display:"flex",flexDirection:"column",gap:10}}>
-          <div style={{display:"flex",alignItems:"center",gap:8,flexWrap:"wrap"}}>
-            <div style={{flex:1}}><h2 style={{fontSize:15,fontWeight:800}}>Riwayat Retur</h2><p style={{fontSize:11.5,color:C.t2,marginTop:2}}>Transaksi yang telah dibatalkan/diretur</p></div>
-            <button onClick={()=>downloadXLSX(returns,[
-              {key:"id",label:"ID Retur",w:22},{key:"date",label:"Tanggal",w:22},
-              {key:"originalTrxId",label:"Dari Transaksi",w:22},{key:"kasir",label:"Kasir",w:20},
-              {key:"business",label:"Bisnis",fn:r=>BIZ[r.business]?.name||r.business,w:14},
-              {key:"total",label:"Nilai Retur (Rp)",fn:r=>r.total,num:true,w:20},
-            ],"Retur","retur")} className="press" style={{padding:"8px 14px",background:C.g1,border:`1px solid ${C.g}33`,borderRadius:9,color:C.g,fontSize:12,fontWeight:700,fontFamily:F.sans}}>⬇ Excel</button>
-          </div>
-          {returns.length===0?<div style={{textAlign:"center",padding:"48px",color:C.t3}}><div style={{fontSize:40,opacity:.08,marginBottom:10}}>↩</div><p>Belum ada retur</p></div>
-          :<Card noPad style={{overflow:"hidden"}}>
-            <TableWrap>
-              <table style={{width:"100%",borderCollapse:"collapse",fontSize:12,minWidth:500}}>
-                <THead cols={["ID Retur","Tanggal","Dari Transaksi","Kasir","Bisnis","Nilai Retur","Items"]}/>
-                <tbody>{returns.map((r,i)=><tr key={r.id} className="hrow" style={{borderTop:`1px solid ${C.b0}`,background:i%2===0?"transparent":C.bg0}}>
-                  <td style={{padding:"12px 13px",fontFamily:F.mono,fontSize:9.5,color:C.cy}}>{r.id?.slice(-10)}</td>
-                  <td style={{padding:"12px 13px",fontSize:10,color:C.t2,whiteSpace:"nowrap"}}>{r.date}</td>
-                  <td style={{padding:"12px 13px",fontFamily:F.mono,fontSize:9.5,color:C.t2}}>{r.originalTrxId?.slice(-10)}</td>
-                  <td style={{padding:"12px 13px",fontWeight:500}}>{r.kasir}</td>
-                  <td style={{padding:"12px 13px"}}><BizChip biz={r.business} sm/></td>
-                  <td style={{padding:"12px 13px",fontFamily:F.mono,color:C.r,fontWeight:700}}>{rp(r.total)}</td>
-                  <td style={{padding:"12px 13px",fontFamily:F.mono,fontSize:10}}>{r.items?.length||0}</td>
-                </tr>)}</tbody>
-              </table>
-            </TableWrap>
-          </Card>}
-        </div>}
 
         {/* ── LOG STOK ── */}
         {adminTab==="stoklog"&&(()=>{
@@ -2147,18 +2076,13 @@ export default function App() {
             const matchBiz=slogBiz==="ALL"||l.business===slogBiz;
             const matchType=slogType==="ALL"||l.type===slogType;
             let matchDate=true;
-            if(slogRange!=="all"){
-              try{
-                const d=parseD(l.date);if(!d) return matchBiz&&matchType;
-                if(slogRange==="today") matchDate=d.toDateString()===now3.toDateString();
-                else if(slogRange==="week"){const w=new Date(now3);w.setDate(w.getDate()-7);matchDate=d>=w;}
-                else if(slogRange==="month") matchDate=d.getMonth()===now3.getMonth()&&d.getFullYear()===now3.getFullYear();
-                else if(slogRange==="custom"){
-                  const from=slogFrom?new Date(slogFrom):null;const to=slogTo?new Date(slogTo+"T23:59:59"):null;
-                  if(from&&d<from) matchDate=false;if(to&&d>to) matchDate=false;
-                }
-              }catch{}
-            }
+            if(slogRange!=="all"){try{
+              const d=parseD(l.date);if(!d) return false;
+              if(slogRange==="today") matchDate=d.toDateString()===now3.toDateString();
+              else if(slogRange==="week"){const w=new Date(now3);w.setDate(w.getDate()-7);matchDate=d>=w;}
+              else if(slogRange==="month") matchDate=d.getMonth()===now3.getMonth()&&d.getFullYear()===now3.getFullYear();
+              else if(slogRange==="custom"){const fr=slogFrom?new Date(slogFrom):null,to=slogTo?new Date(slogTo+"T23:59:59"):null;if(fr&&d<fr)matchDate=false;if(to&&d>to)matchDate=false;}
+            }catch{matchDate=false;}}
             return matchBiz&&matchType&&matchDate;
           });
           return <div style={{display:"flex",flexDirection:"column",gap:10}}>
@@ -2170,54 +2094,42 @@ export default function App() {
                 {key:"type",label:"Tipe",w:10},{key:"qty",label:"Qty",fn:r=>r.qty,num:true,w:8},
                 {key:"before",label:"Stok Sebelum",fn:r=>r.before,num:true,w:14},{key:"after",label:"Stok Sesudah",fn:r=>r.after,num:true,w:14},
                 {key:"by",label:"Oleh",w:20},
-              ],"Log Stok","log_stok")} className="press" style={{padding:"7px 14px",background:C.g1,border:`1px solid ${C.g}33`,borderRadius:8,color:C.g,fontSize:12,fontWeight:700,fontFamily:F.sans}}>⬇ Excel</button>
+              ],"Log Stok","log_stok")} className="press"
+                style={{padding:"7px 14px",background:C.g1,border:`1px solid ${C.g}33`,borderRadius:8,color:C.g,fontSize:12,fontWeight:700,fontFamily:F.sans}}>⬇ Excel</button>
             </div>
             <Card style={{padding:"12px 14px"}}>
               <div style={{display:"flex",gap:7,flexWrap:"wrap",alignItems:"center"}}>
                 {["ALL","JS_CLOTHING","JB_STORE"].map(b2=><button key={b2} onClick={()=>setSlogBiz(b2)} className="press"
-                  style={{padding:"5px 11px",borderRadius:7,fontSize:11.5,fontWeight:600,cursor:"pointer",
-                    background:slogBiz===b2?(b2==="JB_STORE"?C.p1:b2==="JS_CLOTHING"?C.b1:C.g1):"transparent",
-                    border:`1.5px solid ${slogBiz===b2?(b2==="JB_STORE"?C.p:b2==="JS_CLOTHING"?C.b:C.g):C.b0}`,
-                    color:slogBiz===b2?(b2==="JB_STORE"?C.p:b2==="JS_CLOTHING"?C.b:C.g):C.t2,fontFamily:F.sans}}>
-                  {b2==="ALL"?"Semua":BIZ[b2]?.name}</button>)}
-                <div style={{width:1,height:20,background:C.b0,margin:"0 2px"}}/>
+                  style={{padding:"5px 11px",borderRadius:7,fontSize:11.5,fontWeight:600,cursor:"pointer",background:slogBiz===b2?(b2==="JB_STORE"?C.p1:b2==="JS_CLOTHING"?C.b1:C.g1):"transparent",border:`1.5px solid ${slogBiz===b2?(b2==="JB_STORE"?C.p:b2==="JS_CLOTHING"?C.b:C.g):C.b0}`,color:slogBiz===b2?(b2==="JB_STORE"?C.p:b2==="JS_CLOTHING"?C.b:C.g):C.t2,fontFamily:F.sans}}>{b2==="ALL"?"Semua":BIZ[b2]?.name}</button>)}
+                <div style={{width:1,height:20,background:C.b0}}/>
                 {["ALL","masuk","keluar"].map(t=><button key={t} onClick={()=>setSlogType(t)} className="press"
-                  style={{padding:"5px 11px",borderRadius:7,fontSize:11.5,fontWeight:600,cursor:"pointer",
-                    background:slogType===t?(t==="masuk"?C.g1:t==="keluar"?C.r1:C.a1):"transparent",
-                    border:`1.5px solid ${slogType===t?(t==="masuk"?C.g:t==="keluar"?C.r:C.a):C.b0}`,
-                    color:slogType===t?(t==="masuk"?C.g:t==="keluar"?C.r:C.a):C.t2,fontFamily:F.sans}}>
+                  style={{padding:"5px 11px",borderRadius:7,fontSize:11.5,fontWeight:600,cursor:"pointer",background:slogType===t?(t==="masuk"?C.g1:t==="keluar"?C.r1:C.a1):"transparent",border:`1.5px solid ${slogType===t?(t==="masuk"?C.g:t==="keluar"?C.r:C.a):C.b0}`,color:slogType===t?(t==="masuk"?C.g:t==="keluar"?C.r:C.a):C.t2,fontFamily:F.sans}}>
                   {t==="ALL"?"Semua":t==="masuk"?"↑ Masuk":"↓ Keluar"}</button>)}
-                <div style={{width:1,height:20,background:C.b0,margin:"0 2px"}}/>
+                <div style={{width:1,height:20,background:C.b0}}/>
                 {[["all","Semua"],["today","Hari Ini"],["week","7 Hari"],["month","Bulan Ini"],["custom","Rentang"]].map(([v,l])=>(
                   <button key={v} onClick={()=>setSlogRange(v)} className="press"
-                    style={{padding:"5px 11px",borderRadius:7,fontSize:11.5,fontWeight:600,cursor:"pointer",
-                      background:slogRange===v?C.g1:"transparent",border:`1.5px solid ${slogRange===v?C.g:C.b0}`,
-                      color:slogRange===v?C.g:C.t2,fontFamily:F.sans}}>{l}</button>))}
-                {slogRange==="custom"&&<div style={{display:"flex",gap:6,alignItems:"center",flexWrap:"wrap"}}>
-                  <input type="date" value={slogFrom} onChange={e=>setSlogFrom(e.target.value)}
-                    style={{padding:"5px 9px",background:C.bg3,border:`1.5px solid ${C.b1}`,borderRadius:8,color:C.t0,fontSize:12,fontFamily:F.sans}}/>
+                    style={{padding:"5px 11px",borderRadius:7,fontSize:11.5,fontWeight:600,cursor:"pointer",background:slogRange===v?C.g1:"transparent",border:`1.5px solid ${slogRange===v?C.g:C.b0}`,color:slogRange===v?C.g:C.t2,fontFamily:F.sans}}>{l}</button>))}
+                {slogRange==="custom"&&<>
+                  <input type="date" value={slogFrom} onChange={e=>setSlogFrom(e.target.value)} style={{padding:"5px 9px",background:C.bg3,border:`1.5px solid ${C.b1}`,borderRadius:8,color:C.t0,fontSize:12,fontFamily:F.sans}}/>
                   <span style={{color:C.t2,fontSize:12}}>s/d</span>
-                  <input type="date" value={slogTo} onChange={e=>setSlogTo(e.target.value)}
-                    style={{padding:"5px 9px",background:C.bg3,border:`1.5px solid ${C.b1}`,borderRadius:8,color:C.t0,fontSize:12,fontFamily:F.sans}}/>
-                </div>}
+                  <input type="date" value={slogTo} onChange={e=>setSlogTo(e.target.value)} style={{padding:"5px 9px",background:C.bg3,border:`1.5px solid ${C.b1}`,borderRadius:8,color:C.t0,fontSize:12,fontFamily:F.sans}}/>
+                </>}
               </div>
             </Card>
-            {slogsFiltered.length===0?<div style={{textAlign:"center",padding:"48px",color:C.t3}}><p>Tidak ada data</p></div>
+            {slogsFiltered.length===0?<div style={{textAlign:"center",padding:"48px",color:C.t3}}><div style={{fontSize:40,opacity:.08,marginBottom:10}}>📋</div><p>Tidak ada data</p></div>
             :<Card noPad style={{overflow:"hidden"}}>
               <TableWrap>
                 <table style={{width:"100%",borderCollapse:"collapse",fontSize:11.5,minWidth:540}}>
                   <THead cols={["Waktu","Produk","Bisnis","Tipe","Qty","Sblm","Ssdh","Oleh"]}/>
                   <tbody>{slogsFiltered.map((l,i)=><tr key={l.id||i} className="hrow" style={{borderTop:`1px solid ${C.b0}`,background:i%2===0?"transparent":C.bg0}}>
-                    <td style={{padding:"12px 13px",color:C.t2,fontSize:10,whiteSpace:"nowrap"}}>{l.date}</td>
-                    <td style={{padding:"12px 13px",fontWeight:500,fontSize:12}}>{l.name}<div className="mn" style={{fontSize:9,color:C.t3}}>{l.barcode}</div></td>
-                    <td style={{padding:"12px 13px"}}><BizChip biz={l.business} sm/></td>
-                    <td style={{padding:"12px 13px"}}>
-                      <span style={{padding:"2px 8px",borderRadius:20,fontSize:9.5,fontWeight:700,background:l.type==="masuk"?C.g1:C.r1,color:l.type==="masuk"?C.g:C.r,textTransform:"uppercase"}}>{l.type}</span>
-                    </td>
-                    <td style={{padding:"12px 13px",fontFamily:F.mono,fontWeight:700,color:l.type==="masuk"?C.g:C.r}}>{l.type==="masuk"?"+":"-"}{l.qty}</td>
-                    <td style={{padding:"12px 13px",fontFamily:F.mono,fontSize:11}}>{l.before}</td>
-                    <td style={{padding:"12px 13px",fontFamily:F.mono,fontWeight:700}}>{l.after}</td>
-                    <td style={{padding:"12px 13px",color:C.t2,fontSize:11}}>{l.by}</td>
+                    <td style={{padding:"14px 13px",color:C.t2,fontSize:10,whiteSpace:"nowrap"}}>{l.date}</td>
+                    <td style={{padding:"14px 13px",fontWeight:500,fontSize:12}}>{l.name}<div className="mn" style={{fontSize:9,color:C.t3}}>{l.barcode}</div></td>
+                    <td style={{padding:"14px 13px"}}><BizChip biz={l.business} sm/></td>
+                    <td style={{padding:"14px 13px"}}><span style={{padding:"2px 8px",borderRadius:20,fontSize:9.5,fontWeight:700,background:l.type==="masuk"?C.g1:C.r1,color:l.type==="masuk"?C.g:C.r,textTransform:"uppercase"}}>{l.type}</span></td>
+                    <td style={{padding:"14px 13px",fontFamily:F.mono,fontWeight:700,color:l.type==="masuk"?C.g:C.r}}>{l.type==="masuk"?"+":"-"}{l.qty}</td>
+                    <td style={{padding:"14px 13px",fontFamily:F.mono,fontSize:11}}>{l.before}</td>
+                    <td style={{padding:"14px 13px",fontFamily:F.mono,fontWeight:700}}>{l.after}</td>
+                    <td style={{padding:"14px 13px",color:C.t2,fontSize:11}}>{l.by}</td>
                   </tr>)}</tbody>
                 </table>
               </TableWrap>
@@ -2225,40 +2137,64 @@ export default function App() {
           </div>;
         })()}
 
-        {/* ── LOG AKTIVITAS ── */}
-        {adminTab==="actlog"&&<div style={{display:"flex",flexDirection:"column",gap:10}}>
-          <div style={{display:"flex",alignItems:"center",gap:8,flexWrap:"wrap"}}>
-            <div style={{flex:1}}><h2 style={{fontSize:15,fontWeight:800}}>Log Aktivitas</h2><p style={{fontSize:11.5,color:C.t2,marginTop:2}}>Audit trail semua perubahan sistem</p></div>
-          </div>
-          {actLogs.length===0?<div style={{textAlign:"center",padding:"48px",color:C.t3}}><div style={{fontSize:40,opacity:.08,marginBottom:10}}>🔍</div><p>Belum ada log</p></div>
-          :<Card noPad style={{overflow:"hidden"}}>
+        {/* ── RETUR ── */}
+        {adminTab==="returns"&&<div style={{display:"flex",flexDirection:"column",gap:10}}>
+          <h2 style={{fontSize:15,fontWeight:800}}>Riwayat Retur <span style={{color:C.t2,fontWeight:500,fontSize:13}}>({returns.length})</span></h2>
+          {returns.length===0?<div style={{textAlign:"center",padding:"48px",color:C.t3}}>
+            <div style={{fontSize:40,opacity:.08,marginBottom:10}}>↩</div>
+            <p>Belum ada retur</p>
+            <p style={{fontSize:12,marginTop:8,color:C.t3}}>Retur dilakukan dari tab Laporan → kolom Retur di tabel transaksi</p>
+          </div>:<Card noPad style={{overflow:"hidden"}}>
             <TableWrap>
-              <table style={{width:"100%",borderCollapse:"collapse",fontSize:12,minWidth:500}}>
-                <THead cols={["Waktu","Pelaku","Aksi","Detail","Bisnis"]}/>
-                <tbody>{actLogs.map((l,i)=>(
-                  <tr key={l._docId||i} className="hrow" style={{borderTop:`1px solid ${C.b0}`,background:i%2===0?"transparent":C.bg0}}>
-                    <td style={{padding:"12px 13px",fontSize:10,color:C.t2,whiteSpace:"nowrap"}}>{l.date}</td>
-                    <td style={{padding:"12px 13px",fontWeight:600}}>{l.actor}</td>
-                    <td style={{padding:"12px 13px"}}>
-                      <span style={{padding:"2px 8px",borderRadius:20,fontSize:9.5,fontWeight:700,background:C.b1,color:C.b}}>{l.action}</span>
-                    </td>
-                    <td style={{padding:"12px 13px",color:C.t2,fontSize:11}}>{l.detail}</td>
-                    <td style={{padding:"12px 13px"}}>{l.business?<BizChip biz={l.business} sm/>:"-"}</td>
-                  </tr>))}
-                </tbody>
+              <table style={{width:"100%",borderCollapse:"collapse",fontSize:12,minWidth:520}}>
+                <THead cols={["ID Retur","Tanggal","Kasir","Bisnis","TRX Asal","Total","Item"]}/>
+                <tbody>{returns.map((r,i)=><tr key={r.id} className="hrow" style={{borderTop:`1px solid ${C.b0}`,background:i%2===0?"transparent":C.bg0}}>
+                  <td style={{padding:"14px 13px",fontFamily:F.mono,fontSize:10,color:C.a}}>{r.id}</td>
+                  <td style={{padding:"14px 13px",fontSize:10,color:C.t2,whiteSpace:"nowrap"}}>{r.date}</td>
+                  <td style={{padding:"14px 13px",fontWeight:500}}>{r.kasir}</td>
+                  <td style={{padding:"14px 13px"}}><BizChip biz={r.business} sm/></td>
+                  <td style={{padding:"14px 13px",fontFamily:F.mono,fontSize:10,color:C.t3}}>{r.originalTrxId?.slice(-12)}</td>
+                  <td style={{padding:"14px 13px",fontFamily:F.mono,color:C.r,fontSize:11,fontWeight:700}}>{rp(r.total)}</td>
+                  <td style={{padding:"14px 13px",fontFamily:F.mono,fontSize:11}}>{r.items?.length||0}</td>
+                </tr>)}</tbody>
               </table>
             </TableWrap>
           </Card>}
         </div>}
 
-        {/* ── GOOGLE SHEETS ── */}
+        {/* ── AKTIVITAS ── */}
+        {adminTab==="actlog"&&<div style={{display:"flex",flexDirection:"column",gap:10}}>
+          <h2 style={{fontSize:15,fontWeight:800}}>Log Aktivitas <span style={{color:C.t2,fontWeight:500,fontSize:13}}>({actLogs.length})</span></h2>
+          <Card noPad style={{overflow:"hidden"}}>
+            <TableWrap>
+              <table style={{width:"100%",borderCollapse:"collapse",fontSize:12,minWidth:520}}>
+                <THead cols={["Waktu","Aktor","Aksi","Detail","Bisnis"]}/>
+                <tbody>{actLogs.map((l,i)=><tr key={l._docId||i} className="hrow" style={{borderTop:`1px solid ${C.b0}`,background:i%2===0?"transparent":C.bg0}}>
+                  <td style={{padding:"12px 13px",fontSize:10,color:C.t2,whiteSpace:"nowrap"}}>{l.date}</td>
+                  <td style={{padding:"12px 13px",fontWeight:600,fontSize:11}}>{l.actor}</td>
+                  <td style={{padding:"12px 13px"}}>
+                    <span style={{padding:"2px 8px",borderRadius:20,fontSize:10,fontWeight:700,
+                      background:l.action.includes("Transaksi")?C.g1:l.action.includes("Retur")?C.a1:l.action.includes("Hapus")?C.r1:C.b1,
+                      color:l.action.includes("Transaksi")?C.g:l.action.includes("Retur")?C.a:l.action.includes("Hapus")?C.r:C.b}}>
+                      {l.action}</span>
+                  </td>
+                  <td style={{padding:"12px 13px",fontSize:11,color:C.t1,maxWidth:200,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{l.detail}</td>
+                  <td style={{padding:"12px 13px"}}>{l.business?<BizChip biz={l.business} sm/>:"-"}</td>
+                </tr>)}</tbody>
+              </table>
+            </TableWrap>
+          </Card>
+        </div>}
+
+
+        {/* ── SHEETS ── */}
         {adminTab==="sheets"&&<div style={{maxWidth:640,display:"flex",flexDirection:"column",gap:10}}>
           <h2 style={{fontSize:15,fontWeight:800}}>Google Sheets Sync</h2>
           <Card>
             <div style={{fontSize:10,fontWeight:700,color:C.g,textTransform:"uppercase",letterSpacing:1,marginBottom:12}}>📋 Cara Setup</div>
-            {[{n:1,t:"Buat Google Spreadsheet baru",d:"sheets.google.com → Blank spreadsheet → beri nama 'Kasir JE Grup'"},
-              {n:2,t:"Buka Apps Script",d:"Extensions → Apps Script → hapus kode yang ada"},
-              {n:3,t:"Paste kode berikut",d:"Salin kode di bawah dan paste ke editor Apps Script"},
+            {[{n:1,t:"Buat Google Spreadsheet baru",d:"sheets.google.com → Blank spreadsheet → nama: 'Kasir JE Grup'"},
+              {n:2,t:"Buka Apps Script",d:"menu Extensions → Apps Script → hapus kode yang ada"},
+              {n:3,t:"Paste kode berikut",d:"Salin kode di bawah dan paste ke editor"},
               {n:4,t:"Deploy sebagai Web App",d:"Deploy → New deployment → Web app → Execute as: Me → Anyone → Deploy"},
               {n:5,t:"Salin URL Web App",d:"Salin URL (https://script.google.com/macros/s/.../exec) dan paste di bawah"},
             ].map(s=><div key={s.n} style={{display:"flex",gap:10,marginBottom:10,alignItems:"flex-start"}}>
@@ -2269,21 +2205,19 @@ export default function App() {
           <Card noPad style={{overflow:"hidden"}}>
             <div style={{padding:"12px 14px",borderBottom:`1px solid ${C.b0}`,display:"flex",alignItems:"center",gap:8}}>
               <span style={{flex:1,fontSize:10,fontWeight:700,color:C.t2,textTransform:"uppercase",letterSpacing:1}}>Kode Apps Script</span>
-              <button onClick={()=>{navigator.clipboard.writeText(APPSCRIPT_CODE.trim());setCopyDone(true);setTimeout(()=>setCopyDone(false),2000);toast("✓ Kode disalin!","ok");}}
-                className="press" style={{padding:"4px 12px",background:copyDone?C.g1:C.bg4,border:`1px solid ${copyDone?C.g:C.b1}`,borderRadius:7,color:copyDone?C.g:C.t1,fontSize:11,fontWeight:700}}>
+              <button onClick={()=>{navigator.clipboard.writeText(APPSCRIPT_CODE.trim());setCopyDone(true);setTimeout(()=>setCopyDone(false),2000);toast("✓ Kode disalin!");}} className="press"
+                style={{padding:"4px 12px",background:copyDone?C.g1:C.bg4,border:`1px solid ${copyDone?C.g:C.b1}`,borderRadius:7,color:copyDone?C.g:C.t1,fontSize:11,fontWeight:700}}>
                 {copyDone?"✓ Disalin":"📋 Salin"}
               </button>
             </div>
-            <pre style={{padding:"12px 14px",fontSize:11,fontFamily:F.mono,color:C.t2,overflowX:"auto",lineHeight:1.7,background:C.bg0,maxHeight:260,overflowY:"auto",whiteSpace:"pre-wrap"}}>
-              {APPSCRIPT_CODE.trim()}
-            </pre>
+            <pre style={{padding:"12px 14px",fontSize:11,fontFamily:F.mono,color:C.t2,overflowX:"auto",lineHeight:1.7,background:C.bg0,maxHeight:260,overflowY:"auto",whiteSpace:"pre-wrap"}}>{APPSCRIPT_CODE.trim()}</pre>
           </Card>
           <Card>
-            <div style={{fontSize:10,fontWeight:700,color:C.t2,textTransform:"uppercase",letterSpacing:1,marginBottom:10}}>Hubungkan & Sinkronkan</div>
+            <div style={{fontSize:10,fontWeight:700,color:C.t2,textTransform:"uppercase",letterSpacing:1,marginBottom:10}}>URL Web App</div>
             <div style={{display:"flex",gap:8,marginBottom:10,flexWrap:"wrap"}}>
               <input value={gsUrl} onChange={e=>{setGsUrl(e.target.value);localStorage.setItem("je_gs_url",e.target.value);}}
                 placeholder="https://script.google.com/macros/s/…/exec"
-                style={{flex:1,minWidth:200,padding:"12px 13px",background:C.bg3,border:`1.5px solid ${C.b0}`,borderRadius:10,color:C.t0,fontSize:12,fontFamily:F.mono,transition:"border-color .15s"}}
+                style={{flex:1,minWidth:200,padding:"11px 13px",background:C.bg3,border:`1.5px solid ${C.b0}`,borderRadius:10,color:C.t0,fontSize:12,fontFamily:F.mono}}
                 onFocus={e=>e.target.style.borderColor=C.g+"88"} onBlur={e=>e.target.style.borderColor=C.b0}/>
               <Btn onClick={async()=>{
                 if(!gsUrl){toast("Masukkan URL dulu","warn");return;}
@@ -2294,15 +2228,14 @@ export default function App() {
               }} disabled={gsLoad}>{gsLoad?"⏳ Proses...":"↑ Ekspor"}</Btn>
             </div>
             <div style={{padding:"9px 11px",background:C.a1,borderRadius:8,border:`1px solid ${C.a}22`,fontSize:11.5,color:C.a}}>
-              💡 Firebase adalah database utama. Google Sheets bersifat opsional untuk backup.
+              💡 Firebase adalah database utama. Google Sheets untuk backup & laporan offline.
             </div>
           </Card>
           <Card>
-            <div style={{fontSize:10,fontWeight:700,color:C.t2,textTransform:"uppercase",letterSpacing:1,marginBottom:10}}>Status Data Firebase</div>
-            <div className="stat-grid-3" style={{display:"grid",gap:7}}>
+            <div style={{fontSize:10,fontWeight:700,color:C.t2,textTransform:"uppercase",letterSpacing:1,marginBottom:10}}>Status Data</div>
+            <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:7}}>
               {[{i:"👥",l:"Pengguna",v:users.length},{i:"📦",l:"Produk",v:prods.length},{i:"💳",l:"Transaksi",v:trxs.length},
-                {i:"📋",l:"Log Stok",v:slogs.length},{i:"🕐",l:"Absensi",v:attend.length},{i:"↩",l:"Retur",v:returns.length},
-                {i:"🔍",l:"Aktivitas",v:actLogs.length},{i:"🎯",l:"Target",v:targets.length}].map(s=>(
+                {i:"📋",l:"Log Stok",v:slogs.length},{i:"🕐",l:"Absensi",v:attend.length},{i:"↩",l:"Retur",v:returns.length}].map(s=>(
                 <div key={s.l} style={{padding:"10px",background:C.bg3,borderRadius:9,border:`1px solid ${C.b0}`,textAlign:"center"}}>
                   <div style={{fontSize:17,marginBottom:3}}>{s.i}</div>
                   <div className="mn" style={{fontWeight:700,fontSize:17}}>{s.v}</div>
@@ -2311,12 +2244,8 @@ export default function App() {
             </div>
             <div style={{marginTop:10,padding:"9px 11px",background:C.bg3,borderRadius:8,border:`1px solid ${C.b0}`,fontSize:11.5,color:C.t2,display:"flex",alignItems:"center",gap:8,flexWrap:"wrap"}}>
               <span>Project: <b className="mn" style={{color:C.g}}>{loadConfig()?.projectId||"-"}</b></span>
-              <span style={{color:C.t3}}>·</span>
-              <span>Sesi: <b className="mn" style={{color:C.cy}}>{sessionStart?Math.floor((Date.now()-sessionStart)/60000)+" menit":"—"}</b></span>
               <button onClick={()=>{clearConfig();setFbReady(false);setFbSetup(true);setScreen("login");}} className="press"
-                style={{marginLeft:"auto",padding:"4px 10px",background:C.r1,border:`1px solid ${C.r}33`,borderRadius:6,color:C.r,fontSize:10.5,fontWeight:700}}>
-                Reset Config
-              </button>
+                style={{marginLeft:"auto",padding:"4px 10px",background:C.r1,border:`1px solid ${C.r}33`,borderRadius:6,color:C.r,fontSize:10.5,fontWeight:700}}>Reset Config</button>
             </div>
           </Card>
         </div>}
@@ -2326,116 +2255,3 @@ export default function App() {
   }
   return null;
 }
-
-  // ─── STOK ───
-  if(screen==="stok") {
-    const bc=biz==="JS_CLOTHING"?C.b:C.p;
-    const filtered=bizProds().filter(p=>!stokSearch||p.name.toLowerCase().includes(stokSearch.toLowerCase())||p.barcode.includes(stokSearch));
-    return <div style={{fontFamily:F.sans,background:C.bg1,color:C.t0,height:"100vh",display:"flex",flexDirection:"column"}}>
-      <style>{CSS}</style><Toast n={notif}/>
-      <Header biz={biz} user={user} online={online} onLogout={doLogout} lowStockCount={lowStockCount}
-        onSwitchBiz={user?.access?.length>1?()=>{setStokTarget(null);setScreen("bizselect");}:null}
-        onAbsenPulang={handlePulang} hasCheckedIn={hasCheckedIn} onToggleTheme={toggleTheme} isDark={isDark}/>
-      <div style={{flex:1,overflowY:"auto",padding:10,display:"flex",flexDirection:"column",gap:10,minHeight:0}}>
-        <Card noPad style={{overflow:"hidden"}}>
-          <div style={{padding:"10px 13px",borderBottom:`1px solid ${C.b0}`,display:"flex",alignItems:"center",gap:8}}>
-            <span style={{flex:1,fontSize:10,fontWeight:700,color:C.t2,textTransform:"uppercase",letterSpacing:1}}>📷 Scan Barcode</span>
-            <BizChip biz={biz}/>
-          </div>
-          <div style={{padding:"10px 12px",display:"flex",gap:8}}>
-            <div style={{flex:1,position:"relative"}}>
-              <span style={{position:"absolute",left:12,top:"50%",transform:"translateY(-50%)",fontSize:15,pointerEvents:"none",color:C.t2}}>📷</span>
-              <input ref={stokScanRef} value={stokScan} onChange={e=>setStokScan(e.target.value)}
-                onKeyDown={e=>e.key==="Enter"&&stokScanFn(stokScan)} placeholder="Scan atau ketik barcode..."
-                style={{width:"100%",padding:"12px 12px 12px 40px",background:C.bg3,border:`2px solid ${bc}44`,borderRadius:12,color:C.t0,fontSize:14,fontFamily:F.mono}}/>
-            </div>
-            <button onClick={()=>stokScanFn(stokScan)} className="press" style={{padding:"12px 16px",background:bc,border:"none",borderRadius:12,color:"#fff",fontWeight:800,fontSize:13,flexShrink:0}}>Scan</button>
-          </div>
-        </Card>
-        {stokTarget&&<Card accent={bc} style={{animation:"fadeUp .2s ease"}}>
-          <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:12}}>
-            <div style={{flex:1,minWidth:0}}>
-              <div style={{fontSize:15,fontWeight:800,marginBottom:4,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{stokTarget.name}</div>
-              <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
-                <span className="mn" style={{color:C.t2,fontSize:10}}>{stokTarget.barcode}</span>
-                <span style={{padding:"1px 8px",borderRadius:20,fontSize:10,fontWeight:600,background:C.bg4,color:C.t1}}>{stokTarget.category}</span>
-              </div>
-            </div>
-            <div style={{textAlign:"right",flexShrink:0,marginLeft:10}}>
-              <div style={{fontSize:10,color:C.t2}}>Stok Saat Ini</div>
-              <div className="mn" style={{fontSize:32,fontWeight:800,lineHeight:1,color:stokTarget.stock<10?C.r:C.t0}}>{stokTarget.stock}</div>
-            </div>
-          </div>
-          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:12}}>
-            <div>
-              <div style={{fontSize:9.5,fontWeight:700,color:C.t2,textTransform:"uppercase",letterSpacing:.5,marginBottom:5}}>Jumlah Masuk *</div>
-              <input ref={stokQRef} type="number" min="1" value={stokQ} onChange={e=>setStokQ(e.target.value)} onKeyDown={e=>e.key==="Enter"&&doAddStock()}
-                placeholder="0" style={{width:"100%",padding:"12px",background:C.bg3,border:`1.5px solid ${C.b0}`,borderRadius:10,color:C.t0,fontSize:24,fontFamily:F.mono,textAlign:"center",fontWeight:700}}
-                onFocus={e=>e.target.style.borderColor=C.g+"88"} onBlur={e=>e.target.style.borderColor=C.b0}/>
-            </div>
-            <div>
-              <div style={{fontSize:9.5,fontWeight:700,color:C.t2,textTransform:"uppercase",letterSpacing:.5,marginBottom:5}}>Update Harga Jual</div>
-              <div style={{position:"relative"}}>
-                <span style={{position:"absolute",left:10,top:"50%",transform:"translateY(-50%)",fontSize:10,color:C.t2,pointerEvents:"none",fontFamily:F.mono}}>Rp</span>
-                <input type="number" value={stokPrice} onChange={e=>setStokPrice(e.target.value)} placeholder={String(stokTarget.price)}
-                  style={{width:"100%",padding:"12px 10px 12px 28px",background:C.bg3,border:`1.5px solid ${C.b0}`,borderRadius:10,color:C.t0,fontSize:14,fontFamily:F.mono}}
-                  onFocus={e=>e.target.style.borderColor=C.a+"88"} onBlur={e=>e.target.style.borderColor=C.b0}/>
-              </div>
-            </div>
-          </div>
-          {stokQ&&parseInt(stokQ)>0&&<div style={{padding:"7px 11px",background:C.bg3,borderRadius:7,fontSize:11.5,color:C.t2,marginBottom:10,display:"flex",gap:10,flexWrap:"wrap"}}>
-            <span>Stok: <b style={{color:C.t0}}>{stokTarget.stock}</b> → <b style={{color:C.g,fontSize:13}}>{stokTarget.stock+parseInt(stokQ)}</b></span>
-            {stokPrice&&+stokPrice>0&&<span>Harga baru: <b style={{color:C.a}}>{rp(stokPrice)}</b></span>}
-          </div>}
-          <div style={{display:"flex",gap:8}}>
-            <Btn onClick={doAddStock} full>+ Tambah Stok</Btn>
-            <Btn onClick={()=>{setStokTarget(null);stokScanRef.current?.focus();}} outline>Batal</Btn>
-          </div>
-        </Card>}
-        <Card noPad style={{overflow:"hidden"}}>
-          <div style={{padding:"10px 13px",borderBottom:`1px solid ${C.b0}`,display:"flex",alignItems:"center",gap:8}}>
-            <span style={{flex:1,fontSize:10,fontWeight:700,color:C.t2,textTransform:"uppercase",letterSpacing:1}}>Produk ({filtered.length})</span>
-            <input value={stokSearch} onChange={e=>setStokSearch(e.target.value)} placeholder="Cari..." style={{padding:"7px 11px",background:C.bg3,border:`1px solid ${C.b0}`,borderRadius:8,color:C.t0,fontSize:12,width:140,fontFamily:F.sans}}/>
-          </div>
-          <TableWrap maxH="50vh">
-            <table style={{width:"100%",borderCollapse:"collapse",fontSize:13,minWidth:460}}>
-              <THead cols={["Barcode","Nama","Kategori","Harga Jual","Stok",""]}/>
-              <tbody>{filtered.map((p,i)=><tr key={p.id} className="hrow" style={{borderTop:`1px solid ${C.b0}`,background:i%2===0?"transparent":C.bg0}}>
-                <td style={{padding:"14px 13px",fontFamily:F.mono,fontSize:10,color:C.t2}}>{p.barcode}</td>
-                <td style={{padding:"14px 13px",fontWeight:600}}>{p.name}</td>
-                <td style={{padding:"14px 13px",color:C.t2}}>{p.category}</td>
-                <td style={{padding:"14px 13px",fontFamily:F.mono,color:C.g,fontSize:11}}>{rp(p.price)}</td>
-                <td style={{padding:"14px 13px"}}><StockBadge s={p.stock}/></td>
-                <td style={{padding:"14px 13px"}}>
-                  <button onClick={()=>{setStokTarget(p);setStokQ("");setStokPrice("");}} className="press"
-                    style={{padding:"5px 12px",background:C.g1,border:`1px solid ${C.g}33`,borderRadius:7,color:C.g,fontSize:11,fontWeight:700}}>+ Tambah</button>
-                </td>
-              </tr>)}</tbody>
-            </table>
-          </TableWrap>
-        </Card>
-        <Card noPad style={{overflow:"hidden"}}>
-          <div style={{padding:"10px 13px",borderBottom:`1px solid ${C.b0}`}}>
-            <span style={{fontSize:10,fontWeight:700,color:C.t2,textTransform:"uppercase",letterSpacing:1}}>Log Penerimaan Stok</span>
-          </div>
-          {slogs.filter(l=>l.business===biz&&l.type==="masuk").length===0
-            ?<div style={{padding:"24px",textAlign:"center",color:C.t3,fontSize:12}}>Belum ada log penerimaan</div>
-            :<TableWrap maxH="40vh">
-              <table style={{width:"100%",borderCollapse:"collapse",fontSize:13,minWidth:400}}>
-                <THead cols={["Waktu","Produk","Qty","Sblm→Ssdh","Oleh"]}/>
-                <tbody>{slogs.filter(l=>l.business===biz&&l.type==="masuk").slice(0,30).map((l,i)=>(
-                  <tr key={l.id} className="hrow" style={{borderTop:`1px solid ${C.b0}`,background:i%2===0?"transparent":C.bg0}}>
-                    <td style={{padding:"14px 13px",color:C.t2,fontSize:10,whiteSpace:"nowrap"}}>{l.date}</td>
-                    <td style={{padding:"14px 13px",fontWeight:500}}>{l.name}</td>
-                    <td style={{padding:"14px 13px",fontFamily:F.mono,fontWeight:700,color:C.g}}>+{l.qty}</td>
-                    <td style={{padding:"14px 13px",fontFamily:F.mono,fontSize:10}}>{l.before}→<b>{l.after}</b></td>
-                    <td style={{padding:"14px 13px",color:C.t2}}>{l.by}</td>
-                  </tr>))}
-                </tbody>
-              </table>
-            </TableWrap>}
-        </Card>
-      </div>
-    </div>;
-  }
-
