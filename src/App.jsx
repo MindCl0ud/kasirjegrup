@@ -1005,14 +1005,20 @@ function AppInner() {
   const hasCheckedIn=user?!!todayAtt(user.id,biz)&&!todayAtt(user.id,biz)?.checkOut:false;
   const lowStockCount=prods.filter(p=>p.stock<10).length;
   const doCheckIn=async(u,b)=>{
+    // Prevent duplicate: check local state first
     const existing=attend.find(a=>a.userId===u.id&&a.date===todayDate()&&a.business===b);
     if(existing) return;
+    // Also prevent rapid double-calls with a flag
+    const lockKey=`chkin_${u.id}_${b}_${todayISO8601()}`;
+    if(sessionStorage.getItem(lockKey)) return;
+    sessionStorage.setItem(lockKey,"1");
     const isoNow=new Date().toISOString();
     const rec={id:"ATT-"+uid(),userId:u.id,username:u.username,name:u.name,
       role:u.role,business:b,date:todayDate(),dateISO:todayISO8601(),
       checkIn:nowStr(),checkInISO:isoNow,checkOut:null,checkOutISO:null};
-    await fbCheckIn(rec).catch(()=>{});
-    toast(`🕐 Absen masuk tercatat — ${u.name}`,"info");
+    // fbCheckIn also does server-side duplicate check
+    const result=await fbCheckIn(rec).catch(()=>null);
+    if(result!==null) toast(`🕐 Absen masuk tercatat — ${u.name}`,"info");
   };
   const doCheckOut=async()=>{
     const rec=todayAtt(user?.id,biz);if(!rec) return;
@@ -1109,9 +1115,28 @@ function AppInner() {
   const bizProds=(b=biz)=>prods.filter(p=>p.business===b);
   const parseD=str=>{try{return new Date(str.replace(/(\d+)\/(\d+)\/(\d+),/,"$3-$2-$1 "));}catch{return null;}};
   const calcDur=a=>{
-    const ci=a.checkInISO||a.checkIn,co=a.checkOutISO||a.checkOut;
+    // Prefer ISO strings, fallback parse locale string
+    const ci=a.checkInISO||a.checkIn;
+    const co=a.checkOutISO||a.checkOut;
     if(!ci||!co) return "-";
-    try{const ms=new Date(co)-new Date(ci);const h=Math.floor(ms/3600000),m=Math.floor((ms%3600000)/60000);return h>0?`${h}j ${m}m`:`${m}m`;}catch{return "-";}
+    try{
+      const parseDate=(s)=>{
+        if(!s) return null;
+        // Try ISO first
+        const d=new Date(s);
+        if(!isNaN(d.getTime())) return d;
+        // Try locale "13/3/2026, 23.12.11" → convert dots to colons in time part
+        const fixed=s.replace(/(\d{1,2})\/(\d{1,2})\/(\d{4}),?\s*(\d{2})\.(\d{2})\.(\d{2})/,'$3-$2-$1T$4:$5:$6');
+        const d2=new Date(fixed);
+        return isNaN(d2.getTime())?null:d2;
+      };
+      const start=parseDate(ci),end=parseDate(co);
+      if(!start||!end) return "-";
+      const ms=end-start;
+      if(ms<0) return "-";
+      const h=Math.floor(ms/3600000),m=Math.floor((ms%3600000)/60000);
+      return h>0?`${h}j ${m}m`:`${m}m`;
+    }catch{return "-";}
   };
 
   // ─── Kasir functions ───

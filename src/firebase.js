@@ -6,7 +6,7 @@ import {
   initializeFirestore, persistentLocalCache, persistentMultipleTabManager,
   CACHE_SIZE_UNLIMITED, collection, doc, setDoc, addDoc, getDoc, getDocs,
   updateDoc, deleteDoc, onSnapshot, query, orderBy, limit,
-  serverTimestamp, writeBatch,
+  serverTimestamp, writeBatch, where,
 } from "firebase/firestore";
 
 // ── Config ─────────────────────────────────────────────────────
@@ -168,8 +168,19 @@ export const fbUpdateStock = async (productId, newStock, newPrice, log, actor) =
 };
 
 // ── Attendance ──────────────────────────────────────────────────
-export const fbCheckIn = async (rec) =>
-  setDoc(doc(_db,"attendance",rec.id), { ...rec, createdAt:serverTimestamp() });
+export const fbCheckIn = async (rec) => {
+  // Query Firestore directly — prevents duplicates even when local state is stale/empty
+  try {
+    const snap = await getDocs(
+      query(collection(_db,"attendance"),
+        where("userId","==",rec.userId),
+        where("date","==",rec.date),
+        where("business","==",rec.business))
+    );
+    if (!snap.empty) return null; // sudah check-in hari ini
+  } catch {}
+  return setDoc(doc(_db,"attendance",rec.id), { ...rec, createdAt:serverTimestamp() });
+};
 export const fbCheckOut = async (docId, t) =>
   updateDoc(doc(_db,"attendance",docId), { checkOut:t, checkOutISO:new Date().toISOString(), updatedAt:serverTimestamp() });
 export const fbDeleteAttendance = async (id) => deleteDoc(doc(_db,"attendance",id));
