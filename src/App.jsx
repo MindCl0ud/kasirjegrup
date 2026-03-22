@@ -652,6 +652,19 @@ function StockCheckModal({prods,biz,onClose}) {
 }
 
 
+
+// ─────────────────────────────────────────────────────────────
+//  CHART BOUNDARY
+// ─────────────────────────────────────────────────────────────
+class ChartBoundary extends Component {
+  constructor(p){super(p);this.state={err:false};}
+  static getDerivedStateFromError(){return{err:true};}
+  render(){
+    if(this.state.err) return <div style={{padding:"20px",textAlign:"center",color:DARK_C.t3,fontSize:12}}>Chart tidak tersedia</div>;
+    return this.props.children;
+  }
+}
+
 // ─────────────────────────────────────────────────────────────
 //  ERROR BOUNDARY
 // ─────────────────────────────────────────────────────────────
@@ -1088,10 +1101,20 @@ function AppInner() {
     });
     return Object.values(m).sort((a,b)=>b.total-a.total);
   })();
+  const totalDisc=filtTrx.reduce((s,t)=>s+(t.discount||0),0);
   const bizRevData=[
     {name:"JS Clothing",value:filtTrx.filter(t=>t.business==="JS_CLOTHING").reduce((s,t)=>s+t.total,0),color:"#38bdf8"},
     {name:"JB Store",value:filtTrx.filter(t=>t.business==="JB_STORE").reduce((s,t)=>s+t.total,0),color:"#f472b6"},
   ].filter(d=>d.value>0);
+  const kasirBreakdown=(()=>{
+    const m={};
+    filtTrx.forEach(t=>{
+      const k=t.kasir||"?";
+      if(!m[k])m[k]={name:k,trx:0,rev:0,profit:0,discount:0};
+      m[k].trx++;m[k].rev+=t.total;m[k].profit+=(t.profit||0);m[k].discount+=(t.discount||0);
+    });
+    return Object.values(m).sort((a,b)=>b.rev-a.rev);
+  })();
 
   // ─── Attendance calculations ───
   const attFiltered=(()=>{
@@ -1905,32 +1928,36 @@ function AppInner() {
             <Stat icon="🎯" label="Margin" value={margin} color={C.b} sub={`Diskon: ${rp(totalDisc)}`}/>
           </div>
           {/* Pie */}
-          {bizRevData.length>1&&<Card>
+          {bizRevData.length>1&&<ChartBoundary key="pie"><Card>
             <div style={{fontSize:10,fontWeight:700,color:C.t2,textTransform:"uppercase",letterSpacing:1,marginBottom:12}}>Kontribusi per Bisnis</div>
+            <div style={{minHeight:160}}>
             <ResponsiveContainer width="100%" height={160}>
               <PieChart>
-                <Pie data={bizRevData} cx="50%" cy="50%" innerRadius={45} outerRadius={70} paddingAngle={3} dataKey="value">
+                <Pie data={bizRevData} isAnimationActive={false} cx="50%" cy="50%" innerRadius={45} outerRadius={70} paddingAngle={3} dataKey="value">
                   {bizRevData.map((entry,index)=><Cell key={index} fill={entry.color}/>)}
                 </Pie>
-                <Tooltip formatter={v=>rp(v)} contentStyle={{background:C.bg2,border:`1px solid ${C.bo1}`,borderRadius:8,fontSize:12}}/>
-                <Legend formatter={(v,e)=><span style={{color:C.t1,fontSize:11}}>{v}: {rp(e.payload.value)}</span>}/>
+                <Tooltip formatter={v=>rp(v||0)} contentStyle={{background:C.bg2,border:`1px solid ${C.bo1}`,borderRadius:8,fontSize:12}}/>
+                <Legend formatter={(v,e)=><span style={{color:C.t1,fontSize:11}}>{v}: {rp(e?.payload?.value||0)}</span>}/>
               </PieChart>
             </ResponsiveContainer>
-          </Card>}
+            </div>
+          </Card></ChartBoundary>}
           {/* Daily chart */}
-          {dailyData.length>0&&<Card>
+          {dailyData.length>0&&<ChartBoundary key="bar"><Card>
             <div style={{fontSize:10,fontWeight:700,color:C.t2,textTransform:"uppercase",letterSpacing:1,marginBottom:12}}>Tren Harian</div>
+            <div style={{minHeight:190}}>
             <ResponsiveContainer width="100%" height={190}>
               <BarChart data={dailyData} barGap={2} barCategoryGap="30%">
                 <CartesianGrid strokeDasharray="3 3" stroke={C.bo0} vertical={false}/>
                 <XAxis dataKey="date" tick={{fill:C.t3,fontSize:9.5}} axisLine={false} tickLine={false}/>
                 <YAxis tick={{fill:C.t3,fontSize:9}} axisLine={false} tickLine={false} tickFormatter={v=>"Rp"+Math.floor(v/1000)+"k"}/>
                 <Tooltip contentStyle={{background:C.bg2,border:`1px solid ${C.bo1}`,borderRadius:9,fontSize:12}} formatter={(v,n)=>[rp(v),n==="rev"?"Pendapatan":"Laba"]}/>
-                <Bar dataKey="rev" name="rev" fill={C.g} radius={[4,4,0,0]} opacity={.8}/>
-                <Bar dataKey="profit" name="profit" fill={C.cy} radius={[4,4,0,0]} opacity={.7}/>
+                <Bar dataKey="rev" name="rev" fill={C.g} radius={[4,4,0,0]} opacity={.8} isAnimationActive={false}/>
+                <Bar dataKey="profit" name="profit" fill={C.cy} radius={[4,4,0,0]} opacity={.7} isAnimationActive={false}/>
               </BarChart>
             </ResponsiveContainer>
-          </Card>}
+            </div>
+          </Card></ChartBoundary>}
           {/* Per kasir */}
           {kasirBreakdown.length>0&&<Card noPad style={{overflow:"hidden"}}>
             <div style={{padding:"12px 14px",borderBottom:`1px solid ${C.bo0}`}}>
