@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback, Component } from "react";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } from "recharts";
 import {
   loadConfig, saveConfig, clearConfig, initFirebase, isSeeded, seedDatabase,
@@ -651,6 +651,45 @@ function StockCheckModal({prods,biz,onClose}) {
   </div>;
 }
 
+
+// ─────────────────────────────────────────────────────────────
+//  ERROR BOUNDARY
+// ─────────────────────────────────────────────────────────────
+class ErrorBoundary extends Component {
+  constructor(props){super(props);this.state={hasError:false,error:null};}
+  static getDerivedStateFromError(err){return{hasError:true,error:err};}
+  componentDidCatch(err,info){console.error("App crash:",err,info);}
+  render(){
+    if(this.state.hasError){
+      return <div style={{fontFamily:"system-ui",background:"#020817",color:"#e8f4ff",
+        height:"100vh",display:"flex",flexDirection:"column",alignItems:"center",
+        justifyContent:"center",gap:16,padding:24,textAlign:"center"}}>
+        <div style={{fontSize:40}}>⚠️</div>
+        <h2 style={{fontSize:18,fontWeight:700}}>Terjadi Error</h2>
+        <p style={{fontSize:13,color:"#4a6480",maxWidth:400,lineHeight:1.6}}>
+          {String(this.state.error?.message||this.state.error)}
+        </p>
+        <div style={{display:"flex",gap:10,flexWrap:"wrap",justifyContent:"center"}}>
+          <button onClick={()=>window.location.reload()}
+            style={{padding:"10px 20px",background:"#00e5a0",border:"none",borderRadius:9,
+              color:"#020817",fontWeight:700,fontSize:13,cursor:"pointer"}}>
+            🔄 Reload
+          </button>
+          <button onClick={()=>{localStorage.clear();window.location.reload();}}
+            style={{padding:"10px 20px",background:"transparent",border:"1px solid #4a6480",
+              borderRadius:9,color:"#8aaac8",fontSize:13,cursor:"pointer"}}>
+            Reset & Reload
+          </button>
+        </div>
+        <p style={{fontSize:11,color:"#253347",marginTop:8}}>
+          Buka DevTools (F12) → Console untuk detail error
+        </p>
+      </div>;
+    }
+    return this.props.children;
+  }
+}
+
 // ─────────────────────────────────────────────────────────────
 //  APPSCRIPT CODE
 // ─────────────────────────────────────────────────────────────
@@ -686,7 +725,7 @@ function syncSheet(sh,rows,headers){
 // ─────────────────────────────────────────────────────────────
 //  MAIN APP
 // ─────────────────────────────────────────────────────────────
-export default function App() {
+function AppInner() {
   // ─── Firebase ───
   const [fbReady,setFbReady]=useState(false);
   const [fbSetup,setFbSetup]=useState(false);
@@ -2254,4 +2293,8 @@ export default function App() {
     </div>;
   }
   return null;
+}
+
+export default function App() {
+  return <ErrorBoundary><AppInner/></ErrorBoundary>;
 }
