@@ -3,7 +3,7 @@
 //  Caches everything for 100% offline use
 // ═══════════════════════════════════════════════
 
-const CACHE_NAME = "kasir-je-grup-v3";
+const CACHE_NAME = "kasir-je-grup-v5";
 const OFFLINE_URLS = [
   "/",
   "/index.html",
