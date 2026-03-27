@@ -1,5 +1,5 @@
 // KASIR JE GRUP — Service Worker v6
-const CACHE_NAME = "kasir-je-grup-v6.2";
+const CACHE_NAME = "kasir-je-grup-v6.6";
 
 // On install: skip waiting immediately so new SW activates right away
 self.addEventListener("install", (e) => {

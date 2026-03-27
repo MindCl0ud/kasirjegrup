@@ -1097,6 +1097,11 @@ function AppInner() {
   const [pModal,setPModal]=useState(false);
   const [pForm,setPForm]=useState({});
   const [editPid,setEditPid]=useState(null);
+  const [importModal,setImportModal]=useState(false);
+  const [importRows,setImportRows]=useState([]);
+  const [importErr,setImportErr]=useState("");
+  const [importLoading,setImportLoading]=useState(false);
+  const importFileRef=useRef(null);
   const [cpwdModal,setCpwdModal]=useState(null); // userId
   const [cpwdForm,setCpwdForm]=useState({old:"",n1:"",n2:""});
   const [targetModal,setTargetModal]=useState(false);
@@ -1222,6 +1227,91 @@ function AppInner() {
   // ─── Admin: Product CRUD ───
   const openAddP=()=>{setPForm({barcode:"",name:"",price:"",hpp:"",stock:"",category:"",business:adminBiz});setEditPid(null);setPModal(true);};
   const openEditP=p=>{setPForm({...p,price:String(p.price),hpp:String(p.hpp||0),stock:String(p.stock)});setEditPid(p.id);setPModal(true);};
+  // ─── Import Produk (XLSX/CSV) ───
+  const normalizeKey=k=>k.toLowerCase().replace(/[^a-z0-9]/g,"");
+  const parseImportRows=(raw)=>{
+    return raw.map(r=>{
+      const n={};
+      Object.keys(r).forEach(k=>n[normalizeKey(k)]=String(r[k]||"").trim());
+      // map common column names
+      const get=(...keys)=>{for(const k of keys){if(n[k]!==undefined) return n[k];}return "";};
+      return {
+        barcode: get("barcode","kodebarcode","kode","sku"),
+        name:    get("name","nama","namaproduk","produk","namabarang"),
+        category:get("category","kategori","cat"),
+        price:   get("price","harga","hargajual","jual"),
+        hpp:     get("hpp","modal","hargabeli","cost","cogs","hargapokok"),
+        stock:   get("stock","stok","qty","jumlah","quantity"),
+        business:get("business","bisnis"),
+        _ok: true,
+      };
+    }).filter(r=>r.barcode&&r.name);
+  };
+  const handleImportFile=async(file)=>{
+    if(!file) return;
+    setImportErr("");setImportRows([]);
+    const ext=file.name.split(".").pop().toLowerCase();
+    try{
+      if(ext==="csv"){
+        const text=await file.text();
+        const lines=text.split(/\r?\n/).filter(l=>l.trim());
+        if(lines.length<2){setImportErr("File CSV kosong atau tidak ada data");return;}
+        const headers=lines[0].split(/[,;\t]/);
+        const rows=lines.slice(1).map(line=>{
+          const vals=line.split(/[,;\t]/);
+          const obj={};
+          headers.forEach((h,i)=>obj[h.trim()]=(vals[i]||"").trim().replace(/^["']|["']$/g,""));
+          return obj;
+        }).filter(r=>Object.values(r).some(v=>v));
+        const parsed=parseImportRows(rows);
+        if(!parsed.length){setImportErr("Tidak ada baris valid. Pastikan kolom Barcode dan Nama ada.");return;}
+        setImportRows(parsed);
+      } else if(ext==="xlsx"||ext==="xls"){
+        const XLSX=await loadSheetJS();
+        const buf=await file.arrayBuffer();
+        const wb=XLSX.read(buf,{type:"array"});
+        const ws=wb.Sheets[wb.SheetNames[0]];
+        const raw=XLSX.utils.sheet_to_json(ws,{defval:""});
+        if(!raw.length){setImportErr("Sheet kosong");return;}
+        const parsed=parseImportRows(raw);
+        if(!parsed.length){setImportErr("Tidak ada baris valid. Pastikan kolom Barcode dan Nama ada.");return;}
+        setImportRows(parsed);
+      } else {
+        setImportErr("Format tidak didukung. Gunakan .xlsx atau .csv");
+      }
+    }catch(e){setImportErr("Gagal baca file: "+e.message);}
+  };
+  const doImportProducts=async()=>{
+    if(!importRows.length) return;
+    setImportLoading(true);
+    let ok=0,skip=0,err=0;
+    for(const row of importRows){
+      try{
+        // Determine business
+        let biz=adminBiz;
+        if(row.business){
+          const bl=row.business.toLowerCase();
+          if(bl.includes("jb")||bl.includes("skincare")||bl.includes("store")) biz="JB_STORE";
+          else if(bl.includes("js")||bl.includes("cloth")||bl.includes("konveksi")) biz="JS_CLOTHING";
+        }
+        // Check duplicate barcode
+        const existing=prods.find(p=>p.barcode===row.barcode&&p.business===biz);
+        if(existing){skip++;continue;}
+        const prod={
+          id:NEXT_ID++, barcode:row.barcode, name:row.name,
+          category:row.category||"Umum", business:biz,
+          price:Math.round(+row.price||0), hpp:Math.round(+row.hpp||0),
+          stock:Math.round(+row.stock||0),
+        };
+        await fbAddProduct(prod,user.name);
+        ok++;
+      }catch{err++;}
+    }
+    setImportLoading(false);
+    setImportModal(false);setImportRows([]);
+    toast(`✅ Import selesai: ${ok} ditambah, ${skip} duplikat dilewati${err?", "+err+" error":""}`,ok>0?"ok":"warn");
+  };
+
   const saveProd=async()=>{
     if(!pForm.barcode||!pForm.name||!pForm.price||pForm.stock===""){toast("Barcode, nama, harga & stok wajib","warn");return;}
     try{
@@ -2024,8 +2114,98 @@ function AppInner() {
               {key:"margin",label:"Margin %",fn:r=>r.price>0?(((r.price-(r.hpp||0))/r.price)*100).toFixed(1)+"%":"0%",w:12},
             ],"Produk","produk_"+adminBiz)} className="press"
               style={{padding:"7px 12px",background:C.g1,border:`1px solid ${C.g}33`,borderRadius:8,color:C.g,fontSize:12,fontWeight:700,fontFamily:F.sans}}>⬇ Excel</button>
+            <button onClick={()=>{setImportModal(true);setImportRows([]);setImportErr("");}} className="press"
+              style={{padding:"7px 12px",background:C.vi1,border:`1px solid ${C.vi}33`,borderRadius:8,color:C.vi,fontSize:12,fontWeight:700,fontFamily:F.sans}}>⬆ Import</button>
             <Btn onClick={openAddP} size="sm">+ Tambah</Btn>
           </div>
+          {/* Import Modal */}
+          {importModal&&<div style={{position:"fixed",inset:0,background:"rgba(2,8,24,.88)",zIndex:600,display:"flex",alignItems:"flex-end",justifyContent:"center"}} onClick={()=>setImportModal(false)}>
+            <div style={{width:"100%",maxWidth:560,background:C.bg2,borderRadius:"22px 22px 0 0",border:`1px solid ${C.vi}44`,borderBottom:"none",animation:"slideUp .25s ease",maxHeight:"90vh",overflowY:"auto",padding:"18px 18px 32px"}} onClick={e=>e.stopPropagation()}>
+              <div style={{width:36,height:4,background:C.bo1,borderRadius:2,margin:"0 auto 16px"}}/>
+              <h3 style={{fontSize:14,fontWeight:800,marginBottom:4,color:C.vi}}>⬆ Import Produk dari File</h3>
+              <p style={{fontSize:12,color:C.t2,marginBottom:16,lineHeight:1.7}}>Upload file <b>.xlsx</b> atau <b>.csv</b>. Kolom yang dikenali: <span className="mn" style={{color:C.cy}}>Barcode, Nama, Kategori, Harga Jual, HPP, Stok, Bisnis</span></p>
+              {/* Template download */}
+              <div style={{padding:"10px 14px",background:C.bg3,borderRadius:10,border:`1px solid ${C.bo0}`,marginBottom:14,display:"flex",justifyContent:"space-between",alignItems:"center",flexWrap:"wrap",gap:8}}>
+                <div>
+                  <div style={{fontSize:12,fontWeight:700}}>Template Excel</div>
+                  <div style={{fontSize:11,color:C.t2,marginTop:2}}>Download template untuk panduan format kolom</div>
+                </div>
+                <button onClick={()=>downloadXLSX([
+                  {barcode:"JSC999",name:"Contoh Produk",category:"Kaos",price:50000,hpp:30000,stock:100,business:"JS Clothing"},
+                  {barcode:"JBS999",name:"Contoh Skincare",category:"Serum",price:120000,hpp:75000,stock:50,business:"JB Store"},
+                ],[
+                  {key:"barcode",label:"Barcode",w:14},{key:"name",label:"Nama",w:28},
+                  {key:"category",label:"Kategori",w:16},{key:"price",label:"Harga Jual",fn:r=>r.price,num:true,w:14},
+                  {key:"hpp",label:"HPP",fn:r=>r.hpp,num:true,w:14},{key:"stock",label:"Stok",fn:r=>r.stock,num:true,w:10},
+                  {key:"business",label:"Bisnis",fn:r=>r.business,w:16},
+                ],"Template","template_import_produk")}
+                  className="press" style={{padding:"7px 14px",background:C.g1,border:`1px solid ${C.g}33`,borderRadius:8,color:C.g,fontSize:12,fontWeight:700,fontFamily:F.sans}}>⬇ Template</button>
+              </div>
+              {/* Bisnis target */}
+              <div style={{marginBottom:12}}>
+                <div style={{fontSize:10,fontWeight:700,color:C.t2,textTransform:"uppercase",letterSpacing:1,marginBottom:8}}>Target Bisnis (default jika kolom Bisnis kosong)</div>
+                <div style={{display:"flex",gap:7}}>
+                  {Object.values(BIZ).map(b2=>{const isJ=b2.id==="JS_CLOTHING",active=adminBiz===b2.id;
+                    return <button key={b2.id} onClick={()=>setAdminBiz(b2.id)} className="press"
+                      style={{flex:1,padding:"9px",borderRadius:9,fontWeight:700,fontSize:12,cursor:"pointer",
+                        background:active?(isJ?C.b1:C.p1):"transparent",border:`2px solid ${active?(isJ?C.b:C.p):C.bo0}`,
+                        color:active?(isJ?C.b:C.p):C.t2,fontFamily:F.sans}}>{b2.icon} {b2.name}</button>;})}
+                </div>
+              </div>
+              {/* File drop zone */}
+              <div onClick={()=>importFileRef.current?.click()}
+                style={{border:`2px dashed ${importRows.length?C.g:C.vi}55`,borderRadius:14,padding:"28px 16px",textAlign:"center",cursor:"pointer",
+                  background:importRows.length?C.g2:`${C.vi}08`,marginBottom:12,transition:"all .2s"}}>
+                <input ref={importFileRef} type="file" accept=".xlsx,.xls,.csv" style={{display:"none"}}
+                  onChange={e=>{if(e.target.files[0])handleImportFile(e.target.files[0]);e.target.value="";}}/>
+                {importRows.length>0
+                  ?<div>
+                    <div style={{fontSize:28,marginBottom:6}}>✅</div>
+                    <div style={{fontSize:14,fontWeight:700,color:C.g}}>{importRows.length} produk siap diimport</div>
+                    <div style={{fontSize:11,color:C.t2,marginTop:4}}>Klik untuk ganti file</div>
+                  </div>
+                  :<div>
+                    <div style={{fontSize:32,marginBottom:8,opacity:.5}}>📂</div>
+                    <div style={{fontSize:13,fontWeight:600,color:C.vi}}>Klik untuk pilih file</div>
+                    <div style={{fontSize:11,color:C.t2,marginTop:4}}>.xlsx · .xls · .csv</div>
+                  </div>}
+              </div>
+              {importErr&&<div style={{padding:"9px 13px",background:C.r1,borderRadius:8,border:`1px solid ${C.r}33`,fontSize:12,color:C.r,marginBottom:12}}>⚠ {importErr}</div>}
+              {/* Preview */}
+              {importRows.length>0&&<div style={{marginBottom:14}}>
+                <div style={{fontSize:10,fontWeight:700,color:C.t2,textTransform:"uppercase",letterSpacing:1,marginBottom:8}}>Preview ({Math.min(importRows.length,5)} dari {importRows.length})</div>
+                <div style={{background:C.bg3,borderRadius:10,border:`1px solid ${C.bo0}`,overflow:"hidden"}}>
+                  <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 80px 80px 60px",padding:"8px 12px",borderBottom:`1px solid ${C.bo0}`,fontSize:9.5,fontWeight:700,color:C.t3,textTransform:"uppercase",letterSpacing:.5}}>
+                    <span>Barcode</span><span>Nama</span><span>Harga</span><span>HPP</span><span>Stok</span>
+                  </div>
+                  {importRows.slice(0,5).map((r,i)=>(
+                    <div key={i} style={{display:"grid",gridTemplateColumns:"1fr 1fr 80px 80px 60px",padding:"8px 12px",borderTop:i>0?`1px solid ${C.bo0}`:undefined,fontSize:11.5}}>
+                      <span className="mn" style={{color:C.t2,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{r.barcode}</span>
+                      <span style={{fontWeight:500,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{r.name}</span>
+                      <span className="mn" style={{color:C.g}}>{r.price?rp(r.price):"-"}</span>
+                      <span className="mn" style={{color:C.a}}>{r.hpp?rp(r.hpp):"-"}</span>
+                      <span className="mn">{r.stock||0}</span>
+                    </div>
+                  ))}
+                  {importRows.length>5&&<div style={{padding:"6px 12px",fontSize:11,color:C.t3,borderTop:`1px solid ${C.bo0}`}}>...dan {importRows.length-5} produk lainnya</div>}
+                </div>
+                {/* Duplicate warning */}
+                {(()=>{const dups=importRows.filter(r=>prods.find(p=>p.barcode===r.barcode));
+                  return dups.length>0&&<div style={{marginTop:8,padding:"8px 12px",background:C.a1,borderRadius:8,border:`1px solid ${C.a}33`,fontSize:11.5,color:C.a}}>
+                    ⚠ {dups.length} barcode sudah ada dan akan dilewati (tidak di-overwrite)
+                  </div>;})()} 
+              </div>}
+              <div style={{display:"flex",gap:8}}>
+                <button onClick={doImportProducts} disabled={!importRows.length||importLoading} className="press"
+                  style={{flex:2,padding:"13px",background:importRows.length&&!importLoading?`linear-gradient(90deg,${C.vi},${C.b})`:C.bg3,
+                    border:"none",borderRadius:12,color:importRows.length&&!importLoading?"#fff":C.t2,
+                    fontSize:13,fontWeight:800,cursor:importRows.length&&!importLoading?"pointer":"not-allowed",fontFamily:F.sans}}>
+                  {importLoading?"⏳ Mengimport...":"⬆ Import "+importRows.length+" Produk"}</button>
+                <button onClick={()=>{setImportModal(false);setImportRows([]);setImportErr("");}}
+                  style={{flex:1,padding:"13px",background:"transparent",border:`1px solid ${C.bo0}`,borderRadius:12,color:C.t2,fontSize:13,fontFamily:F.sans}}>Batal</button>
+              </div>
+            </div>
+          </div>}
           {/* Scan cari produk */}
           <div style={{display:"flex",gap:8,alignItems:"center",padding:"10px 14px",background:C.bg2,borderRadius:12,border:`1px solid ${C.bo0}`}}>
             <span style={{fontSize:12,color:C.t2,fontWeight:600,whiteSpace:"nowrap"}}>🔍 Scan/Cari:</span>
