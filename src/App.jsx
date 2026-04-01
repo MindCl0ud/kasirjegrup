@@ -814,6 +814,98 @@ function LowStockPopup({prods,onClose}) {
   </div>;
 }
 
+
+// ─────────────────────────────────────────────────────────────
+//  ADDON PROMPT MODAL
+// ─────────────────────────────────────────────────────────────
+function AddonPrompt({prompt, onAdd, onSkip}) {
+  const {mainItem, addons} = prompt;
+  const [selected, setSelected] = React.useState(() => new Set());
+  const toggle = (id) => setSelected(prev => {
+    const next = new Set(prev);
+    next.has(id) ? next.delete(id) : next.add(id);
+    return next;
+  });
+  const handleConfirm = () => {
+    const chosen = addons.filter(a => selected.has(a.id));
+    onAdd(chosen);
+  };
+  return (
+    <div style={{position:"fixed",inset:0,background:"rgba(2,8,24,.88)",zIndex:700,
+      display:"flex",alignItems:"flex-end",justifyContent:"center",fontFamily:F.sans}}
+      onClick={onSkip}>
+      <div style={{width:"100%",maxWidth:460,background:C.bg2,borderRadius:"22px 22px 0 0",
+        border:`1px solid ${C.g}44`,borderBottom:"none",animation:"slideUp .22s ease",
+        padding:"16px 18px 32px"}} onClick={e=>e.stopPropagation()}>
+        <div style={{width:36,height:4,background:C.bo1,borderRadius:2,margin:"0 auto 16px"}}/>
+        {/* Header */}
+        <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:14}}>
+          <div style={{width:40,height:40,borderRadius:12,background:C.g1,border:`1px solid ${C.g}33`,
+            display:"flex",alignItems:"center",justifyContent:"center",fontSize:20,flexShrink:0}}>➕</div>
+          <div>
+            <div style={{fontSize:14,fontWeight:800}}>Tambah Add-on?</div>
+            <div style={{fontSize:12,color:C.t2,marginTop:1}}>
+              Produk <b style={{color:C.g}}>{mainItem.name}</b> punya item tambahan
+            </div>
+          </div>
+        </div>
+        {/* Addon list */}
+        <div style={{display:"flex",flexDirection:"column",gap:8,marginBottom:16}}>
+          {addons.map(a => {
+            const sel = selected.has(a.id);
+            return (
+              <button key={a.id} onClick={()=>toggle(a.id)} className="press"
+                style={{display:"flex",alignItems:"center",gap:12,padding:"12px 14px",
+                  borderRadius:12,cursor:"pointer",textAlign:"left",
+                  background:sel?C.g1:C.bg3,
+                  border:`2px solid ${sel?C.g:C.bo0}`,transition:"all .15s"}}>
+                <div style={{width:24,height:24,borderRadius:6,flexShrink:0,
+                  background:sel?C.g:"transparent",border:`2px solid ${sel?C.g:C.bo1}`,
+                  display:"flex",alignItems:"center",justifyContent:"center",transition:"all .15s"}}>
+                  {sel&&<span style={{color:"#000",fontSize:13,fontWeight:700}}>✓</span>}
+                </div>
+                <div style={{flex:1,minWidth:0}}>
+                  <div style={{fontWeight:600,fontSize:13,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{a.name}</div>
+                  <div style={{fontSize:10.5,color:C.t2,marginTop:1}}>{a.barcode} · Stok: {a.stock}</div>
+                </div>
+                <div style={{textAlign:"right",flexShrink:0}}>
+                  <div className="mn" style={{fontSize:15,fontWeight:700,color:sel?C.g:C.t1}}>{rp(a.price)}</div>
+                  {a.hpp>0&&<div style={{fontSize:10,color:C.t3,marginTop:1}}>hpp {rp(a.hpp)}</div>}
+                </div>
+              </button>
+            );
+          })}
+        </div>
+        {/* Summary */}
+        {selected.size>0&&(
+          <div style={{padding:"8px 12px",background:C.g2,borderRadius:9,border:`1px solid ${C.g}22`,
+            fontSize:12,color:C.g,marginBottom:12,display:"flex",justifyContent:"space-between"}}>
+            <span>{selected.size} add-on dipilih</span>
+            <span className="mn" style={{fontWeight:700}}>
+              +{rp(addons.filter(a=>selected.has(a.id)).reduce((s,a)=>s+a.price,0))}
+            </span>
+          </div>
+        )}
+        {/* Actions */}
+        <div style={{display:"flex",gap:8}}>
+          <button onClick={handleConfirm} className="press"
+            style={{flex:2,padding:"13px",
+              background:selected.size>0?`linear-gradient(90deg,${C.g},${C.b})`:C.bg3,
+              border:`1.5px solid ${selected.size>0?C.g:C.bo0}`,
+              borderRadius:12,color:selected.size>0?"#000":C.t2,
+              fontSize:13,fontWeight:800,fontFamily:F.sans,cursor:"pointer"}}>
+            {selected.size>0?`✓ Tambah ${selected.size} Add-on`:"✓ Lanjut Tanpa Add-on"}
+          </button>
+          <button onClick={onSkip} className="press"
+            style={{flex:1,padding:"13px",background:"transparent",
+              border:`1px solid ${C.bo0}`,borderRadius:12,color:C.t2,
+              fontSize:12,fontFamily:F.sans,cursor:"pointer"}}>Lewati</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ─────────────────────────────────────────────────────────────
 //  CHART BOUNDARY
 // ─────────────────────────────────────────────────────────────
@@ -1064,6 +1156,7 @@ function AppInner() {
   const [receipt,setReceipt]=useState(null);
   const [showStock,setShowStock]=useState(false);
   const [showLowStock,setShowLowStock]=useState(false);
+  const [addonPrompt,setAddonPrompt]=useState(null); // {mainItem, addons:[]}
   const [discount,setDiscount]=useState({type:"pct",value:""});
   const [payMethod,setPayMethod]=useState("Tunai");
   const [showCheckout,setShowCheckout]=useState(false);
@@ -1145,18 +1238,32 @@ function AppInner() {
   };
 
   // ─── Kasir functions ───
+  const addToCart=(p,qty=1)=>{
+    setCart(prev=>{
+      const ex=prev.find(c=>c.barcode===p.barcode);
+      if(ex){
+        if(ex.qty>=p.stock){toast("Stok tidak cukup","warn");return prev;}
+        return prev.map(c=>c.barcode===p.barcode?{...c,qty:c.qty+qty}:c);
+      }
+      return [...prev,{id:p.id,barcode:p.barcode,name:p.name,price:p.price,hpp:p.hpp||0,stock:p.stock,qty}];
+    });
+  };
   const kasirScan=useCallback(async(bc)=>{
     bc=bc.trim();if(!bc) return;
     const p=prods.find(x=>x.barcode===bc&&x.business===biz);
     if(!p){toast("Barcode tidak ditemukan: "+bc,"err");setScanIn("");return;}
     if(p.stock===0){toast("Stok "+p.name+" habis!","warn");setScanIn("");return;}
-    setCart(prev=>{
-      const ex=prev.find(c=>c.barcode===bc);
-      if(ex){if(ex.qty>=p.stock){toast("Stok tidak cukup","warn");return prev;}
-        return prev.map(c=>c.barcode===bc?{...c,qty:c.qty+1}:c);}
-      return [...prev,{id:p.id,barcode:p.barcode,name:p.name,price:p.price,hpp:p.hpp||0,stock:p.stock,qty:1}];
-    });
-    toast("✓ "+p.name);setScanIn("");scanRef.current?.focus();
+    // Check if this product has add-ons configured
+    const addonIds=p.addons||[];
+    const availableAddons=addonIds.map(id=>prods.find(x=>x.id===id&&x.business===biz&&x.stock>0)).filter(Boolean);
+    addToCart(p);
+    setScanIn("");
+    if(availableAddons.length>0){
+      setAddonPrompt({mainItem:p,addons:availableAddons});
+    } else {
+      toast("✓ "+p.name);
+      scanRef.current?.focus();
+    }
   },[prods,biz,toast]);
 
   const calcDiscount=(subtotal)=>{
@@ -1581,6 +1688,16 @@ function AppInner() {
         onToggleTheme={toggleTheme} isDark={isDark} lowStockCount={lowStockCount} onLowStockClick={()=>setShowLowStock(true)}/>
 
       {/* Invoice */}
+      {addonPrompt&&<AddonPrompt
+        prompt={addonPrompt}
+        onAdd={(chosen)=>{
+          chosen.forEach(a=>addToCart(a));
+          setAddonPrompt(null);
+          if(chosen.length) toast("✓ "+chosen.map(a=>a.name).join(", ")+" ditambahkan");
+          scanRef.current?.focus();
+        }}
+        onSkip={()=>{setAddonPrompt(null);scanRef.current?.focus();}}
+      />}
       {receipt&&<Invoice receipt={receipt} biz={biz}
         onClose={()=>{setReceipt(null);scanRef.current?.focus();}}
         onNew={()=>{setReceipt(null);setCart([]);scanRef.current?.focus();}}/>}
@@ -2241,12 +2358,74 @@ function AppInner() {
                 <span style={{color:C.t2}}>Margin: <b style={{color:C.g}}>{((+pForm.price-+pForm.hpp)/+pForm.price*100).toFixed(1)}%</b></span>
                 <span style={{color:C.t2}}>Laba/pcs: <b style={{color:C.cy}}>{rp(+pForm.price-+pForm.hpp)}</b></span>
               </div>)}
+            {/* Add-on configuration */}
+            <div style={{marginTop:12,paddingTop:12,borderTop:`1px solid ${C.bo0}`}}>
+              <div style={{fontSize:10,fontWeight:700,color:C.vi,textTransform:"uppercase",letterSpacing:1,marginBottom:8}}>
+                ➕ Konfigurasi Add-on (Opsional)
+              </div>
+              <p style={{fontSize:11.5,color:C.t2,marginBottom:10,lineHeight:1.6}}>
+                Saat produk ini di-scan kasir, sistem akan menawarkan produk add-on berikut.
+              </p>
+              {/* Search and add addon */}
+              <div style={{display:"flex",gap:7,marginBottom:8}}>
+                <input
+                  placeholder="Cari produk add-on (nama/barcode)..."
+                  style={{...IS,flex:1,fontSize:12}}
+                  value={pForm._addonSearch||""}
+                  onChange={e=>setPForm(x=>({...x,_addonSearch:e.target.value}))}
+                  onKeyDown={e=>{
+                    if(e.key!=="Enter") return;
+                    const q=(pForm._addonSearch||"").toLowerCase();
+                    const found=prods.find(p=>p.business===(pForm.business||adminBiz)&&
+                      (p.barcode.includes(q)||p.name.toLowerCase().includes(q))&&
+                      p.id!==(editPid));
+                    if(!found){toast("Produk tidak ditemukan","warn");return;}
+                    const cur=pForm.addons||[];
+                    if(cur.includes(found.id)){toast("Sudah ada","warn");return;}
+                    setPForm(x=>({...x,addons:[...cur,found.id],_addonSearch:""}));
+                    toast("✓ Add-on ditambahkan: "+found.name);
+                  }}
+                />
+                <button onClick={()=>{
+                  const q=(pForm._addonSearch||"").toLowerCase();
+                  if(!q) return;
+                  const found=prods.find(p=>p.business===(pForm.business||adminBiz)&&
+                    (p.barcode.includes(q)||p.name.toLowerCase().includes(q))&&
+                    p.id!==(editPid));
+                  if(!found){toast("Produk tidak ditemukan","warn");return;}
+                  const cur=pForm.addons||[];
+                  if(cur.includes(found.id)){toast("Sudah ada","warn");return;}
+                  setPForm(x=>({...x,addons:[...cur,found.id],_addonSearch:""}));
+                  toast("✓ Add-on: "+found.name);
+                }} className="press"
+                  style={{padding:"10px 14px",background:C.vi1,border:`1px solid ${C.vi}33`,borderRadius:9,color:C.vi,fontSize:12,fontWeight:700,flexShrink:0}}>+ Tambah</button>
+              </div>
+              {/* Current addons list */}
+              {(pForm.addons||[]).length>0
+                ?<div style={{display:"flex",flexDirection:"column",gap:6}}>
+                  {(pForm.addons||[]).map(adId=>{
+                    const ap=prods.find(x=>x.id===adId);
+                    if(!ap) return null;
+                    return <div key={adId} style={{display:"flex",alignItems:"center",gap:8,padding:"8px 10px",
+                      background:C.bg3,borderRadius:9,border:`1px solid ${C.vi}22`}}>
+                      <div style={{flex:1,minWidth:0}}>
+                        <div style={{fontSize:12.5,fontWeight:600,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{ap.name}</div>
+                        <div className="mn" style={{fontSize:10,color:C.t2,marginTop:1}}>{ap.barcode} · {rp(ap.price)}</div>
+                      </div>
+                      <button onClick={()=>setPForm(x=>({...x,addons:(x.addons||[]).filter(i=>i!==adId)}))}
+                        style={{background:"transparent",border:"none",color:C.r,fontSize:16,cursor:"pointer",padding:"0 4px",lineHeight:1}}>×</button>
+                    </div>;})}
+                </div>
+                :<div style={{padding:"10px 12px",background:C.bg3,borderRadius:8,border:`1px solid ${C.bo0}`,fontSize:12,color:C.t3,textAlign:"center"}}>
+                  Belum ada add-on — tambah produk di atas
+                </div>}
+            </div>
             <div style={{display:"flex",gap:8,marginTop:12}}><Btn onClick={saveProd}>Simpan</Btn><Btn onClick={()=>setPModal(false)} outline>Batal</Btn></div>
           </Card>}
           <Card noPad style={{overflow:"hidden"}}>
             <TableWrap>
               <table style={{width:"100%",borderCollapse:"collapse",fontSize:12,minWidth:580}}>
-                <THead cols={["Barcode","Nama","Kategori","HPP","Harga Jual","Margin","Stok","Aksi"]}/>
+                <THead cols={["Barcode","Nama","Kategori","HPP","Harga Jual","Margin","Stok","Add-on","Aksi"]}/>
                 <tbody>{adminPs.map((p,i)=>{const mg=p.price>0?((p.price-(p.hpp||0))/p.price*100).toFixed(0)+"%":"-";
                   return <tr key={p.id} className="hrow" style={{borderTop:`1px solid ${C.bo0}`,background:i%2===0?"transparent":C.bg0}}>
                     <td style={{padding:"14px 13px",fontFamily:F.mono,fontSize:10,color:C.t2}}>{p.barcode}</td>
@@ -2256,6 +2435,13 @@ function AppInner() {
                     <td style={{padding:"14px 13px",fontFamily:F.mono,color:C.g,fontSize:11}}>{rp(p.price)}</td>
                     <td style={{padding:"14px 13px",fontFamily:F.mono,fontSize:11,color:C.cy}}>{mg}</td>
                     <td style={{padding:"14px 13px"}}><StockBadge s={p.stock}/></td>
+                    <td style={{padding:"14px 13px"}}>
+                      {(p.addons||[]).length>0
+                        ?<span style={{padding:"2px 8px",borderRadius:20,fontSize:9.5,fontWeight:700,background:C.vi1,color:C.vi,border:`1px solid ${C.vi}22`,cursor:"pointer"}}
+                           title={(p.addons||[]).map(id=>prods.find(x=>x.id===id)?.name||id).join(", ")}>
+                           +{(p.addons||[]).length} item</span>
+                        :<span style={{fontSize:10,color:C.t3}}>—</span>}
+                    </td>
                     <td style={{padding:"14px 13px",whiteSpace:"nowrap"}}>
                       <button onClick={()=>openEditP(p)} className="press" style={{marginRight:4,padding:"3px 9px",background:"transparent",border:`1px solid ${C.bo1}`,borderRadius:6,color:C.t0,fontSize:10}}>Edit</button>
                       <button onClick={()=>fbDeleteProduct(p.id,p.name,p.business,user.name).then(()=>toast("Produk dihapus")).catch(e=>toast(e.message,"err"))} className="press" style={{padding:"3px 9px",background:C.r1,border:`1px solid ${C.r}22`,borderRadius:6,color:C.r,fontSize:10}}>Hapus</button>
