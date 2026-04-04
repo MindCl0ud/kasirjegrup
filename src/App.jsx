@@ -1902,7 +1902,7 @@ function AppInner() {
               <span style={{position:"absolute",left:12,top:"50%",transform:"translateY(-50%)",fontSize:15,pointerEvents:"none",color:C.t2}}>📷</span>
               <input ref={stokScanRef} value={stokScan} onChange={e=>setStokScan(e.target.value)}
                 onKeyDown={e=>e.key==="Enter"&&stokScanFn(stokScan)}
-                placeholder="Scan barcode / ketik nama..."
+                placeholder="Scan barcode / ketik barcode atau nama produk..."
                 style={{width:"100%",padding:"12px 12px 12px 40px",background:C.bg3,border:`2px solid ${bc}44`,borderRadius:12,color:C.t0,fontSize:14,fontFamily:F.mono}}/>
 
               {/* Autocomplete Suggestions Stok */}
