@@ -1330,6 +1330,41 @@ function AppInner() {
     if(u.id===user.id){toast("Tidak bisa hapus akun sendiri","err");return;}
     await fbDeleteUser(u.id,u.name,user.name).catch(()=>{});toast("Pengguna dihapus");
   };
+  const doChangePassword = async () => {
+    if (!cpwdForm.n1 || !cpwdForm.n2) {
+      toast("Password baru wajib diisi", "warn");
+      return;
+    }
+    if (cpwdForm.n1 !== cpwdForm.n2) {
+      toast("Konfirmasi password tidak cocok", "warn");
+      return;
+    }
+
+    const targetUser = users.find(u => u.id === cpwdModal);
+    if (!targetUser) return;
+
+    // Jika bukan admin, wajib verifikasi password lama
+    if (user.role !== "admin") {
+      if (!cpwdForm.old) {
+        toast("Password lama wajib diisi", "warn");
+        return;
+      }
+      const ok = await verifyPassword(cpwdForm.old, targetUser.passwordHash || targetUser.password);
+      if (!ok) {
+        toast("Password lama salah", "err");
+        return;
+      }
+    }
+
+    try {
+      await fbChangePassword(cpwdModal, cpwdForm.n1, user.name);
+      setCpwdModal(null);
+      setCpwdForm({ old: "", n1: "", n2: "" });
+      toast("✅ Password berhasil diubah");
+    } catch (e) {
+      toast("Gagal mengubah password: " + e.message, "err");
+    }
+  };
 
   // ─── Admin: Product CRUD ───
   const openAddP=()=>{setPForm({barcode:"",name:"",price:"",hpp:"",stock:"",category:"",business:adminBiz});setEditPid(null);setPModal(true);};
