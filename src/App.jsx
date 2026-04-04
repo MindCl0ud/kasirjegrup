@@ -1764,7 +1764,7 @@ function AppInner() {
       <div style={{flex:1,display:"flex",overflow:"hidden"}}>
         <div style={{flex:1,display:"flex",flexDirection:"column",overflow:"hidden",minWidth:0}}>
           {/* Scan bar */}
-          <div style={{padding:"10px 12px",background:C.bg2,borderBottom:`1px solid ${C.bo0}`,flexShrink:0}}>
+          <div style={{padding:"10px 12px",background:C.bg2,borderBottom:`1px solid ${C.bo0}`,flexShrink:0,zIndex:100}}>
             <div style={{display:"flex",gap:8}}>
               <div style={{flex:1,position:"relative"}}>
                 <span style={{position:"absolute",left:12,top:"50%",transform:"translateY(-50%)",fontSize:15,pointerEvents:"none",color:C.t2}}>📷</span>
@@ -1772,6 +1772,25 @@ function AppInner() {
                   onKeyDown={e=>e.key==="Enter"&&kasirScan(scanIn)}
                   placeholder="Scan barcode / ketik barcode atau nama produk..."
                   style={{width:"100%",padding:"12px 12px 12px 40px",background:C.bg3,border:`2px solid ${bc}44`,borderRadius:12,color:C.t0,fontSize:14,fontFamily:F.mono}}/>
+                
+                {/* Autocomplete Suggestions Kasir */}
+                {scanIn.trim().length > 1 && (
+                  <div style={{position:"absolute",top:"100%",left:0,right:0,zIndex:100,background:C.bg2,border:`1px solid ${C.bo1}`,borderRadius:12,marginTop:6,boxShadow:"0 10px 30px rgba(0,0,0,0.6)",overflow:"hidden",animation:"fadeUp 0.2s ease"}}>
+                    {bizProds().filter(p => p.name.toLowerCase().includes(scanIn.trim().toLowerCase()) || p.barcode.includes(scanIn.trim())).slice(0, 5).map((p, i) => (
+                      <div key={p.id} onClick={() => kasirScan(p.barcode)} className="hrow"
+                        style={{padding:"10px 14px",cursor:"pointer",borderTop:i>0?`1px solid ${C.bo0}`:undefined,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+                        <div>
+                          <div style={{fontWeight:600,fontSize:13}}>{p.name}</div>
+                          <div className="mn" style={{fontSize:10,color:C.t2,marginTop:2}}>{p.barcode} · Stok: {p.stock}</div>
+                        </div>
+                        <div className="mn" style={{color:C.g,fontWeight:700,fontSize:13}}>{rp(p.price)}</div>
+                      </div>
+                    ))}
+                    {bizProds().filter(p => p.name.toLowerCase().includes(scanIn.trim().toLowerCase()) || p.barcode.includes(scanIn.trim())).length === 0 && (
+                      <div style={{padding:"12px 14px",fontSize:12,color:C.t3,textAlign:"center"}}>Produk tidak ditemukan</div>
+                    )}
+                  </div>
+                )}
               </div>
               <button onClick={()=>kasirScan(scanIn)} className="press"
                 style={{padding:"12px 16px",background:bc,border:"none",borderRadius:12,color:"#fff",fontWeight:800,fontSize:14,flexShrink:0}}>+</button>
@@ -1883,8 +1902,28 @@ function AppInner() {
               <span style={{position:"absolute",left:12,top:"50%",transform:"translateY(-50%)",fontSize:15,pointerEvents:"none",color:C.t2}}>📷</span>
               <input ref={stokScanRef} value={stokScan} onChange={e=>setStokScan(e.target.value)}
                 onKeyDown={e=>e.key==="Enter"&&stokScanFn(stokScan)}
-                placeholder="Scan barcode / ketik barcode atau nama..."
+                placeholder="Scan barcode / ketik nama..."
                 style={{width:"100%",padding:"12px 12px 12px 40px",background:C.bg3,border:`2px solid ${bc}44`,borderRadius:12,color:C.t0,fontSize:14,fontFamily:F.mono}}/>
+
+              {/* Autocomplete Suggestions Stok */}
+              {stokScan.trim().length > 1 && (
+                <div style={{position:"absolute",top:"100%",left:0,right:0,zIndex:100,background:C.bg2,border:`1px solid ${C.bo1}`,borderRadius:12,marginTop:6,boxShadow:"0 10px 30px rgba(0,0,0,0.6)",overflow:"hidden",animation:"fadeUp 0.2s ease"}}>
+                  {bizProds().filter(p => p.name.toLowerCase().includes(stokScan.trim().toLowerCase()) || p.barcode.includes(stokScan.trim())).slice(0, 5).map((p, i) => (
+                    <div key={p.id} onClick={() => stokScanFn(p.barcode)} className="hrow"
+                      style={{padding:"10px 14px",cursor:"pointer",borderTop:i>0?`1px solid ${C.bo0}`:undefined,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+                      <div>
+                        <div style={{fontWeight:600,fontSize:13}}>{p.name}</div>
+                        <div className="mn" style={{fontSize:10,color:C.t2,marginTop:2}}>{p.barcode}</div>
+                      </div>
+                      <div className="mn" style={{color:p.stock<10?C.r:C.t0,fontWeight:700,fontSize:12}}>Stok: {p.stock}</div>
+                    </div>
+                  ))}
+                  {bizProds().filter(p => p.name.toLowerCase().includes(stokScan.trim().toLowerCase()) || p.barcode.includes(stokScan.trim())).length === 0 && (
+                    <div style={{padding:"12px 14px",fontSize:12,color:C.t3,textAlign:"center"}}>Produk tidak ditemukan</div>
+                  )}
+                </div>
+              )}
+
             </div>
             <button onClick={()=>stokScanFn(stokScan)} className="press"
               style={{padding:"12px 16px",background:bc,border:"none",borderRadius:12,color:"#fff",fontWeight:800,fontSize:13,flexShrink:0}}>Scan</button>
