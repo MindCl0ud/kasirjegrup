@@ -2365,12 +2365,33 @@ function AppInner() {
           {/* Scan cari produk */}
           <div style={{display:"flex",gap:8,alignItems:"center",padding:"10px 14px",background:C.bg2,borderRadius:12,border:`1px solid ${C.bo0}`}}>
             <span style={{fontSize:12,color:C.t2,fontWeight:600,whiteSpace:"nowrap"}}>🔍 Scan/Cari:</span>
-            <input value={adminScanQ} onChange={e=>setAdminScanQ(e.target.value)}
-              onKeyDown={e=>{if(e.key==="Enter"){const bc=adminScanQ.trim();
-                const found=prods.find(p=>p.barcode===bc&&p.business===adminBiz)||prods.find(p=>p.name.toLowerCase().includes(bc.toLowerCase())&&p.business===adminBiz);
-                if(found){openEditP(found);setAdminScanQ("");}else toast("Produk tidak ditemukan: "+bc,"warn");}}}
-              placeholder="Scan barcode atau ketik nama → Enter"
-              style={{flex:1,padding:"10px 12px",background:C.bg3,border:`1.5px solid ${C.bo1}`,borderRadius:9,color:C.t0,fontSize:13,fontFamily:F.mono}}/>
+            <div style={{flex:1,position:"relative"}}>
+              <input value={adminScanQ} onChange={e=>setAdminScanQ(e.target.value)}
+                onKeyDown={e=>{if(e.key==="Enter"){const bc=adminScanQ.trim();
+                  const found=prods.find(p=>p.barcode===bc&&p.business===adminBiz)||prods.find(p=>p.name.toLowerCase().includes(bc.toLowerCase())&&p.business===adminBiz);
+                  if(found){openEditP(found);setAdminScanQ("");}else toast("Produk tidak ditemukan: "+bc,"warn");}}}
+                placeholder="Scan barcode / ketik barcode atau nama produk..."
+                style={{width:"100%",padding:"10px 12px",background:C.bg3,border:`1.5px solid ${C.bo1}`,borderRadius:9,color:C.t0,fontSize:13,fontFamily:F.mono}}/>
+
+              {/* Autocomplete Suggestions Admin */}
+              {adminScanQ.trim().length > 1 && (
+                <div style={{position:"absolute",top:"100%",left:0,right:0,zIndex:100,background:C.bg2,border:`1px solid ${C.bo1}`,borderRadius:12,marginTop:6,boxShadow:"0 10px 30px rgba(0,0,0,0.6)",overflow:"hidden",animation:"fadeUp 0.2s ease"}}>
+                  {prods.filter(p => p.business === adminBiz && (p.name.toLowerCase().includes(adminScanQ.trim().toLowerCase()) || p.barcode.includes(adminScanQ.trim()))).slice(0, 5).map((p, i) => (
+                    <div key={p.id} onClick={() => { openEditP(p); setAdminScanQ(""); }} className="hrow"
+                      style={{padding:"10px 14px",cursor:"pointer",borderTop:i>0?`1px solid ${C.bo0}`:undefined,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+                      <div>
+                        <div style={{fontWeight:600,fontSize:13}}>{p.name}</div>
+                        <div className="mn" style={{fontSize:10,color:C.t2,marginTop:2}}>{p.barcode}</div>
+                      </div>
+                      <div className="mn" style={{color:C.g,fontWeight:700,fontSize:13}}>{rp(p.price)}</div>
+                    </div>
+                  ))}
+                  {prods.filter(p => p.business === adminBiz && (p.name.toLowerCase().includes(adminScanQ.trim().toLowerCase()) || p.barcode.includes(adminScanQ.trim()))).length === 0 && (
+                    <div style={{padding:"12px 14px",fontSize:12,color:C.t3,textAlign:"center"}}>Produk tidak ditemukan</div>
+                  )}
+                </div>
+              )}
+            </div>
             <button onClick={()=>{const bc=adminScanQ.trim();const found=prods.find(p=>p.barcode===bc&&p.business===adminBiz)||prods.find(p=>p.name.toLowerCase().includes(bc.toLowerCase())&&p.business===adminBiz);if(found){openEditP(found);setAdminScanQ("");}else toast("Tidak ditemukan","warn");}} className="press"
               style={{padding:"10px 14px",background:C.b,border:"none",borderRadius:9,color:"#fff",fontWeight:700,fontSize:12,flexShrink:0}}>Cari</button>
           </div>
