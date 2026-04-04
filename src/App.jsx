@@ -1250,8 +1250,8 @@ function AppInner() {
   };
   const kasirScan=useCallback(async(bc)=>{
     bc=bc.trim();if(!bc) return;
-    const p=prods.find(x=>x.barcode===bc&&x.business===biz);
-    if(!p){toast("Barcode tidak ditemukan: "+bc,"err");setScanIn("");return;}
+    const p=prods.find(x=>x.barcode===bc&&x.business===biz) || prods.find(x=>x.name.toLowerCase().includes(bc.toLowerCase())&&x.business===biz);
+    if(!p){toast("Produk tidak ditemukan: "+bc,"err");setScanIn("");return;}
     if(p.stock===0){toast("Stok "+p.name+" habis!","warn");setScanIn("");return;}
     // Check if this product has add-ons configured
     const addonIds=p.addons||[];
@@ -1291,10 +1291,10 @@ function AppInner() {
   },[cart,user,biz,discount,payMethod,toast]);
 
   // ─── Stok functions ───
-  const stokScanFn=useCallback((bc)=>{
+ const stokScanFn=useCallback((bc)=>{
     bc=bc.trim();if(!bc) return;
-    const p=prods.find(x=>x.barcode===bc&&x.business===biz);
-    if(!p){toast("Barcode tidak ditemukan","err");setStokScan("");return;}
+    const p=prods.find(x=>x.barcode===bc&&x.business===biz) || prods.find(x=>x.name.toLowerCase().includes(bc.toLowerCase())&&x.business===biz);
+    if(!p){toast("Produk tidak ditemukan","err");setStokScan("");return;}
     setStokTarget(p);setStokQ("");setStokPrice("");setStokScan("");
   },[prods,biz,toast]);
 
@@ -1770,7 +1770,7 @@ function AppInner() {
                 <span style={{position:"absolute",left:12,top:"50%",transform:"translateY(-50%)",fontSize:15,pointerEvents:"none",color:C.t2}}>📷</span>
                 <input ref={scanRef} value={scanIn} onChange={e=>setScanIn(e.target.value)}
                   onKeyDown={e=>e.key==="Enter"&&kasirScan(scanIn)}
-                  placeholder="Scan barcode produk..."
+                  placeholder="Scan barcode / ketik barcode atau nama produk..."
                   style={{width:"100%",padding:"12px 12px 12px 40px",background:C.bg3,border:`2px solid ${bc}44`,borderRadius:12,color:C.t0,fontSize:14,fontFamily:F.mono}}/>
               </div>
               <button onClick={()=>kasirScan(scanIn)} className="press"
@@ -1883,7 +1883,7 @@ function AppInner() {
               <span style={{position:"absolute",left:12,top:"50%",transform:"translateY(-50%)",fontSize:15,pointerEvents:"none",color:C.t2}}>📷</span>
               <input ref={stokScanRef} value={stokScan} onChange={e=>setStokScan(e.target.value)}
                 onKeyDown={e=>e.key==="Enter"&&stokScanFn(stokScan)}
-                placeholder="Scan atau ketik barcode..."
+                placeholder="Scan barcode / ketik barcode atau nama..."
                 style={{width:"100%",padding:"12px 12px 12px 40px",background:C.bg3,border:`2px solid ${bc}44`,borderRadius:12,color:C.t0,fontSize:14,fontFamily:F.mono}}/>
             </div>
             <button onClick={()=>stokScanFn(stokScan)} className="press"
