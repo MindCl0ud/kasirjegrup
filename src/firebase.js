@@ -1,5 +1,5 @@
 // ═══════════════════════════════════════════════════════════════
-//  KASIR JE GRUP — Firebase Service Layer v5
+//  KASIR JE GRUP — Firebase Service Layer v5 (FIXED)
 // ═══════════════════════════════════════════════════════════════
 import { initializeApp, getApps } from "firebase/app";
 import {
@@ -17,13 +17,15 @@ export const clearConfig = () => localStorage.removeItem(CONFIG_KEY);
 
 // ── Password hashing (SHA-256) ─────────────────────────────────
 export const hashPassword = async (plain) => {
+  if (!plain) return "";
   const buf = await crypto.subtle.digest("SHA-256",
     new TextEncoder().encode(plain + "je_grup_salt_2024"));
   return Array.from(new Uint8Array(buf)).map(b=>b.toString(16).padStart(2,"0")).join("");
 };
 export const verifyPassword = async (plain, stored) => {
   if (!stored) return false;
-  if (stored.length !== 64) return plain === stored; // legacy plain
+  // Jika stored bukan hash (panjang != 64), bandingkan plain text (legacy)
+  if (stored.length !== 64) return plain === stored; 
   return (await hashPassword(plain)) === stored;
 };
 
@@ -44,11 +46,6 @@ export const initFirebase = async (config) => {
     saveConfig(config);
     return { ok:true, db:_db };
   } catch (err) {
-    if (err.code==="failed-precondition" || err.message?.includes("already")) {
-      const { getFirestore } = await import("firebase/firestore");
-      _db = getFirestore();
-      return { ok:true, db:_db };
-    }
     return { ok:false, error:err.message };
   }
 };
@@ -72,14 +69,14 @@ export const seedDatabase = async (users, products) => {
 };
 
 // ── Subscriptions ──────────────────────────────────────────────
-export const subscribeUsers        = (cb) => onSnapshot(collection(_db,"users"), s=>cb(s.docs.map(d=>({...d.data(),_docId:d.id}))), console.warn);
-export const subscribeProducts     = (cb) => onSnapshot(collection(_db,"products"), s=>cb(s.docs.map(d=>({...d.data(),_docId:d.id}))), console.warn);
-export const subscribeTransactions = (cb,n=300) => onSnapshot(query(collection(_db,"transactions"),orderBy("createdAt","desc"),limit(n)), s=>cb(s.docs.map(d=>({...d.data(),_docId:d.id}))), console.warn);
-export const subscribeStockLogs    = (cb,n=300) => onSnapshot(query(collection(_db,"stockLogs"),orderBy("createdAt","desc"),limit(n)), s=>cb(s.docs.map(d=>({...d.data(),_docId:d.id}))), console.warn);
-export const subscribeAttendance   = (cb,n=500) => onSnapshot(query(collection(_db,"attendance"),orderBy("createdAt","desc"),limit(n)), s=>cb(s.docs.map(d=>({...d.data(),_docId:d.id}))), console.warn);
-export const subscribeReturns      = (cb,n=200) => onSnapshot(query(collection(_db,"returns"),orderBy("createdAt","desc"),limit(n)), s=>cb(s.docs.map(d=>({...d.data(),_docId:d.id}))), console.warn);
-export const subscribeActivityLogs = (cb,n=200) => onSnapshot(query(collection(_db,"activityLogs"),orderBy("createdAt","desc"),limit(n)), s=>cb(s.docs.map(d=>({...d.data(),_docId:d.id}))), console.warn);
-export const subscribeTargets      = (cb) => onSnapshot(collection(_db,"targets"), s=>cb(s.docs.map(d=>({...d.data(),_docId:d.id}))), console.warn);
+export const subscribeUsers        = (cb) => onSnapshot(collection(_db,"users"), s=>cb(s.docs.map(d=>({...d.data(),id:d.id}))), console.warn);
+export const subscribeProducts     = (cb) => onSnapshot(collection(_db,"products"), s=>cb(s.docs.map(d=>({...d.data(),id:d.id}))), console.warn);
+export const subscribeTransactions = (cb,n=300) => onSnapshot(query(collection(_db,"transactions"),orderBy("createdAt","desc"),limit(n)), s=>cb(s.docs.map(d=>({...d.data(),id:d.id}))), console.warn);
+export const subscribeStockLogs    = (cb,n=300) => onSnapshot(query(collection(_db,"stockLogs"),orderBy("createdAt","desc"),limit(n)), s=>cb(s.docs.map(d=>({...d.data(),id:d.id}))), console.warn);
+export const subscribeAttendance   = (cb,n=500) => onSnapshot(query(collection(_db,"attendance"),orderBy("createdAt","desc"),limit(n)), s=>cb(s.docs.map(d=>({...d.data(),id:d.id}))), console.warn);
+export const subscribeReturns      = (cb,n=200) => onSnapshot(query(collection(_db,"returns"),orderBy("createdAt","desc"),limit(n)), s=>cb(s.docs.map(d=>({...d.data(),id:d.id}))), console.warn);
+export const subscribeActivityLogs = (cb,n=200) => onSnapshot(query(collection(_db,"activityLogs"),orderBy("createdAt","desc"),limit(n)), s=>cb(s.docs.map(d=>({...d.data(),id:d.id}))), console.warn);
+export const subscribeTargets      = (cb) => onSnapshot(collection(_db,"targets"), s=>cb(s.docs.map(d=>({...d.data(),id:d.id}))), console.warn);
 
 // ── Activity log ────────────────────────────────────────────────
 export const fbLogActivity = async (actor, action, detail, business="") => {
@@ -100,17 +97,26 @@ export const fbAddUser = async (user, actor) => {
   await setDoc(doc(_db,"users",String(user.id)), data);
   await fbLogActivity(actor,"Tambah Pengguna",`${user.name} (${user.role})`);
 };
+
 export const fbUpdateUser = async (id, data, actor) => {
   const upd = { ...data };
   if (upd.faceDescriptor) upd.faceDescriptor = Array.from(upd.faceDescriptor);
-  if (upd.password && upd.password.length !== 64) upd.passwordHash = await hashPassword(upd.password);
-  await setDoc(doc(_db,"users",String(id)), upd);
+  
+  // Jika ada password baru (bukan hash), buat hash baru
+  if (upd.password && upd.password.length !== 64) {
+    upd.passwordHash = await hashPassword(upd.password);
+  }
+  
+  // MENGGUNAKAN updateDoc agar data lain tidak hilang
+  await updateDoc(doc(_db,"users",String(id)), upd);
   if (actor) await fbLogActivity(actor,"Edit Pengguna",`Edit: ${data.name}`);
 };
+
 export const fbDeleteUser = async (id, name, actor) => {
   await deleteDoc(doc(_db,"users",String(id)));
   await fbLogActivity(actor,"Hapus Pengguna",`Hapus: ${name}`);
 };
+
 export const fbChangePassword = async (userId, newPass, actor) => {
   const hash = await hashPassword(newPass);
   await updateDoc(doc(_db,"users",String(userId)), { password:newPass, passwordHash:hash });
@@ -119,13 +125,17 @@ export const fbChangePassword = async (userId, newPass, actor) => {
 
 // ── Products ────────────────────────────────────────────────────
 export const fbAddProduct = async (p, actor) => {
+  // setDoc digunakan di sini karena ini adalah produk baru
   await setDoc(doc(_db,"products",String(p.id)), p);
   await fbLogActivity(actor,"Tambah Produk",`${p.name} (${p.barcode})`,p.business);
 };
+
 export const fbUpdateProduct = async (id, data, actor) => {
+  // Pastikan menggunakan updateDoc
   await updateDoc(doc(_db,"products",String(id)), data);
   if (actor) await fbLogActivity(actor,"Edit Produk",`Edit: ${data.name}`,data.business);
 };
+
 export const fbDeleteProduct = async (id, name, biz, actor) => {
   await deleteDoc(doc(_db,"products",String(id)));
   await fbLogActivity(actor,"Hapus Produk",`Hapus: ${name}`,biz);
@@ -135,10 +145,13 @@ export const fbDeleteProduct = async (id, name, biz, actor) => {
 export const fbAddTransaction = async (trx, stockUpdates, logs) => {
   const batch = writeBatch(_db);
   batch.set(doc(_db,"transactions",trx.id), { ...trx, createdAt:serverTimestamp() });
+  
   stockUpdates.forEach(({productId,newStock}) =>
-    batch.update(doc(_db,"products",String(productId)), {stock:newStock}));
+    batch.update(doc(_db,"products",String(productId)), { stock: newStock }));
+    
   logs.forEach(log =>
     batch.set(doc(_db,"stockLogs",log.id), { ...log, createdAt:serverTimestamp() }));
+    
   await batch.commit();
   await fbLogActivity(trx.kasir,"Transaksi",`${trx.id} — Rp ${trx.total.toLocaleString("id-ID")}`,trx.business);
 };
@@ -148,10 +161,13 @@ export const fbAddReturn = async (ret, stockUpdates, logs) => {
   const batch = writeBatch(_db);
   batch.set(doc(_db,"returns",ret.id), { ...ret, createdAt:serverTimestamp() });
   batch.update(doc(_db,"transactions",ret.originalTrxId), { returned:true, returnId:ret.id });
+  
   stockUpdates.forEach(({productId,newStock}) =>
-    batch.update(doc(_db,"products",String(productId)), {stock:newStock}));
+    batch.update(doc(_db,"products",String(productId)), { stock: newStock }));
+    
   logs.forEach(log =>
     batch.set(doc(_db,"stockLogs",log.id), { ...log, createdAt:serverTimestamp() }));
+    
   await batch.commit();
   await fbLogActivity(ret.kasir,"Retur",`${ret.id} dari ${ret.originalTrxId}`,ret.business);
 };
@@ -159,17 +175,26 @@ export const fbAddReturn = async (ret, stockUpdates, logs) => {
 // ── Stock ────────────────────────────────────────────────────────
 export const fbUpdateStock = async (productId, newStock, newPrice, log, actor) => {
   const batch = writeBatch(_db);
-  const upd = { stock:newStock };
-  if (newPrice !== undefined && newPrice > 0) upd.price = newPrice;
-  batch.update(doc(_db,"products",String(productId)), upd);
-  if (log) batch.set(doc(_db,"stockLogs",log.id), { ...log, createdAt:serverTimestamp() });
+  
+  // Hanya update field yang diperlukan agar tidak menimpa field lain
+  const upd = { stock: Number(newStock) };
+  if (newPrice !== undefined && newPrice > 0) {
+    upd.price = Number(newPrice);
+  }
+
+  const productRef = doc(_db, "products", String(productId));
+  batch.update(productRef, upd);
+  
+  if (log) {
+    batch.set(doc(_db,"stockLogs",log.id), { ...log, createdAt:serverTimestamp() });
+  }
+  
   await batch.commit();
   if (actor) await fbLogActivity(actor,"Update Stok",`${log?.name}: ${log?.before}→${newStock}`,log?.business);
 };
 
 // ── Attendance ──────────────────────────────────────────────────
 export const fbCheckIn = async (rec) => {
-  // Query Firestore directly — prevents duplicates even when local state is stale/empty
   try {
     const snap = await getDocs(
       query(collection(_db,"attendance"),
@@ -177,13 +202,16 @@ export const fbCheckIn = async (rec) => {
         where("date","==",rec.date),
         where("business","==",rec.business))
     );
-    if (!snap.empty) return null; // sudah check-in hari ini
+    if (!snap.empty) return null; 
   } catch {}
   return setDoc(doc(_db,"attendance",rec.id), { ...rec, createdAt:serverTimestamp() });
 };
+
 export const fbCheckOut = async (docId, t) =>
   updateDoc(doc(_db,"attendance",docId), { checkOut:t, checkOutISO:new Date().toISOString(), updatedAt:serverTimestamp() });
+
 export const fbDeleteAttendance = async (id) => deleteDoc(doc(_db,"attendance",id));
+
 export const fbClearAttendanceByDate = async (dateStr) => {
   const snap = await getDocs(collection(_db,"attendance"));
   const batch = writeBatch(_db);
@@ -194,17 +222,22 @@ export const fbClearAttendanceByDate = async (dateStr) => {
 // ── Targets ─────────────────────────────────────────────────────
 export const fbSetTarget = async (t) =>
   setDoc(doc(_db,"targets",t.id), { ...t, updatedAt:serverTimestamp() });
+
 export const fbDeleteTarget = async (id) => deleteDoc(doc(_db,"targets",id));
 
 // ── Google Sheets ────────────────────────────────────────────────
 export const syncToSheets = async (url, users, products, transactions, stockLogs, attendance) => {
-  const r = await fetch(url, {
-    method:"POST",
-    body: JSON.stringify({
-      action:"syncAll",
-      users: users.map(u=>({...u,faceDescriptor:null,password:"***",passwordHash:"***"})),
-      products, transactions, stockLogs, attendance,
-    })
-  });
-  return r.ok;
+  try {
+    const r = await fetch(url, {
+      method:"POST",
+      body: JSON.stringify({
+        action:"syncAll",
+        users: users.map(u=>({...u,faceDescriptor:null,password:"***",passwordHash:"***"})),
+        products, transactions, stockLogs, attendance,
+      })
+    });
+    return r.ok;
+  } catch {
+    return false;
+  }
 };
