@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback, Component } from "react";
+import React from "react"; // Pastikan React terimport untuk komponen fungsional
 import {
   loadConfig, saveConfig, clearConfig, initFirebase, isSeeded, seedDatabase,
   subscribeUsers, subscribeProducts, subscribeTransactions, subscribeStockLogs,
@@ -45,7 +46,7 @@ const SEED_PRODUCTS = [
   { id:18, barcode:"JBS008", name:"Scarlett Brightening",   price:98000,  hpp:58000,  stock:30,  category:"Brightening", business:"JB_STORE" },
 ];
 const PAYMENT_METHODS = ["Tunai","Transfer","QRIS","Debit","Kredit"];
-let NEXT_ID = 200;
+let NEXT_ID = Date.now(); // Gunakan timestamp agar ID unik
 
 // ─────────────────────────────────────────────────────────────
 //  HELPERS
@@ -1168,6 +1169,8 @@ function AppInner() {
   const [stokPrice,setStokPrice]=useState("");
   const [stokTarget,setStokTarget]=useState(null);
   const [stokSearch,setStokSearch]=useState("");
+  const [isNewProduct, setIsNewProduct] = useState(false);
+  const [newPForm, setNewPForm] = useState({ barcode: "", name: "", category: "Umum", price: "", stock: "" });
   const stokScanRef=useRef(null),stokQRef=useRef(null);
   useEffect(()=>{if(screen==="stok")setTimeout(()=>stokScanRef.current?.focus(),100);},[screen]);
   useEffect(()=>{if(stokTarget)setTimeout(()=>stokQRef.current?.focus(),100);},[stokTarget]);
@@ -1293,10 +1296,23 @@ function AppInner() {
   // ─── Stok functions ───
  const stokScanFn=useCallback((bc)=>{
     bc=bc.trim();if(!bc) return;
-    const p=prods.find(x=>x.barcode===bc&&x.business===biz) || prods.find(x=>x.name.toLowerCase().includes(bc.toLowerCase())&&x.business===biz);
-    if(!p){toast("Produk tidak ditemukan","err");setStokScan("");return;}
-    setStokTarget(p);setStokQ("");setStokPrice("");setStokScan("");
-  },[prods,biz,toast]);
+    const p = prods.find(x => x.barcode === bc && x.business === biz) || 
+              prods.find(x => x.name.toLowerCase().includes(bc.toLowerCase()) && x.business === biz);
+    
+    if (!p) {
+      // Jika tidak ditemukan, buka form produk baru
+      setNewPForm({ barcode: bc, name: "", category: "Umum", price: "", stock: "" });
+      setIsNewProduct(true);
+      setStokTarget(null);
+      setStokScan("");
+      return;
+    }
+    setStokTarget(p);
+    setIsNewProduct(false);
+    setStokQ("");
+    setStokPrice("");
+    setStokScan("");
+  },[prods,biz]);
 
   const doAddStock=useCallback(async()=>{
     const q=parseInt(stokQ);
@@ -1311,6 +1327,38 @@ function AppInner() {
     }catch(e){toast("Gagal: "+e.message,"err");}
     setStokTarget(null);setStokQ("");setStokPrice("");stokScanRef.current?.focus();
   },[stokTarget,stokQ,stokPrice,user,biz,toast]);
+
+  const saveNewProduct = async () => {
+    if (!newPForm.barcode || !newPForm.name || !newPForm.price || !newPForm.stock) {
+      toast("Semua data produk baru wajib diisi", "warn");
+      return;
+    }
+    try {
+      const prod = {
+        ...newPForm,
+        id: Date.now(), // Generate ID unik
+        price: +newPForm.price,
+        stock: +newPForm.stock,
+        hpp: 0, 
+        business: biz
+      };
+      await fbAddProduct(prod, user.name);
+      
+      // Log stok awal
+      const log = {
+        id: "LOG-" + uid(), date: nowStr(), barcode: prod.barcode, name: prod.name,
+        type: "masuk", qty: prod.stock, before: 0, after: prod.stock, by: user.name, business: biz
+      };
+      await fbLogActivity(user.name, "Tambah Produk Baru", `Mendaftarkan ${prod.name}`, biz);
+      
+      toast("✅ Produk baru berhasil didaftarkan!");
+      setIsNewProduct(false);
+      setStokScan("");
+      stokScanRef.current?.focus();
+    } catch (e) {
+      toast("Gagal: " + e.message, "err");
+    }
+  };
 
   // ─── Admin: User CRUD ───
   const openAddU=()=>{setUForm({username:"",password:"",name:"",role:"kasir",access:[],avatar:"🧑",active:true});setEditUid(null);setUModal(true);};
@@ -1924,9 +1972,11 @@ function AppInner() {
       <style>{CSS}</style><Toast n={notif}/>
       {showLowStock&&<LowStockPopup prods={prods} onClose={()=>setShowLowStock(false)}/>}
       <Header biz={biz} user={user} online={online} onLogout={doLogout}
-        onSwitchBiz={user?.access?.length>1?()=>{setStokTarget(null);setScreen("bizselect");}:null}
+        onSwitchBiz={user?.access?.length>1?()=>{setStokTarget(null);setIsNewProduct(false);setScreen("bizselect");}:null}
         onAbsenPulang={handlePulang} hasCheckedIn={hasCheckedIn} onToggleTheme={toggleTheme} isDark={isDark} onLowStockClick={()=>setShowLowStock(true)}/>
       <div style={{flex:1,overflowY:"auto",padding:10,display:"flex",flexDirection:"column",gap:10,minHeight:0}}>
+        
+        {/* Scan / Cari Barcode */}
         <Card noPad style={{overflow:"hidden"}}>
           <div style={{padding:"10px 13px",borderBottom:`1px solid ${C.bo0}`,display:"flex",alignItems:"center",gap:8}}>
             <span style={{flex:1,fontSize:10,fontWeight:700,color:C.t2,textTransform:"uppercase",letterSpacing:1}}>📷 Scan Barcode</span>
@@ -1958,53 +2008,81 @@ function AppInner() {
                   )}
                 </div>
               )}
-
             </div>
             <button onClick={()=>stokScanFn(stokScan)} className="press"
               style={{padding:"12px 16px",background:bc,border:"none",borderRadius:12,color:"#fff",fontWeight:800,fontSize:13,flexShrink:0}}>Scan</button>
           </div>
         </Card>
-        {stokTarget&&<Card accent={bc} style={{animation:"fadeUp .2s ease"}}>
-          <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:12}}>
-            <div style={{flex:1,minWidth:0}}>
-              <div style={{fontSize:15,fontWeight:800,marginBottom:4,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{stokTarget.name}</div>
-              <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
-                <span className="mn" style={{color:C.t2,fontSize:10}}>{stokTarget.barcode}</span>
-                <span style={{padding:"1px 8px",borderRadius:20,fontSize:10,fontWeight:600,background:C.bg4,color:C.t1}}>{stokTarget.category}</span>
+
+        {/* 🆕 FORM PRODUK BARU (Jika tidak ditemukan saat scan) */}
+        {isNewProduct && (
+          <Card accent={C.vi} style={{ animation: "fadeUp .2s ease", marginBottom: 15 }}>
+            <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 12 }}>
+              <h3 style={{ fontSize: 14, fontWeight: 800, color: C.vi }}>🆕 Daftarkan Produk Baru</h3>
+              <button onClick={() => setIsNewProduct(false)} style={{ background: "transparent", border: "none", color: C.t3, fontSize: 20 }}>×</button>
+            </div>
+            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+              <Inp label="Barcode" value={newPForm.barcode} onChange={e => setNewPForm(x => ({ ...x, barcode: e.target.value }))} mono />
+              <Inp label="Nama Produk" value={newPForm.name} onChange={e => setNewPForm(x => ({ ...x, name: e.target.value }))} />
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+                <Inp label="Kategori" value={newPForm.category} onChange={e => setNewPForm(x => ({ ...x, category: e.target.value }))} />
+                <Inp label="Harga Jual" type="number" value={newPForm.price} onChange={e => setNewPForm(x => ({ ...x, price: e.target.value }))} suffix="Rp" />
+              </div>
+              <Inp label="Stok Awal" type="number" value={newPForm.stock} onChange={e => setNewPForm(x => ({ ...x, stock: e.target.value }))} />
+              <div style={{ display: "flex", gap: 8, marginTop: 5 }}>
+                <Btn onClick={saveNewProduct} full color={C.vi}>✓ Simpan & Daftarkan</Btn>
+                <Btn onClick={() => setIsNewProduct(false)} outline>Batal</Btn>
               </div>
             </div>
-            <div style={{textAlign:"right",flexShrink:0,marginLeft:10}}>
-              <div style={{fontSize:10,color:C.t2}}>Stok Saat Ini</div>
-              <div className="mn" style={{fontSize:32,fontWeight:800,lineHeight:1,color:stokTarget.stock<10?C.r:C.t0}}>{stokTarget.stock}</div>
-            </div>
-          </div>
-          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:12}}>
-            <div>
-              <div style={{fontSize:9.5,fontWeight:700,color:C.t2,textTransform:"uppercase",letterSpacing:.5,marginBottom:5}}>Jumlah Masuk *</div>
-              <input ref={stokQRef} type="number" min="1" value={stokQ}
-                onChange={e=>setStokQ(e.target.value)} onKeyDown={e=>e.key==="Enter"&&doAddStock()}
-                placeholder="0" style={{width:"100%",padding:"12px",background:C.bg3,border:`1.5px solid ${C.bo0}`,borderRadius:10,color:C.t0,fontSize:24,fontFamily:F.mono,textAlign:"center",fontWeight:700}}
-                onFocus={e=>e.target.style.borderColor=C.g+"88"} onBlur={e=>e.target.style.borderColor=C.bo0}/>
-            </div>
-            <div>
-              <div style={{fontSize:9.5,fontWeight:700,color:C.t2,textTransform:"uppercase",letterSpacing:.5,marginBottom:5}}>Update Harga Jual</div>
-              <div style={{position:"relative"}}>
-                <span style={{position:"absolute",left:10,top:"50%",transform:"translateY(-50%)",fontSize:10,color:C.t2,pointerEvents:"none",fontFamily:F.mono}}>Rp</span>
-                <input type="number" value={stokPrice} onChange={e=>setStokPrice(e.target.value)} placeholder={String(stokTarget.price)}
-                  style={{width:"100%",padding:"12px 10px 12px 28px",background:C.bg3,border:`1.5px solid ${C.bo0}`,borderRadius:10,color:C.t0,fontSize:14,fontFamily:F.mono}}
-                  onFocus={e=>e.target.style.borderColor=C.a+"88"} onBlur={e=>e.target.style.borderColor=C.bo0}/>
+          </Card>
+        )}
+
+        {/* 📦 UPDATE STOK (Untuk produk yang sudah ada) */}
+        {stokTarget && !isNewProduct && (
+          <Card accent={bc} style={{animation:"fadeUp .2s ease"}}>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:12}}>
+              <div style={{flex:1,minWidth:0}}>
+                <div style={{fontSize:15,fontWeight:800,marginBottom:4,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{stokTarget.name}</div>
+                <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
+                  <span className="mn" style={{color:C.t2,fontSize:10}}>{stokTarget.barcode}</span>
+                  <span style={{padding:"1px 8px",borderRadius:20,fontSize:10,fontWeight:600,background:C.bg4,color:C.t1}}>{stokTarget.category}</span>
+                </div>
+              </div>
+              <div style={{textAlign:"right",flexShrink:0,marginLeft:10}}>
+                <div style={{fontSize:10,color:C.t2}}>Stok Saat Ini</div>
+                <div className="mn" style={{fontSize:32,fontWeight:800,lineHeight:1,color:stokTarget.stock<10?C.r:C.t0}}>{stokTarget.stock}</div>
               </div>
             </div>
-          </div>
-          {stokQ&&parseInt(stokQ)>0&&<div style={{padding:"7px 11px",background:C.bg3,borderRadius:7,fontSize:11.5,color:C.t2,marginBottom:10,display:"flex",gap:10,flexWrap:"wrap"}}>
-            <span>Stok: <b style={{color:C.t0}}>{stokTarget.stock}</b> → <b style={{color:C.g,fontSize:13}}>{stokTarget.stock+parseInt(stokQ)}</b></span>
-            {stokPrice&&+stokPrice>0&&<span>Harga baru: <b style={{color:C.a}}>{rp(stokPrice)}</b></span>}
-          </div>}
-          <div style={{display:"flex",gap:8}}>
-            <Btn onClick={doAddStock} full>+ Tambah Stok</Btn>
-            <Btn onClick={()=>{setStokTarget(null);stokScanRef.current?.focus();}} outline>Batal</Btn>
-          </div>
-        </Card>}
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:12}}>
+              <div>
+                <div style={{fontSize:9.5,fontWeight:700,color:C.t2,textTransform:"uppercase",letterSpacing:.5,marginBottom:5}}>Jumlah Masuk *</div>
+                <input ref={stokQRef} type="number" min="1" value={stokQ}
+                  onChange={e=>setStokQ(e.target.value)} onKeyDown={e=>e.key==="Enter"&&doAddStock()}
+                  placeholder="0" style={{width:"100%",padding:"12px",background:C.bg3,border:`1.5px solid ${C.bo0}`,borderRadius:10,color:C.t0,fontSize:24,fontFamily:F.mono,textAlign:"center",fontWeight:700}}
+                  onFocus={e=>e.target.style.borderColor=C.g+"88"} onBlur={e=>e.target.style.borderColor=C.bo0}/>
+              </div>
+              <div>
+                <div style={{fontSize:9.5,fontWeight:700,color:C.t2,textTransform:"uppercase",letterSpacing:.5,marginBottom:5}}>Update Harga Jual</div>
+                <div style={{position:"relative"}}>
+                  <span style={{position:"absolute",left:10,top:"50%",transform:"translateY(-50%)",fontSize:10,color:C.t2,pointerEvents:"none",fontFamily:F.mono}}>Rp</span>
+                  <input type="number" value={stokPrice} onChange={e=>setStokPrice(e.target.value)} placeholder={String(stokTarget.price)}
+                    style={{width:"100%",padding:"12px 10px 12px 28px",background:C.bg3,border:`1.5px solid ${C.bo0}`,borderRadius:10,color:C.t0,fontSize:14,fontFamily:F.mono}}
+                    onFocus={e=>e.target.style.borderColor=C.a+"88"} onBlur={e=>e.target.style.borderColor=C.bo0}/>
+                </div>
+              </div>
+            </div>
+            {stokQ&&parseInt(stokQ)>0&&<div style={{padding:"7px 11px",background:C.bg3,borderRadius:7,fontSize:11.5,color:C.t2,marginBottom:10,display:"flex",gap:10,flexWrap:"wrap"}}>
+              <span>Stok: <b style={{color:C.t0}}>{stokTarget.stock}</b> → <b style={{color:C.g,fontSize:13}}>{stokTarget.stock+parseInt(stokQ)}</b></span>
+              {stokPrice&&+stokPrice>0&&<span>Harga baru: <b style={{color:C.a}}>{rp(stokPrice)}</b></span>}
+            </div>}
+            <div style={{display:"flex",gap:8}}>
+              <Btn onClick={doAddStock} full>+ Tambah Stok</Btn>
+              <Btn onClick={()=>{setStokTarget(null);stokScanRef.current?.focus();}} outline>Batal</Btn>
+            </div>
+          </Card>
+        )}
+
+        {/* Tabel Daftar Produk Bisnis */}
         <Card noPad style={{overflow:"hidden"}}>
           <div style={{padding:"10px 13px",borderBottom:`1px solid ${C.bo0}`,display:"flex",alignItems:"center",gap:8}}>
             <span style={{flex:1,fontSize:10,fontWeight:700,color:C.t2,textTransform:"uppercase",letterSpacing:1}}>Produk ({filtered.length})</span>
@@ -2021,13 +2099,15 @@ function AppInner() {
                 <td style={{padding:"12px 13px",fontFamily:F.mono,color:C.g,fontSize:11}}>{rp(p.price)}</td>
                 <td style={{padding:"12px 13px"}}><StockBadge s={p.stock}/></td>
                 <td style={{padding:"12px 13px"}}>
-                  <button onClick={()=>{setStokTarget(p);setStokQ("");setStokPrice("");}} className="press"
+                  <button onClick={()=>{setStokTarget(p);setIsNewProduct(false);setStokQ("");setStokPrice("");}} className="press"
                     style={{padding:"5px 12px",background:C.g1,border:`1px solid ${C.g}33`,borderRadius:7,color:C.g,fontSize:11,fontWeight:700}}>+ Tambah</button>
                 </td>
               </tr>)}</tbody>
             </table>
           </TableWrap>
         </Card>
+
+        {/* Log Stok Masuk */}
         <Card noPad style={{overflow:"hidden"}}>
           <div style={{padding:"10px 13px",borderBottom:`1px solid ${C.bo0}`}}>
             <span style={{fontSize:10,fontWeight:700,color:C.t2,textTransform:"uppercase",letterSpacing:1}}>Log Penerimaan Stok</span>
@@ -2842,6 +2922,7 @@ function AppInner() {
             {slogsFiltered.length===0?<div style={{textAlign:"center",padding:"48px",color:C.t3}}><div style={{fontSize:40,opacity:.08,marginBottom:10}}>📋</div><p>Tidak ada data</p></div>
             :<Card noPad style={{overflow:"hidden"}}>
               <TableWrap>
+                // ... sambungan dari bagian {/* ── LOG STOK ── */}
                 <table style={{width:"100%",borderCollapse:"collapse",fontSize:11.5,minWidth:540}}>
                   <THead cols={["Waktu","Produk","Bisnis","Tipe","Qty","Sblm","Ssdh","Oleh"]}/>
                   <tbody>{slogsFiltered.map((l,i)=><tr key={l.id||i} className="hrow" style={{borderTop:`1px solid ${C.bo0}`,background:i%2===0?"transparent":C.bg0}}>
@@ -2872,42 +2953,22 @@ function AppInner() {
             ],"Retur","laporan_retur")} className="press"
               style={{padding:"8px 14px",background:C.g1,border:`1px solid ${C.g}33`,borderRadius:9,color:C.g,fontSize:12,fontWeight:700,fontFamily:F.sans}}>⬇ Excel</button>
           </div>
-          {/* Summary stats */}
-          {returns.length>0&&<div className="stat-grid-4" style={{display:"grid",gap:8}}>
-            <Stat icon="↩" label="Total Retur" value={returns.length} color={C.r}/>
-            <Stat icon="💸" label="Nilai Diretur" value={rp(returns.reduce((s,r)=>s+r.total,0))} color={C.a}/>
-            <Stat icon="📦" label="Item Diretur" value={returns.reduce((s,r)=>s+(r.items?.length||0),0)} color={C.cy}/>
-            <Stat icon="🧑" label="Oleh Kasir" value={[...new Set(returns.map(r=>r.kasir))].length+" orang"} color={C.vi}/>
-          </div>}
           {returns.length===0
-            ?<div style={{textAlign:"center",padding:"48px",color:C.t3}}>
-              <div style={{fontSize:40,opacity:.08,marginBottom:10}}>↩</div>
-              <p>Belum ada retur</p>
-              <p style={{fontSize:12,marginTop:8}}>Retur dari tab Laporan → klik tombol ↩ di tabel transaksi</p>
-            </div>
+            ?<div style={{textAlign:"center",padding:"48px",color:C.t3}}><div style={{fontSize:40,opacity:.08,marginBottom:10}}>↩</div><p>Belum ada retur</p></div>
             :<Card noPad style={{overflow:"hidden"}}>
               <TableWrap>
                 <table style={{width:"100%",borderCollapse:"collapse",fontSize:12,minWidth:520}}>
-                  <THead cols={["ID Retur","Tanggal","Kasir","Bisnis","TRX Asal","Nilai","Item","Detail"]}/>
+                  <THead cols={["ID Retur","Tanggal","Kasir","Bisnis","TRX Asal","Nilai","Detail"]}/>
                   <tbody>{returns.map((r,i)=><tr key={r.id} className="hrow" style={{borderTop:`1px solid ${C.bo0}`,background:i%2===0?"transparent":C.bg0}}>
                     <td style={{padding:"12px 13px",fontFamily:F.mono,fontSize:10,color:C.a}}>{r.id?.slice(-12)}</td>
-                    <td style={{padding:"12px 13px",fontSize:10,color:C.t2,whiteSpace:"nowrap"}}>{r.date}</td>
-                    <td style={{padding:"12px 13px",fontWeight:500,fontSize:12}}>{r.kasir}</td>
+                    <td style={{padding:"12px 13px",fontSize:10,color:C.t2}}>{r.date}</td>
+                    <td style={{padding:"12px 13px",fontWeight:500}}>{r.kasir}</td>
                     <td style={{padding:"12px 13px"}}><BizChip biz={r.business} sm/></td>
-                    <td style={{padding:"12px 13px",fontFamily:F.mono,fontSize:10,color:C.t3}}>{r.originalTrxId?.slice(-12)}</td>
-                    <td style={{padding:"12px 13px",fontFamily:F.mono,color:C.r,fontSize:11,fontWeight:700}}>{rp(r.total)}</td>
-                    <td style={{padding:"12px 13px",fontFamily:F.mono,fontSize:11}}>{r.items?.length||0}</td>
+                    <td style={{padding:"12px 13px",fontFamily:F.mono,fontSize:10}}>{r.originalTrxId?.slice(-12)}</td>
+                    <td style={{padding:"12px 13px",fontFamily:F.mono,color:C.r,fontWeight:700}}>{rp(r.total)}</td>
                     <td style={{padding:"12px 13px"}}>
-                      <details style={{cursor:"pointer"}}>
-                        <summary style={{fontSize:10,color:C.b,fontWeight:700,userSelect:"none",listStyle:"none"}}>Lihat ▾</summary>
-                        <div style={{marginTop:6,padding:"6px 0"}}>
-                          {r.items?.map((item,ii)=>(
-                            <div key={ii} style={{fontSize:10.5,color:C.t1,display:"flex",justifyContent:"space-between",gap:8,marginBottom:3}}>
-                              <span style={{overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",flex:1}}>{item.name} ×{item.qty}</span>
-                              <span className="mn" style={{flexShrink:0,color:C.r}}>−{rp(item.price*item.qty)}</span>
-                            </div>
-                          ))}
-                        </div>
+                      <details><summary style={{fontSize:10,color:C.b,cursor:"pointer"}}>Lihat Barang</summary>
+                        <div style={{marginTop:5,fontSize:10,color:C.t1}}>{r.items?.map(it=>`${it.name} x${it.qty}`).join(", ")}</div>
                       </details>
                     </td>
                   </tr>)}</tbody>
@@ -2918,21 +2979,16 @@ function AppInner() {
 
         {/* ── AKTIVITAS ── */}
         {adminTab==="actlog"&&<div style={{display:"flex",flexDirection:"column",gap:10}}>
-          <h2 style={{fontSize:15,fontWeight:800}}>Log Aktivitas <span style={{color:C.t2,fontWeight:500,fontSize:13}}>({actLogs.length})</span></h2>
+          <h2 style={{fontSize:15,fontWeight:800}}>Log Aktivitas</h2>
           <Card noPad style={{overflow:"hidden"}}>
             <TableWrap>
               <table style={{width:"100%",borderCollapse:"collapse",fontSize:12,minWidth:520}}>
                 <THead cols={["Waktu","Aktor","Aksi","Detail","Bisnis"]}/>
-                <tbody>{actLogs.map((l,i)=><tr key={l._docId||i} className="hrow" style={{borderTop:`1px solid ${C.bo0}`,background:i%2===0?"transparent":C.bg0}}>
+                <tbody>{actLogs.map((l,i)=><tr key={i} className="hrow" style={{borderTop:`1px solid ${C.bo0}`,background:i%2===0?"transparent":C.bg0}}>
                   <td style={{padding:"12px 13px",fontSize:10,color:C.t2,whiteSpace:"nowrap"}}>{l.date}</td>
-                  <td style={{padding:"12px 13px",fontWeight:600,fontSize:11}}>{l.actor}</td>
-                  <td style={{padding:"12px 13px"}}>
-                    <span style={{padding:"2px 8px",borderRadius:20,fontSize:10,fontWeight:700,
-                      background:l.action.includes("Transaksi")?C.g1:l.action.includes("Retur")?C.a1:l.action.includes("Hapus")?C.r1:C.b1,
-                      color:l.action.includes("Transaksi")?C.g:l.action.includes("Retur")?C.a:l.action.includes("Hapus")?C.r:C.b}}>
-                      {l.action}</span>
-                  </td>
-                  <td style={{padding:"12px 13px",fontSize:11,color:C.t1,maxWidth:200,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{l.detail}</td>
+                  <td style={{padding:"12px 13px",fontWeight:600}}>{l.actor}</td>
+                  <td style={{padding:"12px 13px"}}><span style={{padding:"2px 8px",borderRadius:20,fontSize:10,fontWeight:700,background:C.b1,color:C.b}}>{l.action}</span></td>
+                  <td style={{padding:"12px 13px",fontSize:11,color:C.t1}}>{l.detail}</td>
                   <td style={{padding:"12px 13px"}}>{l.business?<BizChip biz={l.business} sm/>:"-"}</td>
                 </tr>)}</tbody>
               </table>
@@ -2940,67 +2996,50 @@ function AppInner() {
           </Card>
         </div>}
 
-
         {/* ── SHEETS ── */}
         {adminTab==="sheets"&&<div style={{maxWidth:640,display:"flex",flexDirection:"column",gap:10}}>
           <h2 style={{fontSize:15,fontWeight:800}}>Google Sheets Sync</h2>
           <Card>
             <div style={{fontSize:10,fontWeight:700,color:C.g,textTransform:"uppercase",letterSpacing:1,marginBottom:12}}>📋 Cara Setup</div>
-            {[{n:1,t:"Buat Google Spreadsheet baru",d:"sheets.google.com → Blank spreadsheet → nama: 'Kasir JE Grup'"},
-              {n:2,t:"Buka Apps Script",d:"menu Extensions → Apps Script → hapus kode yang ada"},
-              {n:3,t:"Paste kode berikut",d:"Salin kode di bawah dan paste ke editor"},
-              {n:4,t:"Deploy sebagai Web App",d:"Deploy → New deployment → Web app → Execute as: Me → Anyone → Deploy"},
-              {n:5,t:"Salin URL Web App",d:"Salin URL (https://script.google.com/macros/s/.../exec) dan paste di bawah"},
-            ].map(s=><div key={s.n} style={{display:"flex",gap:10,marginBottom:10,alignItems:"flex-start"}}>
-              <div style={{minWidth:22,height:22,borderRadius:"50%",background:C.g1,border:`1px solid ${C.g}44`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:10,fontWeight:700,color:C.g,flexShrink:0}}>{s.n}</div>
-              <div><div style={{fontSize:12.5,fontWeight:600}}>{s.t}</div><div style={{fontSize:11.5,color:C.t2,marginTop:2,lineHeight:1.6}}>{s.d}</div></div>
-            </div>)}
+            {[{n:1,t:"Buat Spreadsheet Baru",d:"Buka sheets.google.com, beri nama 'Kasir JE Grup'"},
+              {n:2,t:"Buka Apps Script",d:"Menu Ekstensi → Apps Script, hapus kode lama"},
+              {n:3,t:"Paste Kode",d:"Klik tombol salin di bawah dan paste ke editor script"},
+              {n:4,t:"Deploy",d:"Deploy → New Deployment → Web App → Execute as: Me → Access: Anyone"},
+              {n:5,t:"Simpan URL",d:"Salin URL Web App dan paste di kolom bawah ini"}].map(s=>(
+              <div key={s.n} style={{display:"flex",gap:10,marginBottom:10}}>
+                <div style={{width:20,height:20,borderRadius:"50%",background:C.g1,color:C.g,display:"flex",alignItems:"center",justifyContent:"center",fontSize:10,fontWeight:800,flexShrink:0}}>{s.n}</div>
+                <div><div style={{fontSize:12.5,fontWeight:600}}>{s.t}</div><div style={{fontSize:11,color:C.t2}}>{s.d}</div></div>
+              </div>))}
           </Card>
           <Card noPad style={{overflow:"hidden"}}>
-            <div style={{padding:"12px 14px",borderBottom:`1px solid ${C.bo0}`,display:"flex",alignItems:"center",gap:8}}>
-              <span style={{flex:1,fontSize:10,fontWeight:700,color:C.t2,textTransform:"uppercase",letterSpacing:1}}>Kode Apps Script</span>
+            <div style={{padding:"10px 14px",borderBottom:`1px solid ${C.bo0}`,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+              <span style={{fontSize:10,fontWeight:700,color:C.t2,textTransform:"uppercase"}}>Kode Apps Script</span>
               <button onClick={()=>{navigator.clipboard.writeText(APPSCRIPT_CODE.trim());setCopyDone(true);setTimeout(()=>setCopyDone(false),2000);toast("✓ Kode disalin!");}} className="press"
-                style={{padding:"4px 12px",background:copyDone?C.g1:C.bg4,border:`1px solid ${copyDone?C.g:C.bo1}`,borderRadius:7,color:copyDone?C.g:C.t1,fontSize:11,fontWeight:700}}>
-                {copyDone?"✓ Disalin":"📋 Salin"}
-              </button>
+                style={{padding:"4px 10px",background:copyDone?C.g1:C.bg4,border:`1px solid ${copyDone?C.g:C.bo1}`,borderRadius:7,color:copyDone?C.g:C.t1,fontSize:10,fontWeight:700}}>{copyDone?"Tersalin":"Salin Kode"}</button>
             </div>
-            <pre style={{padding:"12px 14px",fontSize:11,fontFamily:F.mono,color:C.t2,overflowX:"auto",lineHeight:1.7,background:C.bg0,maxHeight:260,overflowY:"auto",whiteSpace:"pre-wrap"}}>{APPSCRIPT_CODE.trim()}</pre>
+            <pre style={{padding:"12px 14px",fontSize:10,fontFamily:F.mono,color:C.t2,overflowX:"auto",maxHeight:200,background:C.bg0}}>{APPSCRIPT_CODE.trim()}</pre>
           </Card>
           <Card>
-            <div style={{fontSize:10,fontWeight:700,color:C.t2,textTransform:"uppercase",letterSpacing:1,marginBottom:10}}>URL Web App</div>
-            <div style={{display:"flex",gap:8,marginBottom:10,flexWrap:"wrap"}}>
-              <input value={gsUrl} onChange={e=>{setGsUrl(e.target.value);localStorage.setItem("je_gs_url",e.target.value);}}
-                placeholder="https://script.google.com/macros/s/…/exec"
-                style={{flex:1,minWidth:200,padding:"11px 13px",background:C.bg3,border:`1.5px solid ${C.bo0}`,borderRadius:10,color:C.t0,fontSize:12,fontFamily:F.mono}}
-                onFocus={e=>e.target.style.borderColor=C.g+"88"} onBlur={e=>e.target.style.borderColor=C.bo0}/>
+            <div style={{fontSize:10,fontWeight:700,color:C.t2,textTransform:"uppercase",marginBottom:10}}>URL Web App</div>
+            <div style={{display:"flex",gap:8,marginBottom:10}}>
+              <input value={gsUrl} onChange={e=>{setGsUrl(e.target.value);localStorage.setItem("je_gs_url",e.target.value);}} placeholder="https://script.google.com/macros/s/.../exec"
+                style={{flex:1,padding:"11px 13px",background:C.bg3,border:`1.5px solid ${C.bo0}`,borderRadius:10,color:C.t0,fontSize:12,fontFamily:F.mono}}/>
               <Btn onClick={async()=>{
                 if(!gsUrl){toast("Masukkan URL dulu","warn");return;}
                 setGsLoad(true);
-                try{const ok=await syncToSheets(gsUrl,users,prods,trxs,slogs,attend);ok?toast("✅ Sinkron berhasil!"):toast("Gagal","err");}
-                catch{toast("Tidak bisa terhubung","err");}
+                try{const ok=await syncToSheets(gsUrl,users,prods,trxs,slogs,attend); ok?toast("✅ Berhasil ekspor!"):toast("Gagal ekspor","err");}
+                catch{toast("Koneksi gagal","err");}
                 setGsLoad(false);
-              }} disabled={gsLoad}>{gsLoad?"⏳ Proses...":"↑ Ekspor"}</Btn>
+              }} disabled={gsLoad}>{gsLoad?"Memproses...":"↑ Ekspor Data"}</Btn>
             </div>
-            <div style={{padding:"9px 11px",background:C.a1,borderRadius:8,border:`1px solid ${C.a}22`,fontSize:11.5,color:C.a}}>
-              💡 Firebase adalah database utama. Google Sheets untuk backup & laporan offline.
-            </div>
+            <div style={{fontSize:11,color:C.a}}>💡 Gunakan fitur ini untuk backup database atau membuat laporan di Excel.</div>
           </Card>
-          <Card>
-            <div style={{fontSize:10,fontWeight:700,color:C.t2,textTransform:"uppercase",letterSpacing:1,marginBottom:10}}>Status Data</div>
-            <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:7}}>
-              {[{i:"👥",l:"Pengguna",v:users.length},{i:"📦",l:"Produk",v:prods.length},{i:"💳",l:"Transaksi",v:trxs.length},
-                {i:"📋",l:"Log Stok",v:slogs.length},{i:"🕐",l:"Absensi",v:attend.length},{i:"↩",l:"Retur",v:returns.length}].map(s=>(
-                <div key={s.l} style={{padding:"10px",background:C.bg3,borderRadius:9,border:`1px solid ${C.bo0}`,textAlign:"center"}}>
-                  <div style={{fontSize:17,marginBottom:3}}>{s.i}</div>
-                  <div className="mn" style={{fontWeight:700,fontSize:17}}>{s.v}</div>
-                  <div style={{fontSize:9.5,color:C.t2,marginTop:2}}>{s.l}</div>
-                </div>))}
-            </div>
-            <div style={{marginTop:10,padding:"9px 11px",background:C.bg3,borderRadius:8,border:`1px solid ${C.bo0}`,fontSize:11.5,color:C.t2,display:"flex",alignItems:"center",gap:8,flexWrap:"wrap"}}>
-              <span>Project: <b className="mn" style={{color:C.g}}>{loadConfig()?.projectId||"-"}</b></span>
-              <button onClick={()=>{clearConfig();setFbReady(false);setFbSetup(true);setScreen("login");}} className="press"
-                style={{marginLeft:"auto",padding:"4px 10px",background:C.r1,border:`1px solid ${C.r}33`,borderRadius:6,color:C.r,fontSize:10.5,fontWeight:700}}>Reset Config</button>
-            </div>
+          <Card style={{marginTop:10}}>
+             <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+               <div style={{fontSize:11,color:C.t3}}>Project: <b>{loadConfig()?.projectId||"-"}</b></div>
+               <button onClick={()=>{if(window.confirm("Hapus config Firebase? Anda akan keluar.")) {clearConfig();window.location.reload();}}}
+                 style={{background:"transparent",border:"none",color:C.r,fontSize:10,textDecoration:"underline",cursor:"pointer"}}>Reset Koneksi Firebase</button>
+             </div>
           </Card>
         </div>}
 
@@ -3011,5 +3050,9 @@ function AppInner() {
 }
 
 export default function App() {
-  return <ErrorBoundary><AppInner/></ErrorBoundary>;
+  return (
+    <ErrorBoundary>
+      <AppInner />
+    </ErrorBoundary>
+  );
 }
