@@ -957,6 +957,93 @@ class ErrorBoundary extends Component {
   }
 }
 
+
+// ─────────────────────────────────────────────────────────────
+//  KASIR STOK PANEL — Quick view+adjust for kasir
+// ─────────────────────────────────────────────────────────────
+function KasirStokPanel({prods, biz, onClose, onAdjust, onAddToCart}) {
+  const [search, setSearch] = React.useState("");
+  const list = prods.filter(p=>!search ||
+    p.name.toLowerCase().includes(search.toLowerCase()) ||
+    p.barcode.includes(search));
+  const bc = biz==="JS_CLOTHING" ? C.b : C.p;
+  return (
+    <div style={{position:"fixed",inset:0,background:"rgba(2,8,24,.88)",zIndex:600,
+      display:"flex",alignItems:"flex-end",justifyContent:"center",fontFamily:F.sans}}
+      onClick={onClose}>
+      <div style={{width:"100%",maxWidth:520,background:C.bg2,borderRadius:"22px 22px 0 0",
+        border:`1px solid ${bc}44`,borderBottom:"none",animation:"slideUp .25s ease",
+        maxHeight:"88vh",display:"flex",flexDirection:"column"}} onClick={e=>e.stopPropagation()}>
+        <div style={{width:36,height:4,background:C.bo1,borderRadius:2,margin:"14px auto 0"}}/>
+        <div style={{padding:"10px 16px 12px",borderBottom:`1px solid ${C.bo0}`,flexShrink:0}}>
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
+            <div>
+              <div style={{fontSize:14,fontWeight:800}}>📦 Stok Produk</div>
+              <div style={{fontSize:11,color:C.t2,marginTop:1}}>{list.length} produk · tap + untuk tambah ke keranjang</div>
+            </div>
+            <button onClick={onClose} style={{background:"transparent",border:"none",color:C.t2,fontSize:22,cursor:"pointer",lineHeight:1}}>×</button>
+          </div>
+          <input autoFocus value={search} onChange={e=>setSearch(e.target.value)}
+            placeholder="Cari produk..."
+            style={{width:"100%",padding:"10px 13px",background:C.bg3,border:`1.5px solid ${bc}44`,
+              borderRadius:10,color:C.t0,fontSize:13,fontFamily:"inherit",boxSizing:"border-box"}}/>
+        </div>
+        <div style={{overflowY:"auto",flex:1}}>
+          {list.length===0 && <div style={{padding:"32px",textAlign:"center",color:C.t3,fontSize:13}}>Tidak ditemukan</div>}
+          {list.map((p,i)=>(
+            <div key={p.id} style={{display:"flex",alignItems:"center",gap:10,padding:"11px 16px",
+              borderTop:i>0?`1px solid ${C.bo0}`:undefined,
+              background:p.stock===0?`${C.r}05`:undefined}}>
+              <div style={{flex:1,minWidth:0}}>
+                <div style={{fontWeight:600,fontSize:13,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{p.name}</div>
+                <div style={{display:"flex",gap:6,marginTop:2,alignItems:"center",flexWrap:"wrap"}}>
+                  <span className="mn" style={{fontSize:10,color:C.t2}}>{p.barcode}</span>
+                  <span className="mn" style={{fontSize:11,color:C.g}}>{rp(p.price)}</span>
+                </div>
+              </div>
+              {/* Stock + adjust */}
+              <div style={{display:"flex",alignItems:"center",gap:6,flexShrink:0}}>
+                <button onClick={()=>onAdjust(p,-1)} disabled={p.stock===0}
+                  className="press"
+                  style={{width:30,height:30,borderRadius:8,background:p.stock===0?C.bg4:C.r1,
+                    border:`1.5px solid ${p.stock===0?C.bo0:C.r+"44"}`,
+                    color:p.stock===0?C.t3:C.r,fontSize:17,fontWeight:700,
+                    display:"flex",alignItems:"center",justifyContent:"center",
+                    cursor:p.stock===0?"not-allowed":"pointer"}}>−</button>
+                <div style={{textAlign:"center",minWidth:32}}>
+                  <div className="mn" style={{fontSize:18,fontWeight:800,lineHeight:1,
+                    color:p.stock===0?C.r:p.stock<10?C.a:C.t0}}>{p.stock}</div>
+                  <div style={{fontSize:9,color:C.t3,marginTop:1}}>stok</div>
+                </div>
+                <button onClick={()=>onAdjust(p,1)}
+                  className="press"
+                  style={{width:30,height:30,borderRadius:8,background:C.g1,
+                    border:`1.5px solid ${C.g}44`,color:C.g,fontSize:17,fontWeight:700,
+                    display:"flex",alignItems:"center",justifyContent:"center"}}>+</button>
+              </div>
+              {/* Add to cart */}
+              <button onClick={()=>onAddToCart(p)} disabled={p.stock===0}
+                className="press"
+                style={{padding:"7px 12px",borderRadius:9,fontWeight:700,fontSize:12,
+                  background:p.stock===0?C.bg4:`linear-gradient(90deg,${bc},${bc}cc)`,
+                  border:"none",color:p.stock===0?C.t3:"#fff",
+                  cursor:p.stock===0?"not-allowed":"pointer",flexShrink:0}}>
+                🛒
+              </button>
+            </div>
+          ))}
+        </div>
+        <div style={{padding:"10px 16px",borderTop:`1px solid ${C.bo0}`,flexShrink:0,
+          display:"flex",justifyContent:"space-between",alignItems:"center",fontSize:12}}>
+          <span style={{color:C.t2}}>{prods.filter(p=>p.stock===0).length} habis · {prods.filter(p=>p.stock>0&&p.stock<10).length} menipis</span>
+          <button onClick={onClose} style={{padding:"7px 16px",background:C.bg3,border:`1px solid ${C.bo1}`,
+            borderRadius:8,color:C.t1,fontSize:12,fontWeight:600,cursor:"pointer",fontFamily:"inherit"}}>Tutup</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ─────────────────────────────────────────────────────────────
 //  APPSCRIPT CODE
 // ─────────────────────────────────────────────────────────────
@@ -1157,6 +1244,8 @@ function AppInner() {
   const [receipt,setReceipt]=useState(null);
   const [showStock,setShowStock]=useState(false);
   const [showLowStock,setShowLowStock]=useState(false);
+  const [showKasirStok,setShowKasirStok]=useState(false);
+  const [kasirStokSearch,setKasirStokSearch]=useState("");
   const [addonPrompt,setAddonPrompt]=useState(null); // {mainItem, addons:[]}
   const [discount,setDiscount]=useState({type:"pct",value:""});
   const [payMethod,setPayMethod]=useState("Tunai");
@@ -1166,6 +1255,7 @@ function AppInner() {
   // ─── Stok state ───
   const [stokScan,setStokScan]=useState("");
   const [stokQ,setStokQ]=useState("");
+  const [quickAdj,setQuickAdj]=useState({}); // {productId: delta}
   const [stokPrice,setStokPrice]=useState("");
   const [stokTarget,setStokTarget]=useState(null);
   const [stokSearch,setStokSearch]=useState("");
@@ -1359,6 +1449,19 @@ function AppInner() {
       toast("Gagal: " + e.message, "err");
     }
   };
+
+  // ─── Quick Stock Adjust ───
+  const doQuickAdj=useCallback(async(prod, delta)=>{
+    const newStock = prod.stock + delta;
+    if(newStock < 0){toast("Stok tidak bisa kurang dari 0","warn");return;}
+    const log={id:"LOG-"+uid(),date:nowStr(),barcode:prod.barcode,name:prod.name,
+      type:delta>0?"masuk":"keluar",qty:Math.abs(delta),
+      before:prod.stock,after:newStock,by:user.name,business:prod.business};
+    try{
+      await fbUpdateStock(prod.id,newStock,undefined,log,user.name);
+      toast(`${delta>0?"↑":"↓"} ${prod.name}: ${prod.stock} → ${newStock}`,"ok");
+    }catch(e){toast("Gagal: "+e.message,"err");}
+  },[user,toast]);
 
   // ─── Admin: User CRUD ───
   const openAddU=()=>{setUForm({username:"",password:"",name:"",role:"kasir",access:[],avatar:"🧑",active:true});setEditUid(null);setUModal(true);};
@@ -1786,6 +1889,12 @@ function AppInner() {
         onNew={()=>{setReceipt(null);setCart([]);scanRef.current?.focus();}}/>}
       {/* Stock check */}
       {showStock&&<StockCheckModal prods={bizProds()} biz={biz} onClose={()=>setShowStock(false)}/> }
+      {showKasirStok&&<KasirStokPanel
+        prods={bizProds()} biz={biz}
+        onClose={()=>setShowKasirStok(false)}
+        onAdjust={(p,delta)=>doQuickAdj(p,delta)}
+        onAddToCart={(p)=>{addToCart(p);toast("✓ "+p.name+" → keranjang");}}
+      />}
       {showLowStock&&<LowStockPopup prods={prods} onClose={()=>setShowLowStock(false)}/>}
 
       {/* Checkout modal */}
@@ -1877,7 +1986,7 @@ function AppInner() {
               </div>
               <button onClick={()=>kasirScan(scanIn)} className="press"
                 style={{padding:"12px 16px",background:bc,border:"none",borderRadius:12,color:"#fff",fontWeight:800,fontSize:14,flexShrink:0}}>+</button>
-              <button onClick={()=>setShowStock(true)} className="press" title="Cek Stok"
+              <button onClick={()=>setShowKasirStok(true)} className="press" title="Lihat & Kelola Stok"
                 style={{padding:"12px 14px",background:C.bg3,border:`1.5px solid ${C.bo1}`,borderRadius:12,color:C.t1,fontSize:14,flexShrink:0}}>📦</button>
             </div>
           </div>
@@ -1932,9 +2041,9 @@ function AppInner() {
             <button onClick={()=>setCart([])} style={{padding:"7px",background:"transparent",border:`1px solid ${C.bo0}`,borderRadius:8,color:C.t3,fontSize:11,fontFamily:F.sans}}>Bersihkan</button>
           </div>
           <Divider my={8}/>
-          <button onClick={()=>setShowStock(true)} className="press"
+          <button onClick={()=>setShowKasirStok(true)} className="press"
             style={{width:"100%",padding:"8px",background:C.bg3,border:`1px solid ${C.bo1}`,borderRadius:9,color:C.t1,fontSize:11,fontWeight:700,marginBottom:8,fontFamily:F.sans}}>
-            📦 Cek Stok ({bizProds().length})</button>
+            📦 Stok & Kelola ({bizProds().length})</button>
           <div style={{fontSize:10,color:C.t3,textTransform:"uppercase",letterSpacing:1,marginBottom:6,fontWeight:700}}>Terbaru</div>
           {trxs.filter(t=>t.business===biz).slice(0,5).map(t=><div key={t.id}
             style={{display:"flex",justifyContent:"space-between",marginBottom:4,fontSize:11}}>
@@ -1946,7 +2055,8 @@ function AppInner() {
       {/* Mobile bottom bar */}
       <div style={{background:`${C.bg2}f8`,backdropFilter:"blur(16px)",borderTop:`1px solid ${C.bo0}`,
         padding:"10px 12px",paddingBottom:`calc(10px + var(--safe-b))`,flexShrink:0,display:"flex",alignItems:"center",gap:8}}>
-        <button onClick={()=>setShowStock(true)} className="press"
+        <button onClick={()=>setShowKasirStok(true)} className="press"
+          title="Lihat & Kelola Stok"
           style={{padding:"11px 12px",background:C.bg3,border:`1.5px solid ${C.bo1}`,borderRadius:11,color:C.t1,fontSize:16,flexShrink:0}}>📦</button>
         <div style={{flex:1}}>
           <div style={{fontSize:10,color:C.t2,fontWeight:600}}>Total</div>
@@ -2082,29 +2192,100 @@ function AppInner() {
           </Card>
         )}
 
-        {/* Tabel Daftar Produk Bisnis */}
+        {/* Daftar Produk dengan Quick Adjust */}
         <Card noPad style={{overflow:"hidden"}}>
-          <div style={{padding:"10px 13px",borderBottom:`1px solid ${C.bo0}`,display:"flex",alignItems:"center",gap:8}}>
-            <span style={{flex:1,fontSize:10,fontWeight:700,color:C.t2,textTransform:"uppercase",letterSpacing:1}}>Produk ({filtered.length})</span>
-            <input value={stokSearch} onChange={e=>setStokSearch(e.target.value)} placeholder="Cari..."
-              style={{padding:"7px 11px",background:C.bg3,border:`1px solid ${C.bo0}`,borderRadius:8,color:C.t0,fontSize:12,width:140,fontFamily:F.sans}}/>
+          <div style={{padding:"10px 13px",borderBottom:`1px solid ${C.bo0}`,display:"flex",alignItems:"center",gap:8,flexWrap:"wrap"}}>
+            <span style={{fontSize:10,fontWeight:700,color:C.t2,textTransform:"uppercase",letterSpacing:1}}>📦 Daftar Produk ({filtered.length})</span>
+            <span style={{flex:1}}/>
+            <input value={stokSearch} onChange={e=>setStokSearch(e.target.value)} placeholder="Cari nama / barcode..."
+              style={{padding:"7px 11px",background:C.bg3,border:`1px solid ${C.bo0}`,borderRadius:8,color:C.t0,fontSize:12,width:160,fontFamily:F.sans}}/>
           </div>
-          <TableWrap maxH="50vh">
-            <table style={{width:"100%",borderCollapse:"collapse",fontSize:12,minWidth:460}}>
-              <THead cols={["Barcode","Nama","Kategori","Harga Jual","Stok",""]}/>
-              <tbody>{filtered.map((p,i)=><tr key={p.id} className="hrow" style={{borderTop:`1px solid ${C.bo0}`,background:i%2===0?"transparent":C.bg0}}>
-                <td style={{padding:"12px 13px",fontFamily:F.mono,fontSize:10,color:C.t2}}>{p.barcode}</td>
-                <td style={{padding:"12px 13px",fontWeight:600}}>{p.name}</td>
-                <td style={{padding:"12px 13px",color:C.t2}}>{p.category}</td>
-                <td style={{padding:"12px 13px",fontFamily:F.mono,color:C.g,fontSize:11}}>{rp(p.price)}</td>
-                <td style={{padding:"12px 13px"}}><StockBadge s={p.stock}/></td>
-                <td style={{padding:"12px 13px"}}>
-                  <button onClick={()=>{setStokTarget(p);setIsNewProduct(false);setStokQ("");setStokPrice("");}} className="press"
-                    style={{padding:"5px 12px",background:C.g1,border:`1px solid ${C.g}33`,borderRadius:7,color:C.g,fontSize:11,fontWeight:700}}>+ Tambah</button>
-                </td>
-              </tr>)}</tbody>
-            </table>
-          </TableWrap>
+          {/* Card view for mobile — easier tap targets */}
+          <div className="hide-desktop" style={{padding:"8px 10px",display:"flex",flexDirection:"column",gap:7}}>
+            {filtered.length===0&&<div style={{padding:"24px",textAlign:"center",color:C.t3,fontSize:12}}>Tidak ada produk</div>}
+            {filtered.map(p=>{
+              const adj=quickAdj[p.id]||0;
+              const preview=p.stock+adj;
+              return <div key={p.id} style={{background:C.bg3,borderRadius:11,border:`1px solid ${p.stock<10?C.r+"44":C.bo0}`,padding:"10px 12px",display:"flex",alignItems:"center",gap:10}}>
+                <div style={{flex:1,minWidth:0}}>
+                  <div style={{fontWeight:700,fontSize:13,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{p.name}</div>
+                  <div style={{display:"flex",gap:6,marginTop:2,flexWrap:"wrap"}}>
+                    <span className="mn" style={{fontSize:10,color:C.t2}}>{p.barcode}</span>
+                    <span className="mn" style={{fontSize:10,color:C.g}}>{rp(p.price)}</span>
+                  </div>
+                </div>
+                {/* Quick +/- controls */}
+                <div style={{display:"flex",alignItems:"center",gap:6,flexShrink:0}}>
+                  <button onClick={async()=>doQuickAdj(p,-1)} className="press"
+                    style={{width:34,height:34,borderRadius:9,background:p.stock===0?C.bg4:C.r1,
+                      border:`1.5px solid ${p.stock===0?C.bo0:C.r+"44"}`,color:p.stock===0?C.t3:C.r,
+                      fontSize:18,fontWeight:700,display:"flex",alignItems:"center",justifyContent:"center",
+                      cursor:p.stock===0?"not-allowed":"pointer"}}>−</button>
+                  <div style={{textAlign:"center",minWidth:36}}>
+                    <div className="mn" style={{fontSize:20,fontWeight:800,
+                      color:p.stock===0?C.r:p.stock<10?C.a:C.t0,lineHeight:1}}>{p.stock}</div>
+                    {adj!==0&&<div className="mn" style={{fontSize:10,color:adj>0?C.g:C.r,marginTop:1}}>
+                      {adj>0?"↑":"↓"}{Math.abs(adj)}
+                    </div>}
+                  </div>
+                  <button onClick={async()=>doQuickAdj(p,1)} className="press"
+                    style={{width:34,height:34,borderRadius:9,background:C.g1,
+                      border:`1.5px solid ${C.g}44`,color:C.g,
+                      fontSize:18,fontWeight:700,display:"flex",alignItems:"center",justifyContent:"center"}}>+</button>
+                </div>
+                <button onClick={()=>{setStokTarget(p);setIsNewProduct(false);setStokQ("");setStokPrice("");}}
+                  className="press" style={{padding:"6px 10px",background:C.b1,border:`1px solid ${C.b}33`,
+                    borderRadius:8,color:C.b,fontSize:11,fontWeight:700,flexShrink:0}}>Atur</button>
+              </div>;
+            })}
+          </div>
+          {/* Table view for desktop */}
+          <div className="hide-mobile">
+            <TableWrap maxH="50vh">
+              <table style={{width:"100%",borderCollapse:"collapse",fontSize:12,minWidth:520}}>
+                <THead cols={["Barcode","Nama","Kategori","Harga","Stok","+/-",""]}/>
+                <tbody>{filtered.map((p,i)=><tr key={p.id} className="hrow" style={{borderTop:`1px solid ${C.bo0}`,background:i%2===0?"transparent":C.bg0}}>
+                  <td style={{padding:"11px 13px",fontFamily:F.mono,fontSize:10,color:C.t2}}>{p.barcode}</td>
+                  <td style={{padding:"11px 13px",fontWeight:600,fontSize:12}}>{p.name}</td>
+                  <td style={{padding:"11px 13px",color:C.t2,fontSize:11}}>{p.category}</td>
+                  <td style={{padding:"11px 13px",fontFamily:F.mono,color:C.g,fontSize:11}}>{rp(p.price)}</td>
+                  <td style={{padding:"11px 13px"}}>
+                    <div style={{display:"flex",alignItems:"center",gap:2}}>
+                      <span className="mn" style={{fontSize:15,fontWeight:800,
+                        color:p.stock===0?C.r:p.stock<10?C.a:C.t0}}>{p.stock}</span>
+                      {p.stock<10&&<span style={{fontSize:10,color:p.stock===0?C.r:C.a,marginLeft:4}}>
+                        {p.stock===0?"HABIS":"⚠"}</span>}
+                    </div>
+                  </td>
+                  <td style={{padding:"11px 13px"}}>
+                    <div style={{display:"flex",alignItems:"center",gap:5}}>
+                      <button onClick={()=>doQuickAdj(p,-1)} className="press" disabled={p.stock===0}
+                        style={{width:28,height:28,borderRadius:7,background:p.stock===0?C.bg4:C.r1,
+                          border:`1.5px solid ${p.stock===0?C.bo0:C.r+"44"}`,color:p.stock===0?C.t3:C.r,
+                          fontSize:16,fontWeight:700,display:"flex",alignItems:"center",justifyContent:"center",
+                          cursor:p.stock===0?"not-allowed":"pointer"}}>−</button>
+                      <button onClick={()=>doQuickAdj(p,1)} className="press"
+                        style={{width:28,height:28,borderRadius:7,background:C.g1,
+                          border:`1.5px solid ${C.g}44`,color:C.g,
+                          fontSize:16,fontWeight:700,display:"flex",alignItems:"center",justifyContent:"center"}}>+</button>
+                      <button onClick={()=>doQuickAdj(p,5)} className="press"
+                        style={{padding:"3px 8px",borderRadius:7,background:C.cy1,
+                          border:`1.5px solid ${C.cy}44`,color:C.cy,
+                          fontSize:11,fontWeight:700}}>+5</button>
+                      <button onClick={()=>doQuickAdj(p,10)} className="press"
+                        style={{padding:"3px 8px",borderRadius:7,background:C.b1,
+                          border:`1.5px solid ${C.b}44`,color:C.b,
+                          fontSize:11,fontWeight:700}}>+10</button>
+                    </div>
+                  </td>
+                  <td style={{padding:"11px 13px",whiteSpace:"nowrap"}}>
+                    <button onClick={()=>{setStokTarget(p);setIsNewProduct(false);setStokQ("");setStokPrice("");}} className="press"
+                      style={{padding:"4px 11px",background:C.g1,border:`1px solid ${C.g}33`,borderRadius:7,color:C.g,fontSize:11,fontWeight:700}}>Atur</button>
+                  </td>
+                </tr>)}</tbody>
+              </table>
+            </TableWrap>
+          </div>
         </Card>
 
         {/* Log Stok Masuk */}
