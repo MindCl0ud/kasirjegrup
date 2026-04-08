@@ -107,8 +107,8 @@ export const fbUpdateUser = async (id, data, actor) => {
     upd.passwordHash = await hashPassword(upd.password);
   }
   
-  // MENGGUNAKAN updateDoc agar data lain tidak hilang
-  await updateDoc(doc(_db,"users",String(id)), upd);
+  // merge:true = tidak hapus field lain, aman offline
+  await setDoc(doc(_db,"users",String(id)), upd, { merge: true });
   if (actor) await fbLogActivity(actor,"Edit Pengguna",`Edit: ${data.name}`);
 };
 
@@ -119,7 +119,7 @@ export const fbDeleteUser = async (id, name, actor) => {
 
 export const fbChangePassword = async (userId, newPass, actor) => {
   const hash = await hashPassword(newPass);
-  await updateDoc(doc(_db,"users",String(userId)), { password:newPass, passwordHash:hash });
+  await setDoc(doc(_db,"users",String(userId)), { password:newPass, passwordHash:hash }, { merge:true });
   await fbLogActivity(actor,"Ganti Password","Password diperbarui");
 };
 
@@ -131,8 +131,8 @@ export const fbAddProduct = async (p, actor) => {
 };
 
 export const fbUpdateProduct = async (id, data, actor) => {
-  // Pastikan menggunakan updateDoc
-  await updateDoc(doc(_db,"products",String(id)), data);
+  // merge:true = aman offline, tidak hapus field lain
+  await setDoc(doc(_db,"products",String(id)), data, { merge: true });
   if (actor) await fbLogActivity(actor,"Edit Produk",`Edit: ${data.name}`,data.business);
 };
 
@@ -147,7 +147,7 @@ export const fbAddTransaction = async (trx, stockUpdates, logs) => {
   batch.set(doc(_db,"transactions",trx.id), { ...trx, createdAt:serverTimestamp() });
   
   stockUpdates.forEach(({productId,newStock}) =>
-    batch.update(doc(_db,"products",String(productId)), { stock: newStock }));
+    batch.set(doc(_db,"products",String(productId)), { stock: newStock }, { merge:true }));
     
   logs.forEach(log =>
     batch.set(doc(_db,"stockLogs",log.id), { ...log, createdAt:serverTimestamp() }));
@@ -160,10 +160,10 @@ export const fbAddTransaction = async (trx, stockUpdates, logs) => {
 export const fbAddReturn = async (ret, stockUpdates, logs) => {
   const batch = writeBatch(_db);
   batch.set(doc(_db,"returns",ret.id), { ...ret, createdAt:serverTimestamp() });
-  batch.update(doc(_db,"transactions",ret.originalTrxId), { returned:true, returnId:ret.id });
+  batch.set(doc(_db,"transactions",ret.originalTrxId), { returned:true, returnId:ret.id }, { merge:true });
   
   stockUpdates.forEach(({productId,newStock}) =>
-    batch.update(doc(_db,"products",String(productId)), { stock: newStock }));
+    batch.set(doc(_db,"products",String(productId)), { stock: newStock }, { merge:true }));
     
   logs.forEach(log =>
     batch.set(doc(_db,"stockLogs",log.id), { ...log, createdAt:serverTimestamp() }));
@@ -176,18 +176,13 @@ export const fbAddReturn = async (ret, stockUpdates, logs) => {
 export const fbUpdateStock = async (productId, newStock, newPrice, log, actor) => {
   const batch = writeBatch(_db);
   
-  // Hanya update field yang diperlukan agar tidak menimpa field lain
   const upd = { stock: Number(newStock) };
-  if (newPrice !== undefined && newPrice > 0) {
-    upd.price = Number(newPrice);
-  }
+  if (newPrice !== undefined && newPrice > 0) upd.price = Number(newPrice);
 
-  const productRef = doc(_db, "products", String(productId));
-  batch.update(productRef, upd);
+  // setDoc with merge=true works offline even if doc not in local cache
+  batch.set(doc(_db,"products",String(productId)), upd, { merge: true });
   
-  if (log) {
-    batch.set(doc(_db,"stockLogs",log.id), { ...log, createdAt:serverTimestamp() });
-  }
+  if (log) batch.set(doc(_db,"stockLogs",log.id), { ...log, createdAt:serverTimestamp() });
   
   await batch.commit();
   if (actor) await fbLogActivity(actor,"Update Stok",`${log?.name}: ${log?.before}→${newStock}`,log?.business);
@@ -195,6 +190,8 @@ export const fbUpdateStock = async (productId, newStock, newPrice, log, actor) =
 
 // ── Attendance ──────────────────────────────────────────────────
 export const fbCheckIn = async (rec) => {
+  // Try server check first (prevents duplicates when online)
+  // If offline, skip server check — App-level lock in sessionStorage handles dedup
   try {
     const snap = await getDocs(
       query(collection(_db,"attendance"),
@@ -202,13 +199,16 @@ export const fbCheckIn = async (rec) => {
         where("date","==",rec.date),
         where("business","==",rec.business))
     );
-    if (!snap.empty) return null; 
-  } catch {}
+    if (!snap.empty) return null;
+  } catch {
+    // Offline or query failed — proceed with setDoc (idempotent with same id)
+  }
+  // Use merge:false — if doc exists it overwrites (safe, same data)
   return setDoc(doc(_db,"attendance",rec.id), { ...rec, createdAt:serverTimestamp() });
 };
 
 export const fbCheckOut = async (docId, t) =>
-  updateDoc(doc(_db,"attendance",docId), { checkOut:t, checkOutISO:new Date().toISOString(), updatedAt:serverTimestamp() });
+  setDoc(doc(_db,"attendance",docId), { checkOut:t, checkOutISO:new Date().toISOString(), updatedAt:serverTimestamp() }, { merge:true });
 
 export const fbDeleteAttendance = async (id) => deleteDoc(doc(_db,"attendance",id));
 
