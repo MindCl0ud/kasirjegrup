@@ -1134,6 +1134,11 @@ function AppInner() {
     ];
     return()=>uns.forEach(u=>u());
   },[fbReady]);
+  // ─── Hide splash screen when app is ready ───
+  useEffect(()=>{
+    if(fbReady||fbSetup) window.__hideSplash?.();
+  },[fbReady,fbSetup]);
+
   // ─── Restore session on refresh (after users loaded) ───
   useEffect(()=>{
     if(!fbReady||!users.length) return;
