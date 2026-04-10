@@ -119,7 +119,7 @@ const downloadXLSX = async (rows, cols, sheetName, filename) => {
 const makeCSS = () => `
   @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap');
   *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
-  :root{color-scheme:${C.bg0==="#020817"?"dark":"light"};--safe-b:env(safe-area-inset-bottom,0px);}
+  :root{color-scheme:${C.bg0==="#020817"?"dark":"light"};--safe-t:env(safe-area-inset-top,0px);--safe-b:env(safe-area-inset-bottom,0px);}
   html{height:100%;-webkit-tap-highlight-color:transparent;}
   body{font-family:${F.sans};background:${C.bg1};color:${C.t0};height:100%;-webkit-font-smoothing:antialiased;overscroll-behavior:none;}
   #root{height:100%;display:flex;flex-direction:column;}
@@ -161,7 +161,7 @@ function Toast({n}) {
   if(!n) return null;
   const m={ok:[C.g1,C.g,"✓"],err:[C.r1,C.r,"✕"],warn:[C.a1,C.a,"⚠"],info:[C.cy1,C.cy,"ℹ"]};
   const [bg,cl,ic]=m[n.type]||m.ok;
-  return <div style={{position:"fixed",top:16,left:"50%",transform:"translateX(-50%)",zIndex:9999,
+  return <div style={{position:"fixed",top:"calc(16px + env(safe-area-inset-top, 0px))",left:"50%",transform:"translateX(-50%)",zIndex:9999,
     padding:"11px 18px",borderRadius:12,maxWidth:"min(92vw,380px)",width:"max-content",
     background:bg,border:`1px solid ${cl}44`,color:cl,fontSize:13,fontWeight:600,
     boxShadow:"0 12px 40px rgba(0,0,0,.8)",animation:"fadeUp .2s ease",
@@ -269,7 +269,7 @@ function Header({title,biz,user,onLogout,onSwitchBiz,onAbsenPulang,hasCheckedIn,
   return <header style={{background:`${C.bg2}ee`,backdropFilter:"blur(20px)",WebkitBackdropFilter:"blur(20px)",
     borderBottom:`1px solid ${C.bo0}`,padding:"0 12px",height:52,
     display:"flex",alignItems:"center",justifyContent:"space-between",
-    position:"sticky",top:0,zIndex:200,flexShrink:0,gap:8}}>
+    position:"sticky",top:0,zIndex:200,flexShrink:0,gap:8,paddingTop:"env(safe-area-inset-top, 0px)"}}>
     <div style={{display:"flex",alignItems:"center",gap:8,minWidth:0}}>
       <div style={{width:28,height:28,borderRadius:8,flexShrink:0,
         background:"linear-gradient(135deg,#00e5a0,#38bdf8)",
@@ -3108,7 +3108,6 @@ function AppInner() {
             {slogsFiltered.length===0?<div style={{textAlign:"center",padding:"48px",color:C.t3}}><div style={{fontSize:40,opacity:.08,marginBottom:10}}>📋</div><p>Tidak ada data</p></div>
             :<Card noPad style={{overflow:"hidden"}}>
               <TableWrap>
-                // ... sambungan dari bagian {/* ── LOG STOK ── */}
                 <table style={{width:"100%",borderCollapse:"collapse",fontSize:11.5,minWidth:540}}>
                   <THead cols={["Waktu","Produk","Bisnis","Tipe","Qty","Sblm","Ssdh","Oleh"]}/>
                   <tbody>{slogsFiltered.map((l,i)=><tr key={l.id||i} className="hrow" style={{borderTop:`1px solid ${C.bo0}`,background:i%2===0?"transparent":C.bg0}}>
