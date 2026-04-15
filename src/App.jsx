@@ -151,6 +151,76 @@ const makeCSS = () => `
     .stat-grid-3{grid-template-columns:repeat(3,1fr)!important;}}
   @media(max-width:640px){.stat-grid-4{grid-template-columns:repeat(2,1fr)!important;}
     .stat-grid-3{grid-template-columns:repeat(2,1fr)!important;}}
+  .mobile-card-list{display:flex;flex-direction:column;gap:10px;}
+  .admin-content{flex:1;overflow-y:auto;padding:10px;padding-bottom:calc(76px + var(--safe-b));min-height:0;}
+  @media(min-width:641px){.admin-content{padding-bottom:calc(16px + var(--safe-b));}}
+
+  /* ── Bottom Nav ── */
+  .bnav{position:fixed;bottom:0;left:0;right:0;
+    background:${C.bg0=="rgba(2,8,23,1)"||C.bg0==="#020817"?"rgba(6,14,30,0.92)":"rgba(240,244,248,0.92)"};
+    backdrop-filter:blur(24px);-webkit-backdrop-filter:blur(24px);
+    border-top:1px solid ${C.bo0};display:flex;z-index:300;
+    padding-bottom:var(--safe-b);height:calc(60px + var(--safe-b));align-items:stretch;}
+  @media(min-width:641px){.bnav{display:none;}}
+  .bnavbtn{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;
+    gap:2px;border:none;background:transparent;cursor:pointer;padding:6px 2px 4px;
+    -webkit-tap-highlight-color:transparent;min-width:0;position:relative;transition:transform .12s;}
+  .bnavbtn:active{transform:scale(.88);}
+  .bnavbtn .bnav-icon{font-size:22px;line-height:1;transition:transform .2s,filter .2s;}
+  .bnavbtn.active .bnav-icon{transform:scale(1.15) translateY(-1px);}
+  .bnavbtn .bnav-label{font-size:9px;font-weight:700;letter-spacing:.2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:60px;transition:color .2s;}
+  .bnav-dot{position:absolute;bottom:calc(var(--safe-b) + 3px);width:18px;height:2.5px;border-radius:2px;
+    background:linear-gradient(90deg,${C.g},${C.b});transition:opacity .2s,width .2s;}
+
+  /* ── Drawer ── */
+  .drawer-overlay{position:fixed;inset:0;background:rgba(2,8,24,.75);z-index:400;animation:fadeIn .18s ease;backdrop-filter:blur(4px);}
+  .drawer{position:fixed;bottom:0;left:0;right:0;background:${C.bg2};border-radius:24px 24px 0 0;
+    z-index:401;padding:0 0 calc(20px + var(--safe-b));animation:slideUp .28s cubic-bezier(.32,1.2,.6,1);
+    border:1px solid ${C.bo1};border-bottom:none;
+    box-shadow:0 -20px 60px rgba(0,0,0,.5);}
+
+  /* ── Mobile Cards ── */
+  .mcard{background:${C.bg2};border-radius:16px;border:1px solid ${C.bo0};
+    padding:14px 15px;transition:transform .12s,background .1s,box-shadow .15s;}
+  .mcard:active{transform:scale(.982);background:${C.bg3};}
+  .mcard-glass{background:${C.bg0=="rgba(2,8,23,1)"||C.bg0==="#020817"?"rgba(10,22,40,.85)":"rgba(255,255,255,.85)"};
+    border-radius:16px;border:1px solid ${C.bo1};padding:14px 15px;
+    backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);}
+
+  /* ── Filter Chips ── */
+  .chip{display:inline-flex;align-items:center;gap:5px;padding:8px 14px;border-radius:50px;
+    font-size:12px;font-weight:700;cursor:pointer;border:1.5px solid ${C.bo0};
+    background:transparent;color:${C.t2};font-family:inherit;
+    transition:all .15s;-webkit-tap-highlight-color:transparent;}
+  .chip:active{transform:scale(.94);}
+  .chip.on{background:linear-gradient(135deg,${C.g}22,${C.b}22);border-color:${C.g};color:${C.g};}
+
+  /* ── Stat Cards ── */
+  .stat-mobile{border-radius:18px;padding:16px;position:relative;overflow:hidden;
+    display:flex;flex-direction:column;gap:6px;
+    border:1px solid ${C.bo0};background:${C.bg2};}
+  .stat-mobile::before{content:"";position:absolute;inset:0;background:var(--stat-glow);opacity:.06;pointer-events:none;}
+  .stat-mobile .stat-val{font-size:20px;font-weight:800;font-variant-numeric:tabular-nums;font-family:'JetBrains Mono',monospace;line-height:1;}
+  .stat-mobile .stat-lbl{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:${C.t2};}
+  .stat-mobile .stat-ico{position:absolute;right:14px;top:14px;font-size:28px;opacity:.18;}
+
+  /* ── Ripple ── */
+  @keyframes ripple{from{transform:scale(0);opacity:.5}to{transform:scale(4);opacity:0}}
+  .ripple-wrap{position:relative;overflow:hidden;}
+  .ripple-wrap .ripple{position:absolute;border-radius:50%;background:currentColor;
+    width:40px;height:40px;margin-top:-20px;margin-left:-20px;
+    animation:ripple .5s ease-out forwards;pointer-events:none;}
+
+  /* ── General ── */
+  .mfield{display:flex;flex-direction:column;gap:3px;}
+  .mfield-label{font-size:9.5px;font-weight:700;color:${C.t2};text-transform:uppercase;letter-spacing:.5px;}
+  @keyframes cardIn{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+  .card-in{animation:cardIn .22s ease forwards;}
+  .card-in:nth-child(1){animation-delay:.03s}
+  .card-in:nth-child(2){animation-delay:.06s}
+  .card-in:nth-child(3){animation-delay:.09s}
+  .card-in:nth-child(4){animation-delay:.12s}
+  .card-in:nth-child(5){animation-delay:.15s}
 `;
 let CSS = makeCSS();
 
@@ -1309,7 +1379,20 @@ function AppInner() {
 
   // ─── Helpers ───
   const bizProds=(b=biz)=>prods.filter(p=>p.business===b);
-  const parseD=str=>{try{return new Date(str.replace(/(\d+)\/(\d+)\/(\d+),/,"$3-$2-$1 "));}catch{return null;}};
+  const parseD=str=>{
+    try{
+      if(!str||typeof str!=="string") return null;
+      // id-ID locale: "10/4/2026, 14.30.00" or "10/4/2026 14.30.00" or "10/04/2026, 14.30.00"
+      const m=str.match(/(\d{1,2})\/(\d{1,2})\/(\d{4})/);
+      if(m){
+        const d=new Date(`${m[3]}-${m[2].padStart(2,"0")}-${m[1].padStart(2,"0")}`);
+        if(!isNaN(d.getTime())) return d;
+      }
+      // Try ISO or other formats
+      const d2=new Date(str);
+      return isNaN(d2.getTime())?null:d2;
+    }catch{return null;}
+  };
   const calcDur=a=>{
     // Prefer ISO strings, fallback parse locale string
     const ci=a.checkInISO||a.checkIn;
@@ -1655,9 +1738,11 @@ function AppInner() {
   const getDateFilter=(rows,dateKey="date")=>{
     const now=new Date();
     return rows.filter(t=>{
-      const d=parseD(t[dateKey]); if(!d) return true;
+      const d=parseD(t[dateKey]);
+      // If date can't be parsed: show in "all" only
+      if(!d||isNaN(d.getTime())) return reportRange==="all";
       if(reportRange==="today") return d.toDateString()===now.toDateString();
-      if(reportRange==="week"){const w=new Date(now);w.setDate(w.getDate()-7);return d>=w;}
+      if(reportRange==="week"){const w=new Date(now);w.setDate(w.getDate()-7);return d>=w&&d<=now;}
       if(reportRange==="month") return d.getMonth()===now.getMonth()&&d.getFullYear()===now.getFullYear();
       if(reportRange==="custom"){
         const from=lapFrom?new Date(lapFrom):null;
@@ -2328,6 +2413,22 @@ function AppInner() {
       {id:"laporan",l:"💰 Laporan"},{id:"absensi",l:"🕐 Absensi"},{id:"stoklog",l:"📋 Log Stok"},
       {id:"returns",l:"↩ Retur"},{id:"actlog",l:"🔍 Aktivitas"},{id:"sheets",l:"🔗 Sheets"},
     ];
+    // Bottom nav tabs (mobile)
+    const BNAV_TABS=[
+      {id:"dashboard",ic:"📊",label:"Dashboard"},
+      {id:"products",ic:"📦",label:"Produk"},
+      {id:"laporan",ic:"💰",label:"Laporan"},
+      {id:"absensi",ic:"🕐",label:"Absensi"},
+    ];
+    const MORE_TABS=[
+      {id:"users",ic:"👥",label:"Pengguna"},
+      {id:"stoklog",ic:"📋",label:"Log Stok"},
+      {id:"returns",ic:"↩",label:"Retur"},
+      {id:"actlog",ic:"🔍",label:"Aktivitas"},
+      {id:"sheets",ic:"🔗",label:"Sheets"},
+    ];
+    const isMoreTab=MORE_TABS.some(t=>t.id===adminTab);
+    const [showMoreDrawer,setShowMoreDrawer]=useState(false);
     const adminPs=prods.filter(p=>p.business===adminBiz&&(!searchQ||p.name.toLowerCase().includes(searchQ.toLowerCase())||p.barcode.includes(searchQ)));
 
     return <div style={{fontFamily:F.sans,background:C.bg1,color:C.t0,height:"100vh",display:"flex",flexDirection:"column"}}>
@@ -2414,25 +2515,68 @@ function AppInner() {
 
       {showLowStock&&<LowStockPopup prods={prods} onClose={()=>setShowLowStock(false)}/>}
       {/* Tab bar */}
-      <div style={{background:C.bg2,borderBottom:`1px solid ${C.bo0}`,display:"flex",overflowX:"auto",flexShrink:0,gap:0,padding:"0 4px"}}>
-        {TABS.map(t=><button key={t.id} onClick={()=>{setAdminTab(t.id);setSearchQ("");setPModal(false);}}
+      {/* Desktop tab bar — hidden on mobile */}
+      <div className="hide-mobile" style={{background:C.bg2,borderBottom:`1px solid ${C.bo0}`,display:"flex",overflowX:"auto",flexShrink:0,gap:0,padding:"0 4px"}}>
+        {TABS.map(t=><button key={t.id} onClick={()=>{setAdminTab(t.id);setSearchQ("");setPModal(false);setShowMoreDrawer(false);}}
           className={`atab${adminTab===t.id?" on":""}`}>{t.l}</button>)}
       </div>
 
-      <div style={{flex:1,overflowY:"auto",padding:10,paddingBottom:`calc(16px + var(--safe-b))`,minHeight:0}}>
+      {/* More drawer (mobile) */}
+      {showMoreDrawer&&<div className="drawer-overlay" onClick={()=>setShowMoreDrawer(false)}>
+        <div className="drawer" onClick={e=>e.stopPropagation()}>
+          <div style={{width:40,height:4,background:C.bo2,borderRadius:2,margin:"14px auto 0"}}/>
+          <div style={{padding:"10px 20px 2px",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+            <span style={{fontSize:12,fontWeight:800,color:C.t1,letterSpacing:.5,textTransform:"uppercase"}}>Menu Lainnya</span>
+            <button onClick={()=>setShowMoreDrawer(false)} style={{background:"transparent",border:"none",color:C.t2,fontSize:18,cursor:"pointer",padding:"2px 6px",lineHeight:1}}>✕</button>
+          </div>
+          <div style={{display:"grid",gridTemplateColumns:"repeat(5,1fr)",gap:6,padding:"10px 14px 4px"}}>
+            {MORE_TABS.map(t=>{const isAct=adminTab===t.id;
+              return <button key={t.id} onClick={()=>{setAdminTab(t.id);setSearchQ("");setPModal(false);setShowMoreDrawer(false);}} className="press ripple-wrap"
+                style={{padding:"12px 6px 10px",background:isAct?`linear-gradient(145deg,${C.g}22,${C.b}15)`:C.bg3,
+                  border:`1.5px solid ${isAct?C.g:C.bo0}`,borderRadius:16,
+                  display:"flex",flexDirection:"column",alignItems:"center",gap:5,cursor:"pointer",position:"relative",
+                  transition:"all .15s"}}>
+                <span style={{fontSize:22,lineHeight:1}}>{t.ic}</span>
+                <span style={{fontSize:9.5,fontWeight:700,color:isAct?C.g:C.t2,textAlign:"center",lineHeight:1.3,letterSpacing:.2}}>{t.label}</span>
+                {isAct&&<div style={{position:"absolute",bottom:4,width:16,height:2,borderRadius:1,background:`linear-gradient(90deg,${C.g},${C.b})`}}/>}
+              </button>;})}          </div>
+        </div>
+      </div>}
+
+      <div className="admin-content">
 
 
         {/* ── DASHBOARD ── */}
         {adminTab==="dashboard"&&<div style={{display:"flex",flexDirection:"column",gap:10}}>
           <h2 style={{fontSize:15,fontWeight:800}}>Dashboard</h2>
-          <div className="stat-grid-4" style={{display:"grid",gap:8}}>
+          {/* Desktop stat grid */}
+          <div className="hide-mobile stat-grid-4" style={{display:"grid",gap:8}}>
             <Stat icon="💰" label="Pendapatan Hari Ini" color={C.g}
-              value={rp(trxs.filter(t=>{const d=parseD(t.date);return d&&d.toDateString()===new Date().toDateString();}).reduce((s,t)=>s+t.total,0))}/>
+              value={rp(trxs.filter(t=>{const d=parseD(t.date);return d&&!isNaN(d.getTime())&&d.toDateString()===new Date().toDateString();}).reduce((s,t)=>s+t.total,0))}/>
             <Stat icon="🧾" label="Transaksi Hari Ini" color={C.cy}
-              value={trxs.filter(t=>{const d=parseD(t.date);return d&&d.toDateString()===new Date().toDateString();}).length}/>
+              value={trxs.filter(t=>{const d=parseD(t.date);return d&&!isNaN(d.getTime())&&d.toDateString()===new Date().toDateString();}).length}/>
             <Stat icon="📦" label="Total Produk" color={C.b} value={prods.length} sub={`${lowStockCount} stok menipis`}/>
             <Stat icon="🕐" label="Hadir Hari Ini" color={C.a} value={attend.filter(a=>a.date===todayDate()).length}/>
           </div>
+          {/* Mobile stat cards */}
+          {(()=>{
+            const todayTrx=trxs.filter(t=>{const d=parseD(t.date);return d&&!isNaN(d.getTime())&&d.toDateString()===new Date().toDateString();});
+            const todayRev=todayTrx.reduce((s,t)=>s+t.total,0);
+            const hadir=attend.filter(a=>a.date===todayDate()).length;
+            return <div className="hide-desktop" style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
+              {[
+                {ic:"💰",lbl:"Pendapatan Hari Ini",val:rp(todayRev),color:C.g,glow:C.g},
+                {ic:"🧾",lbl:"Transaksi Hari Ini",val:todayTrx.length,color:C.cy,glow:C.cy},
+                {ic:"📦",lbl:"Total Produk",val:prods.length,sub:lowStockCount>0?`⚠ ${lowStockCount} menipis`:null,color:C.b,glow:C.b},
+                {ic:"🕐",lbl:"Hadir Hari Ini",val:hadir,color:C.a,glow:C.a},
+              ].map((s,i)=><div key={i} className="stat-mobile card-in" style={{"--stat-glow":s.glow}}>
+                <span className="stat-ico">{s.ic}</span>
+                <span className="stat-lbl">{s.lbl}</span>
+                <span className="stat-val" style={{color:s.color}}>{s.val}</span>
+                {s.sub&&<span style={{fontSize:10,color:C.r,fontWeight:600,marginTop:1}}>{s.sub}</span>}
+              </div>)}
+            </div>;
+          })()}
           {/* Targets */}
           {targets.filter(t=>t.period===currMonth).length>0&&<Card>
             <div style={{fontSize:10,fontWeight:700,color:C.t2,textTransform:"uppercase",letterSpacing:1,marginBottom:12}}>🎯 Target Penjualan Bulan Ini</div>
@@ -2524,34 +2668,66 @@ function AppInner() {
             <div><h2 style={{fontSize:15,fontWeight:800}}>Database Pengguna</h2></div>
             <Btn onClick={openAddU} size="sm">+ Tambah</Btn>
           </div>
-          <Card noPad style={{overflow:"hidden"}}>
-            <TableWrap>
-              <table style={{width:"100%",borderCollapse:"collapse",fontSize:12,minWidth:600}}>
-                <THead cols={["#","Username","Nama","Role","Akses","Wajah","Status","Aksi"]}/>
-                <tbody>{users.map((u,i)=><tr key={u.id} className="hrow" style={{borderTop:`1px solid ${C.bo0}`,background:i%2===0?"transparent":C.bg0}}>
-                  <td style={{padding:"14px 13px",fontFamily:F.mono,color:C.t3,fontSize:10}}>{u.id}</td>
-                  <td style={{padding:"14px 13px",fontFamily:F.mono,fontSize:11}}>{u.avatar} {u.username}</td>
-                  <td style={{padding:"14px 13px",fontWeight:600}}>{u.name}</td>
-                  <td style={{padding:"14px 13px"}}><RoleTag role={u.role}/></td>
-                  <td style={{padding:"14px 13px"}}><div style={{display:"flex",gap:4,flexWrap:"wrap"}}>{u.access?.map(a=><BizChip key={a} biz={a} sm/>)}</div></td>
-                  <td style={{padding:"14px 13px"}}>
-                    {u.role==="admin"?<span style={{fontSize:10,color:C.t3}}>N/A</span>
-                    :u.faceDescriptor?<span style={{fontSize:10,color:C.g,fontWeight:700}}>✓ Ada</span>
-                    :<button onClick={()=>setFaceReg(u.id)} className="press" style={{padding:"3px 9px",background:C.a1,border:`1px solid ${C.a}33`,borderRadius:6,color:C.a,fontSize:10,fontWeight:700}}>Daftarkan</button>}
-                  </td>
-                  <td style={{padding:"14px 13px"}}>
-                    <span style={{padding:"2px 8px",borderRadius:20,fontSize:9.5,fontWeight:700,background:u.active?C.g1:C.r1,color:u.active?C.g:C.r}}>{u.active?"AKTIF":"OFF"}</span>
-                  </td>
-                  <td style={{padding:"14px 13px",whiteSpace:"nowrap"}}>
-                    <button onClick={()=>openEditU(u)} className="press" style={{marginRight:4,padding:"3px 9px",background:"transparent",border:`1px solid ${C.bo1}`,borderRadius:6,color:C.t0,fontSize:10}}>Edit</button>
-                    <button onClick={()=>{setCpwdModal(u.id);setCpwdForm({old:"",n1:"",n2:""}); }} className="press" style={{marginRight:4,padding:"3px 9px",background:C.a1,border:`1px solid ${C.a}22`,borderRadius:6,color:C.a,fontSize:10}}>🔑</button>
-                    {u.faceDescriptor&&u.role!=="admin"&&<button onClick={()=>{fbUpdateUser(u.id,{...u,faceDescriptor:null},user.name);toast("Wajah direset","warn");}} className="press" style={{marginRight:4,padding:"3px 9px",background:C.b1,border:`1px solid ${C.b}22`,borderRadius:6,color:C.b,fontSize:10}}>Reset</button>}
-                    <button onClick={()=>delUser(u)} className="press" style={{padding:"3px 9px",background:C.r1,border:`1px solid ${C.r}22`,borderRadius:6,color:C.r,fontSize:10}}>Hapus</button>
-                  </td>
-                </tr>)}</tbody>
-              </table>
-            </TableWrap>
-          </Card>
+          {/* Desktop table */}
+          <div className="hide-mobile">
+            <Card noPad style={{overflow:"hidden"}}>
+              <TableWrap>
+                <table style={{width:"100%",borderCollapse:"collapse",fontSize:12,minWidth:600}}>
+                  <THead cols={["#","Username","Nama","Role","Akses","Wajah","Status","Aksi"]}/>
+                  <tbody>{users.map((u,i)=><tr key={u.id} className="hrow" style={{borderTop:`1px solid ${C.bo0}`,background:i%2===0?"transparent":C.bg0}}>
+                    <td style={{padding:"14px 13px",fontFamily:F.mono,color:C.t3,fontSize:10}}>{u.id}</td>
+                    <td style={{padding:"14px 13px",fontFamily:F.mono,fontSize:11}}>{u.avatar} {u.username}</td>
+                    <td style={{padding:"14px 13px",fontWeight:600}}>{u.name}</td>
+                    <td style={{padding:"14px 13px"}}><RoleTag role={u.role}/></td>
+                    <td style={{padding:"14px 13px"}}><div style={{display:"flex",gap:4,flexWrap:"wrap"}}>{u.access?.map(a=><BizChip key={a} biz={a} sm/>)}</div></td>
+                    <td style={{padding:"14px 13px"}}>
+                      {u.role==="admin"?<span style={{fontSize:10,color:C.t3}}>N/A</span>
+                      :u.faceDescriptor?<span style={{fontSize:10,color:C.g,fontWeight:700}}>✓ Ada</span>
+                      :<button onClick={()=>setFaceReg(u.id)} className="press" style={{padding:"3px 9px",background:C.a1,border:`1px solid ${C.a}33`,borderRadius:6,color:C.a,fontSize:10,fontWeight:700}}>Daftarkan</button>}
+                    </td>
+                    <td style={{padding:"14px 13px"}}>
+                      <span style={{padding:"2px 8px",borderRadius:20,fontSize:9.5,fontWeight:700,background:u.active?C.g1:C.r1,color:u.active?C.g:C.r}}>{u.active?"AKTIF":"OFF"}</span>
+                    </td>
+                    <td style={{padding:"14px 13px",whiteSpace:"nowrap"}}>
+                      <button onClick={()=>openEditU(u)} className="press" style={{marginRight:4,padding:"3px 9px",background:"transparent",border:`1px solid ${C.bo1}`,borderRadius:6,color:C.t0,fontSize:10}}>Edit</button>
+                      <button onClick={()=>{setCpwdModal(u.id);setCpwdForm({old:"",n1:"",n2:""}); }} className="press" style={{marginRight:4,padding:"3px 9px",background:C.a1,border:`1px solid ${C.a}22`,borderRadius:6,color:C.a,fontSize:10}}>🔑</button>
+                      {u.faceDescriptor&&u.role!=="admin"&&<button onClick={()=>{fbUpdateUser(u.id,{...u,faceDescriptor:null},user.name);toast("Wajah direset","warn");}} className="press" style={{marginRight:4,padding:"3px 9px",background:C.b1,border:`1px solid ${C.b}22`,borderRadius:6,color:C.b,fontSize:10}}>Reset</button>}
+                      <button onClick={()=>delUser(u)} className="press" style={{padding:"3px 9px",background:C.r1,border:`1px solid ${C.r}22`,borderRadius:6,color:C.r,fontSize:10}}>Hapus</button>
+                    </td>
+                  </tr>)}</tbody>
+                </table>
+              </TableWrap>
+            </Card>
+          </div>
+          {/* Mobile card list */}
+          <div className="hide-desktop mobile-card-list">
+            {users.map((u,_ui)=><div key={u.id} className="mcard card-in" style={{background:C.bg2,borderRadius:16,border:`1px solid ${C.bo0}`,padding:"14px 15px"}}>
+              <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:10}}>
+                <div style={{width:44,height:44,borderRadius:12,background:C.bg3,border:`1px solid ${C.bo1}`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:22,flexShrink:0}}>{u.avatar||"🧑"}</div>
+                <div style={{flex:1,minWidth:0}}>
+                  <div style={{fontSize:15,fontWeight:700,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{u.name}</div>
+                  <div style={{display:"flex",gap:6,alignItems:"center",marginTop:3,flexWrap:"wrap"}}>
+                    <span className="mn" style={{fontSize:11,color:C.t2}}>@{u.username}</span>
+                    <RoleTag role={u.role}/>
+                    <span style={{padding:"1px 7px",borderRadius:20,fontSize:9.5,fontWeight:700,background:u.active?C.g1:C.r1,color:u.active?C.g:C.r}}>{u.active?"AKTIF":"OFF"}</span>
+                  </div>
+                </div>
+              </div>
+              <div style={{display:"flex",gap:4,flexWrap:"wrap",marginBottom:10}}>
+                {u.access?.map(a=><BizChip key={a} biz={a} sm/>)}
+                {u.role!=="admin"&&(u.faceDescriptor
+                  ?<span style={{padding:"2px 8px",borderRadius:20,fontSize:10,fontWeight:700,background:C.g1,color:C.g}}>👁 Wajah terdaftar</span>
+                  :<span style={{padding:"2px 8px",borderRadius:20,fontSize:10,fontWeight:700,background:C.a1,color:C.a}}>⚠ Belum ada wajah</span>)}
+              </div>
+              <div style={{display:"flex",gap:7,flexWrap:"wrap"}}>
+                <button onClick={()=>openEditU(u)} className="press" style={{flex:1,padding:"10px",background:"transparent",border:`1.5px solid ${C.bo1}`,borderRadius:10,color:C.t0,fontSize:12,fontWeight:600,fontFamily:F.sans}}>✏️ Edit</button>
+                <button onClick={()=>{setCpwdModal(u.id);setCpwdForm({old:"",n1:"",n2:""});}} className="press" style={{flex:1,padding:"10px",background:C.a1,border:`1.5px solid ${C.a}33`,borderRadius:10,color:C.a,fontSize:12,fontWeight:600,fontFamily:F.sans}}>🔑 Password</button>
+                {u.role!=="admin"&&!u.faceDescriptor&&<button onClick={()=>setFaceReg(u.id)} className="press" style={{flex:1,padding:"10px",background:C.b1,border:`1.5px solid ${C.b}33`,borderRadius:10,color:C.b,fontSize:12,fontWeight:600,fontFamily:F.sans}}>📷 Daftarkan</button>}
+                {u.faceDescriptor&&u.role!=="admin"&&<button onClick={()=>{fbUpdateUser(u.id,{...u,faceDescriptor:null},user.name);toast("Wajah direset","warn");}} className="press" style={{padding:"10px 14px",background:C.b1,border:`1.5px solid ${C.b}33`,borderRadius:10,color:C.b,fontSize:12,fontFamily:F.sans}}>Reset Wajah</button>}
+                <button onClick={()=>delUser(u)} className="press" style={{padding:"10px 14px",background:C.r1,border:`1.5px solid ${C.r}33`,borderRadius:10,color:C.r,fontSize:12,fontFamily:F.sans}}>🗑</button>
+              </div>
+            </div>)}
+          </div>
         </div>}
 
         {/* ── PRODUK ── */}
@@ -2783,35 +2959,73 @@ function AppInner() {
             </div>
             <div style={{display:"flex",gap:8,marginTop:12}}><Btn onClick={saveProd}>Simpan</Btn><Btn onClick={()=>setPModal(false)} outline>Batal</Btn></div>
           </Card>}
-          <Card noPad style={{overflow:"hidden"}}>
-            <TableWrap>
-              <table style={{width:"100%",borderCollapse:"collapse",fontSize:12,minWidth:580}}>
-                <THead cols={["Barcode","Nama","Kategori","HPP","Harga Jual","Margin","Stok","Add-on","Aksi"]}/>
-                <tbody>{adminPs.map((p,i)=>{const mg=p.price>0?((p.price-(p.hpp||0))/p.price*100).toFixed(0)+"%":"-";
-                  return <tr key={p.id} className="hrow" style={{borderTop:`1px solid ${C.bo0}`,background:i%2===0?"transparent":C.bg0}}>
-                    <td style={{padding:"14px 13px",fontFamily:F.mono,fontSize:10,color:C.t2}}>{p.barcode}</td>
-                    <td style={{padding:"14px 13px",fontWeight:600}}>{p.name}</td>
-                    <td style={{padding:"14px 13px",color:C.t2,fontSize:11}}>{p.category}</td>
-                    <td style={{padding:"14px 13px",fontFamily:F.mono,color:C.a,fontSize:11}}>{rp(p.hpp||0)}</td>
-                    <td style={{padding:"14px 13px",fontFamily:F.mono,color:C.g,fontSize:11}}>{rp(p.price)}</td>
-                    <td style={{padding:"14px 13px",fontFamily:F.mono,fontSize:11,color:C.cy}}>{mg}</td>
-                    <td style={{padding:"14px 13px"}}><StockBadge s={p.stock}/></td>
-                    <td style={{padding:"14px 13px"}}>
-                      {(p.addons||[]).length>0
-                        ?<span style={{padding:"2px 8px",borderRadius:20,fontSize:9.5,fontWeight:700,background:C.vi1,color:C.vi,border:`1px solid ${C.vi}22`,cursor:"pointer"}}
-                           title={(p.addons||[]).map(id=>prods.find(x=>x.id===id)?.name||id).join(", ")}>
-                           +{(p.addons||[]).length} item</span>
-                        :<span style={{fontSize:10,color:C.t3}}>—</span>}
-                    </td>
-                    <td style={{padding:"14px 13px",whiteSpace:"nowrap"}}>
-                      <button onClick={()=>openEditP(p)} className="press" style={{marginRight:4,padding:"3px 9px",background:"transparent",border:`1px solid ${C.bo1}`,borderRadius:6,color:C.t0,fontSize:10}}>Edit</button>
-                      <button onClick={()=>fbDeleteProduct(p.id,p.name,p.business,user.name).then(()=>toast("Produk dihapus")).catch(e=>toast(e.message,"err"))} className="press" style={{padding:"3px 9px",background:C.r1,border:`1px solid ${C.r}22`,borderRadius:6,color:C.r,fontSize:10}}>Hapus</button>
-                    </td>
-                  </tr>;})}
-                </tbody>
-              </table>
-            </TableWrap>
-          </Card>
+          {/* Desktop table */}
+          <div className="hide-mobile">
+            <Card noPad style={{overflow:"hidden"}}>
+              <TableWrap>
+                <table style={{width:"100%",borderCollapse:"collapse",fontSize:12,minWidth:580}}>
+                  <THead cols={["Barcode","Nama","Kategori","HPP","Harga Jual","Margin","Stok","Add-on","Aksi"]}/>
+                  <tbody>{adminPs.map((p,i)=>{const mg=p.price>0?((p.price-(p.hpp||0))/p.price*100).toFixed(0)+"%":"-";
+                    return <tr key={p.id} className="hrow" style={{borderTop:`1px solid ${C.bo0}`,background:i%2===0?"transparent":C.bg0}}>
+                      <td style={{padding:"14px 13px",fontFamily:F.mono,fontSize:10,color:C.t2}}>{p.barcode}</td>
+                      <td style={{padding:"14px 13px",fontWeight:600}}>{p.name}</td>
+                      <td style={{padding:"14px 13px",color:C.t2,fontSize:11}}>{p.category}</td>
+                      <td style={{padding:"14px 13px",fontFamily:F.mono,color:C.a,fontSize:11}}>{rp(p.hpp||0)}</td>
+                      <td style={{padding:"14px 13px",fontFamily:F.mono,color:C.g,fontSize:11}}>{rp(p.price)}</td>
+                      <td style={{padding:"14px 13px",fontFamily:F.mono,fontSize:11,color:C.cy}}>{mg}</td>
+                      <td style={{padding:"14px 13px"}}><StockBadge s={p.stock}/></td>
+                      <td style={{padding:"14px 13px"}}>
+                        {(p.addons||[]).length>0
+                          ?<span style={{padding:"2px 8px",borderRadius:20,fontSize:9.5,fontWeight:700,background:C.vi1,color:C.vi,border:`1px solid ${C.vi}22`,cursor:"pointer"}}
+                             title={(p.addons||[]).map(id=>prods.find(x=>x.id===id)?.name||id).join(", ")}>
+                             +{(p.addons||[]).length} item</span>
+                          :<span style={{fontSize:10,color:C.t3}}>—</span>}
+                      </td>
+                      <td style={{padding:"14px 13px",whiteSpace:"nowrap"}}>
+                        <button onClick={()=>openEditP(p)} className="press" style={{marginRight:4,padding:"3px 9px",background:"transparent",border:`1px solid ${C.bo1}`,borderRadius:6,color:C.t0,fontSize:10}}>Edit</button>
+                        <button onClick={()=>fbDeleteProduct(p.id,p.name,p.business,user.name).then(()=>toast("Produk dihapus")).catch(e=>toast(e.message,"err"))} className="press" style={{padding:"3px 9px",background:C.r1,border:`1px solid ${C.r}22`,borderRadius:6,color:C.r,fontSize:10}}>Hapus</button>
+                      </td>
+                    </tr>;})}
+                  </tbody>
+                </table>
+              </TableWrap>
+            </Card>
+          </div>
+          {/* Mobile card list */}
+          <div className="hide-desktop mobile-card-list">
+            {adminPs.map((p,_pi)=>{const mg=p.price>0?((p.price-(p.hpp||0))/p.price*100).toFixed(0)+"%":"-";
+              return <div key={p.id} className="card-in" style={{background:C.bg2,borderRadius:16,border:`1px solid ${C.bo0}`,padding:"14px 15px",animationDelay:_pi*0.04+"s"}}>
+                <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:8,marginBottom:8}}>
+                  <div style={{flex:1,minWidth:0}}>
+                    <div style={{fontSize:14,fontWeight:700,lineHeight:1.3,marginBottom:3}}>{p.name}</div>
+                    <div style={{display:"flex",gap:6,flexWrap:"wrap",alignItems:"center"}}>
+                      <span className="mn" style={{fontSize:10,color:C.t3}}>{p.barcode}</span>
+                      {p.category&&<span style={{fontSize:10,color:C.t2,background:C.bg3,padding:"1px 7px",borderRadius:20}}>{p.category}</span>}
+                      {(p.addons||[]).length>0&&<span style={{fontSize:10,background:C.vi1,color:C.vi,padding:"1px 7px",borderRadius:20,fontWeight:700}}>+{(p.addons||[]).length} add-on</span>}
+                    </div>
+                  </div>
+                  <StockBadge s={p.stock}/>
+                </div>
+                <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:8,marginBottom:10,background:C.bg3,borderRadius:10,padding:"10px 12px"}}>
+                  <div>
+                    <div style={{fontSize:9.5,color:C.t3,fontWeight:700,textTransform:"uppercase",letterSpacing:.5,marginBottom:2}}>HPP</div>
+                    <div className="mn" style={{fontSize:12,color:C.a,fontWeight:700}}>{rp(p.hpp||0)}</div>
+                  </div>
+                  <div>
+                    <div style={{fontSize:9.5,color:C.t3,fontWeight:700,textTransform:"uppercase",letterSpacing:.5,marginBottom:2}}>Harga Jual</div>
+                    <div className="mn" style={{fontSize:12,color:C.g,fontWeight:700}}>{rp(p.price)}</div>
+                  </div>
+                  <div>
+                    <div style={{fontSize:9.5,color:C.t3,fontWeight:700,textTransform:"uppercase",letterSpacing:.5,marginBottom:2}}>Margin</div>
+                    <div className="mn" style={{fontSize:12,color:C.cy,fontWeight:700}}>{mg}</div>
+                  </div>
+                </div>
+                <div style={{display:"flex",gap:8}}>
+                  <button onClick={()=>openEditP(p)} className="press" style={{flex:1,padding:"11px",background:"transparent",border:`1.5px solid ${C.bo1}`,borderRadius:10,color:C.t0,fontSize:13,fontWeight:600,fontFamily:F.sans}}>✏️ Edit</button>
+                  <button onClick={()=>fbDeleteProduct(p.id,p.name,p.business,user.name).then(()=>toast("Produk dihapus")).catch(e=>toast(e.message,"err"))} className="press" style={{padding:"11px 16px",background:C.r1,border:`1.5px solid ${C.r}33`,borderRadius:10,color:C.r,fontSize:13,fontFamily:F.sans}}>🗑</button>
+                </div>
+              </div>;})}
+          </div>
         </div>}
 
 
@@ -2840,36 +3054,60 @@ function AppInner() {
               style={{padding:"7px 13px",background:C.cy1,border:`1px solid ${C.cy}33`,borderRadius:8,color:C.cy,fontSize:12,fontWeight:700,fontFamily:F.sans}}>⬇ Excel Produk</button>
           </div>
           {/* Filters */}
-          <div style={{display:"flex",gap:7,flexWrap:"wrap",alignItems:"center"}}>
-            {["ALL","JS_CLOTHING","JB_STORE"].map(b2=><button key={b2} onClick={()=>setReportBiz(b2)} className="press"
-              style={{padding:"6px 12px",borderRadius:8,fontSize:11.5,fontWeight:600,cursor:"pointer",
-                background:reportBiz===b2?(b2==="JB_STORE"?C.p1:b2==="JS_CLOTHING"?C.b1:C.g1):"transparent",
-                border:`1.5px solid ${reportBiz===b2?(b2==="JB_STORE"?C.p:b2==="JS_CLOTHING"?C.b:C.g):C.bo0}`,
-                color:reportBiz===b2?(b2==="JB_STORE"?C.p:b2==="JS_CLOTHING"?C.b:C.g):C.t2,fontFamily:F.sans}}>
-              {b2==="ALL"?"Semua":BIZ[b2]?.name}</button>)}
+          <div style={{display:"flex",gap:6,flexWrap:"wrap",alignItems:"center"}}>
+            {/* Bisnis chips */}
+            {["ALL","JS_CLOTHING","JB_STORE"].map(b2=>{
+              const isAct=reportBiz===b2;
+              const cl=b2==="JB_STORE"?C.p:b2==="JS_CLOTHING"?C.b:C.g;
+              return <button key={b2} onClick={()=>setReportBiz(b2)}
+                className={`chip${isAct?" on":""}`}
+                style={{borderColor:isAct?cl:"transparent",color:isAct?cl:C.t2,
+                  background:isAct?cl+"22":"transparent"}}>
+                {b2==="ALL"?"🏢 Semua":BIZ[b2]?.icon+" "+BIZ[b2]?.name}
+              </button>;})}
+            <div style={{width:1,height:20,background:C.bo0,alignSelf:"center"}}/>
             {/* Kasir filter */}
             <select value={reportKasir} onChange={e=>setReportKasir(e.target.value)}
-              style={{padding:"6px 10px",background:C.bg2,border:`1.5px solid ${C.bo0}`,borderRadius:8,color:C.t0,fontSize:11.5,fontFamily:F.sans,cursor:"pointer"}}>
-              <option value="ALL">Semua Kasir</option>
+              style={{padding:"8px 12px",background:C.bg2,border:`1.5px solid ${C.bo0}`,borderRadius:50,
+                color:C.t0,fontSize:12,fontFamily:F.sans,cursor:"pointer",fontWeight:600}}>
+              <option value="ALL">👤 Semua Kasir</option>
               {users.filter(u=>u.role==="kasir"||u.role==="admin").map(u=><option key={u.id} value={String(u.id)}>{u.name}</option>)}
             </select>
-            {[["all","Semua"],["today","Hari Ini"],["week","7 Hari"],["month","Bulan Ini"],["custom","Rentang"]].map(([v,l])=><button key={v}
-              onClick={()=>setReportRange(v)} className="press"
-              style={{padding:"6px 12px",borderRadius:8,fontSize:11.5,fontWeight:600,cursor:"pointer",
-                background:reportRange===v?C.g1:"transparent",border:`1.5px solid ${reportRange===v?C.g:C.bo0}`,
-                color:reportRange===v?C.g:C.t2,fontFamily:F.sans}}>{l}</button>)}
-            {reportRange==="custom"&&<><input type="date" value={lapFrom} onChange={e=>setLapFrom(e.target.value)}
-              style={{padding:"6px 10px",background:C.bg3,border:`1.5px solid ${C.bo1}`,borderRadius:8,color:C.t0,fontSize:12,fontFamily:F.sans}}/>
-              <span style={{color:C.t2,fontSize:12}}>s/d</span>
+          </div>
+          {/* Period chips */}
+          <div style={{display:"flex",gap:6,flexWrap:"wrap",alignItems:"center",marginTop:2}}>
+            {[["all","📅 Semua"],["today","Hari Ini"],["week","7 Hari"],["month","📆 Bulan Ini"],["custom","Rentang"]].map(([v,l])=><button key={v}
+              onClick={()=>setReportRange(v)}
+              className={`chip${reportRange===v?" on":""}`}>{l}</button>)}
+            {reportRange==="custom"&&<div style={{display:"flex",gap:7,alignItems:"center",flexWrap:"wrap",marginTop:4}}>
+              <input type="date" value={lapFrom} onChange={e=>setLapFrom(e.target.value)}
+                style={{padding:"8px 10px",background:C.bg3,border:`1.5px solid ${C.bo1}`,borderRadius:10,color:C.t0,fontSize:12,fontFamily:F.sans}}/>
+              <span style={{color:C.t2,fontSize:12,fontWeight:600}}>s/d</span>
               <input type="date" value={lapTo} onChange={e=>setLapTo(e.target.value)}
-                style={{padding:"6px 10px",background:C.bg3,border:`1.5px solid ${C.bo1}`,borderRadius:8,color:C.t0,fontSize:12,fontFamily:F.sans}}/></>}
+                style={{padding:"8px 10px",background:C.bg3,border:`1.5px solid ${C.bo1}`,borderRadius:10,color:C.t0,fontSize:12,fontFamily:F.sans}}/>
+            </div>}
           </div>
           {/* KPI */}
-          <div className="stat-grid-4" style={{display:"grid",gap:8}}>
+          {/* Desktop */}
+          <div className="hide-mobile stat-grid-4" style={{display:"grid",gap:8}}>
             <Stat icon="💰" label="Total Pendapatan" value={rp(totalRev)} color={C.g} sub={`${filtTrx.length} transaksi`}/>
             <Stat icon="📦" label="Total HPP" value={rp(totalHppAll)} color={C.a}/>
             <Stat icon="📈" label="Laba Kotor" value={rp(grossProfit)} color={C.cy}/>
             <Stat icon="🎯" label="Margin" value={margin} color={C.b} sub={`Diskon: ${rp(totalDisc)}`}/>
+          </div>
+          {/* Mobile */}
+          <div className="hide-desktop" style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
+            {[
+              {ic:"💰",lbl:"Pendapatan",val:rp(totalRev),sub:filtTrx.length+" transaksi",color:C.g},
+              {ic:"📈",lbl:"Laba Kotor",val:rp(grossProfit),sub:`Margin ${margin}`,color:C.cy},
+              {ic:"📦",lbl:"Total HPP",val:rp(totalHppAll),color:C.a},
+              {ic:"🎯",lbl:"Total Diskon",val:rp(totalDisc),color:C.r},
+            ].map((s,i)=><div key={i} className="stat-mobile card-in" style={{"--stat-glow":s.color}}>
+              <span className="stat-ico">{s.ic}</span>
+              <span className="stat-lbl">{s.lbl}</span>
+              <span className="stat-val" style={{color:s.color,fontSize:s.val.length>10?15:18}}>{s.val}</span>
+              {s.sub&&<span style={{fontSize:10,color:C.t2,fontWeight:600}}>{s.sub}</span>}
+            </div>)}
           </div>
           {/* Pie */}
           {bizRevData.length>1&&<Card>
@@ -2934,27 +3172,54 @@ function AppInner() {
               <span style={{fontSize:10,fontWeight:700,color:C.t2,textTransform:"uppercase",letterSpacing:1}}>Riwayat Transaksi ({filtTrx.length})</span>
             </div>
             {filtTrx.length===0?<div style={{padding:"24px",textAlign:"center",color:C.t3,fontSize:12}}>Belum ada transaksi</div>
-            :<TableWrap>
-              <table style={{width:"100%",borderCollapse:"collapse",fontSize:12,minWidth:540}}>
-                <THead cols={["ID","Tanggal","Kasir","Bisnis","Subtotal","Diskon","Total","Laba","Bayar","Retur"]}/>
-                <tbody>{filtTrx.slice(0,100).map((t,i)=><tr key={t.id} className="hrow" style={{borderTop:`1px solid ${C.bo0}`,background:i%2===0?"transparent":C.bg0}}>
-                  <td style={{padding:"12px 13px",fontFamily:F.mono,fontSize:9.5,color:C.t3}}>{t.id?.slice(-10)}</td>
-                  <td style={{padding:"12px 13px",fontSize:10,color:C.t2,whiteSpace:"nowrap"}}>{t.date}</td>
-                  <td style={{padding:"12px 13px",fontWeight:500,fontSize:11}}>{t.kasir}</td>
-                  <td style={{padding:"12px 13px"}}><BizChip biz={t.business} sm/></td>
-                  <td style={{padding:"12px 13px",fontFamily:F.mono,fontSize:11}}>{rp(t.subtotal||t.total)}</td>
-                  <td style={{padding:"12px 13px",fontFamily:F.mono,color:C.r,fontSize:11}}>{t.discount>0?`−${rp(t.discount)}`:"-"}</td>
-                  <td style={{padding:"12px 13px",fontFamily:F.mono,color:C.g,fontSize:11,fontWeight:700}}>{rp(t.total)}</td>
-                  <td style={{padding:"12px 13px",fontFamily:F.mono,color:C.cy,fontSize:11}}>{rp(t.profit||0)}</td>
-                  <td style={{padding:"12px 13px",fontSize:10,color:C.t2}}>{t.payment||"Tunai"}</td>
-                  <td style={{padding:"12px 13px"}}>
-                    {t.returned?<span style={{fontSize:10,color:C.a,fontWeight:600}}>✓ Retur</span>
-                    :<button onClick={()=>{if(window.confirm(`Retur transaksi ${t.id}?\nStok akan dikembalikan.`))doRetur(t);}} className="press"
-                      style={{padding:"3px 9px",background:C.a1,border:`1px solid ${C.a}22`,borderRadius:6,color:C.a,fontSize:10,fontWeight:700}}>Retur</button>}
-                  </td>
-                </tr>)}</tbody>
-              </table>
-            </TableWrap>}
+            :<>
+              {/* Desktop */}
+              <div className="hide-mobile"><TableWrap>
+                <table style={{width:"100%",borderCollapse:"collapse",fontSize:12,minWidth:540}}>
+                  <THead cols={["ID","Tanggal","Kasir","Bisnis","Subtotal","Diskon","Total","Laba","Bayar","Retur"]}/>
+                  <tbody>{filtTrx.slice(0,100).map((t,i)=><tr key={t.id} className="hrow" style={{borderTop:`1px solid ${C.bo0}`,background:i%2===0?"transparent":C.bg0}}>
+                    <td style={{padding:"12px 13px",fontFamily:F.mono,fontSize:9.5,color:C.t3}}>{t.id?.slice(-10)}</td>
+                    <td style={{padding:"12px 13px",fontSize:10,color:C.t2,whiteSpace:"nowrap"}}>{t.date}</td>
+                    <td style={{padding:"12px 13px",fontWeight:500,fontSize:11}}>{t.kasir}</td>
+                    <td style={{padding:"12px 13px"}}><BizChip biz={t.business} sm/></td>
+                    <td style={{padding:"12px 13px",fontFamily:F.mono,fontSize:11}}>{rp(t.subtotal||t.total)}</td>
+                    <td style={{padding:"12px 13px",fontFamily:F.mono,color:C.r,fontSize:11}}>{t.discount>0?`−${rp(t.discount)}`:"-"}</td>
+                    <td style={{padding:"12px 13px",fontFamily:F.mono,color:C.g,fontSize:11,fontWeight:700}}>{rp(t.total)}</td>
+                    <td style={{padding:"12px 13px",fontFamily:F.mono,color:C.cy,fontSize:11}}>{rp(t.profit||0)}</td>
+                    <td style={{padding:"12px 13px",fontSize:10,color:C.t2}}>{t.payment||"Tunai"}</td>
+                    <td style={{padding:"12px 13px"}}>
+                      {t.returned?<span style={{fontSize:10,color:C.a,fontWeight:600}}>✓ Retur</span>
+                      :<button onClick={()=>{if(window.confirm(`Retur transaksi ${t.id}?\nStok akan dikembalikan.`))doRetur(t);}} className="press"
+                        style={{padding:"3px 9px",background:C.a1,border:`1px solid ${C.a}22`,borderRadius:6,color:C.a,fontSize:10,fontWeight:700}}>Retur</button>}
+                    </td>
+                  </tr>)}</tbody>
+                </table>
+              </TableWrap></div>
+              {/* Mobile cards */}
+              <div className="hide-desktop mobile-card-list">
+                {filtTrx.slice(0,100).map(t=><div key={t.id} style={{background:C.bg2,borderRadius:14,border:`1px solid ${C.bo0}`,padding:"13px 14px"}}>
+                  <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:8}}>
+                    <div>
+                      <div style={{fontSize:13,fontWeight:700,color:C.g,marginBottom:2}}>{rp(t.total)}</div>
+                      <div style={{fontSize:10,color:C.t2}}>{t.date}</div>
+                    </div>
+                    <div style={{display:"flex",flexDirection:"column",alignItems:"flex-end",gap:4}}>
+                      <BizChip biz={t.business} sm/>
+                      <span style={{fontSize:9.5,color:C.t3,fontFamily:F.mono}}>{t.id?.slice(-8)}</span>
+                    </div>
+                  </div>
+                  <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:6,background:C.bg3,borderRadius:8,padding:"8px 10px",marginBottom:8}}>
+                    <div><div style={{fontSize:9,color:C.t3,marginBottom:1}}>KASIR</div><div style={{fontSize:11,fontWeight:600,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{t.kasir}</div></div>
+                    <div><div style={{fontSize:9,color:C.t3,marginBottom:1}}>LABA</div><div className="mn" style={{fontSize:11,color:C.cy,fontWeight:700}}>{rp(t.profit||0)}</div></div>
+                    <div><div style={{fontSize:9,color:C.t3,marginBottom:1}}>BAYAR</div><div style={{fontSize:11,color:C.t1}}>{t.payment||"Tunai"}</div></div>
+                  </div>
+                  {t.discount>0&&<div style={{fontSize:11,color:C.r,marginBottom:6}}>Diskon: −{rp(t.discount)}</div>}
+                  {t.returned?<span style={{fontSize:11,color:C.a,fontWeight:600,display:"block"}}>✓ Sudah diretur</span>
+                  :<button onClick={()=>{if(window.confirm(`Retur transaksi ${t.id}?\nStok akan dikembalikan.`))doRetur(t);}} className="press"
+                    style={{width:"100%",padding:"10px",background:C.a1,border:`1.5px solid ${C.a}33`,borderRadius:9,color:C.a,fontSize:12,fontWeight:700,fontFamily:F.sans}}>↩ Retur Transaksi</button>}
+                </div>)}
+              </div>
+            </>}
           </Card>
         </div>}
 
@@ -2987,9 +3252,9 @@ function AppInner() {
               <div style={{flex:"2 1 300px"}}>
                 <div style={{fontSize:9.5,fontWeight:700,color:C.t2,textTransform:"uppercase",letterSpacing:.5,marginBottom:5}}>Rentang Waktu</div>
                 <div style={{display:"flex",gap:6,flexWrap:"wrap",alignItems:"center"}}>
-                  {[["all","Semua"],["today","Hari Ini"],["week","7 Hari"],["month","Bulan Ini"],["custom","Rentang"]].map(([v,l])=>(
-                    <button key={v} onClick={()=>setAttRange(v)} className="press"
-                      style={{padding:"8px 13px",borderRadius:8,fontSize:12,fontWeight:600,cursor:"pointer",background:attRange===v?C.g1:"transparent",border:`1.5px solid ${attRange===v?C.g:C.bo0}`,color:attRange===v?C.g:C.t2,fontFamily:F.sans}}>{l}</button>))}
+                  {[["all","📅 Semua"],["today","Hari Ini"],["week","7 Hari"],["month","📆 Bulan Ini"],["custom","Rentang"]].map(([v,l])=>(
+                    <button key={v} onClick={()=>setAttRange(v)}
+                      className={`chip${attRange===v?" on":""}`}>{l}</button>))}
                   {attRange==="custom"&&<>
                     <input type="date" value={attFrom} onChange={e=>setAttFrom(e.target.value)} style={{padding:"8px 10px",background:C.bg3,border:`1.5px solid ${C.bo1}`,borderRadius:8,color:C.t0,fontSize:12,fontFamily:F.sans}}/>
                     <span style={{color:C.t2,fontSize:12,fontWeight:600}}>s/d</span>
@@ -3036,24 +3301,50 @@ function AppInner() {
               <span style={{fontSize:10,fontWeight:700,color:C.t2,textTransform:"uppercase",letterSpacing:1}}>Detail Absensi ({attFiltered.length})</span>
             </div>
             {attFiltered.length===0?<div style={{padding:"24px",textAlign:"center",color:C.t3,fontSize:12}}>Tidak ada data</div>
-            :<TableWrap>
-              <table style={{width:"100%",borderCollapse:"collapse",fontSize:12,minWidth:540}}>
-                <THead cols={["Tanggal","Pegawai","Role","Bisnis","Jam Masuk","Jam Pulang","Durasi"]}/>
-                <tbody>{[...attFiltered].sort((a,b)=>{try{return new Date(b.checkInISO||b.checkIn)-new Date(a.checkInISO||a.checkIn);}catch{return 0;}}).map((a,i)=>(
-                  <tr key={a.id} className="hrow" style={{borderTop:`1px solid ${C.bo0}`,background:i%2===0?"transparent":C.bg0}}>
-                    <td style={{padding:"14px 13px",fontFamily:F.mono,fontSize:10,color:C.t2,whiteSpace:"nowrap"}}>{a.date}</td>
-                    <td style={{padding:"14px 13px",fontWeight:600,display:"flex",alignItems:"center",gap:5}}>
-                      <span>{users.find(u=>u.id===a.userId)?.avatar||"🧑"}</span>{a.name}</td>
-                    <td style={{padding:"14px 13px"}}><RoleTag role={a.role}/></td>
-                    <td style={{padding:"14px 13px"}}><BizChip biz={a.business} sm/></td>
-                    <td style={{padding:"14px 13px",fontFamily:F.mono,fontSize:11,color:C.g}}>{a.checkIn}</td>
-                    <td style={{padding:"14px 13px",fontFamily:F.mono,fontSize:11,color:a.checkOut?C.t1:C.a}}>
-                      {a.checkOut||<span style={{fontSize:10,color:C.a,fontWeight:700}}>● Masih hadir</span>}</td>
-                    <td style={{padding:"14px 13px",fontFamily:F.mono,fontSize:11,color:C.cy}}>{calcDur(a)}</td>
-                  </tr>))}
-                </tbody>
-              </table>
-            </TableWrap>}
+            :<>
+              <div className="hide-mobile"><TableWrap>
+                <table style={{width:"100%",borderCollapse:"collapse",fontSize:12,minWidth:540}}>
+                  <THead cols={["Tanggal","Pegawai","Role","Bisnis","Jam Masuk","Jam Pulang","Durasi"]}/>
+                  <tbody>{[...attFiltered].sort((a,b)=>{try{return new Date(b.checkInISO||b.checkIn)-new Date(a.checkInISO||a.checkIn);}catch{return 0;}}).map((a,i)=>(
+                    <tr key={a.id} className="hrow" style={{borderTop:`1px solid ${C.bo0}`,background:i%2===0?"transparent":C.bg0}}>
+                      <td style={{padding:"14px 13px",fontFamily:F.mono,fontSize:10,color:C.t2,whiteSpace:"nowrap"}}>{a.date}</td>
+                      <td style={{padding:"14px 13px",fontWeight:600,display:"flex",alignItems:"center",gap:5}}>
+                        <span>{users.find(u=>u.id===a.userId)?.avatar||"🧑"}</span>{a.name}</td>
+                      <td style={{padding:"14px 13px"}}><RoleTag role={a.role}/></td>
+                      <td style={{padding:"14px 13px"}}><BizChip biz={a.business} sm/></td>
+                      <td style={{padding:"14px 13px",fontFamily:F.mono,fontSize:11,color:C.g}}>{a.checkIn}</td>
+                      <td style={{padding:"14px 13px",fontFamily:F.mono,fontSize:11,color:a.checkOut?C.t1:C.a}}>
+                        {a.checkOut||<span style={{fontSize:10,color:C.a,fontWeight:700}}>● Masih hadir</span>}</td>
+                      <td style={{padding:"14px 13px",fontFamily:F.mono,fontSize:11,color:C.cy}}>{calcDur(a)}</td>
+                    </tr>))}
+                  </tbody>
+                </table>
+              </TableWrap></div>
+              <div className="hide-desktop mobile-card-list">
+                {[...attFiltered].sort((a,b)=>{try{return new Date(b.checkInISO||b.checkIn)-new Date(a.checkInISO||a.checkIn);}catch{return 0;}}).map(a=>(
+                  <div key={a.id} style={{background:C.bg2,borderRadius:14,border:`1px solid ${a.checkOut?C.bo0:C.a+"44"}`,padding:"13px 14px"}}>
+                    <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:8}}>
+                      <div style={{width:40,height:40,borderRadius:11,background:C.bg3,display:"flex",alignItems:"center",justifyContent:"center",fontSize:20,flexShrink:0}}>{users.find(u=>u.id===a.userId)?.avatar||"🧑"}</div>
+                      <div style={{flex:1,minWidth:0}}>
+                        <div style={{fontSize:14,fontWeight:700}}>{a.name}</div>
+                        <div style={{display:"flex",gap:5,alignItems:"center",marginTop:2,flexWrap:"wrap"}}>
+                          <RoleTag role={a.role}/>
+                          <BizChip biz={a.business} sm/>
+                          {!a.checkOut&&<span style={{fontSize:9.5,color:C.a,fontWeight:700,animation:"pulse 2s infinite"}}>● Masih hadir</span>}
+                        </div>
+                      </div>
+                      <div style={{textAlign:"right",flexShrink:0}}>
+                        <div style={{fontSize:10,color:C.t2,marginBottom:2}}>{a.date}</div>
+                        <div className="mn" style={{fontSize:11,color:C.cy,fontWeight:600}}>{calcDur(a)}</div>
+                      </div>
+                    </div>
+                    <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,background:C.bg3,borderRadius:9,padding:"8px 10px"}}>
+                      <div><div style={{fontSize:9,color:C.t3,marginBottom:1}}>MASUK</div><div className="mn" style={{fontSize:12,color:C.g,fontWeight:700}}>{a.checkIn}</div></div>
+                      <div><div style={{fontSize:9,color:C.t3,marginBottom:1}}>PULANG</div><div className="mn" style={{fontSize:12,color:a.checkOut?C.t1:C.a,fontWeight:600}}>{a.checkOut||"Belum pulang"}</div></div>
+                    </div>
+                  </div>))}
+              </div>
+            </>}
           </Card>
         </div>}
 
@@ -3067,9 +3358,9 @@ function AppInner() {
             let matchDate=true;
             if(slogRange!=="all"){try{
               const d=parseD(l.date);if(!d) return false;
-              if(slogRange==="today") matchDate=d.toDateString()===now3.toDateString();
-              else if(slogRange==="week"){const w=new Date(now3);w.setDate(w.getDate()-7);matchDate=d>=w;}
-              else if(slogRange==="month") matchDate=d.getMonth()===now3.getMonth()&&d.getFullYear()===now3.getFullYear();
+              if(slogRange==="today") matchDate=!isNaN(d.getTime())&&d.toDateString()===now3.toDateString();
+              else if(slogRange==="week"){const w=new Date(now3);w.setDate(w.getDate()-7);matchDate=!isNaN(d.getTime())&&d>=w&&d<=now3;}
+              else if(slogRange==="month") matchDate=!isNaN(d.getTime())&&d.getMonth()===now3.getMonth()&&d.getFullYear()===now3.getFullYear();
               else if(slogRange==="custom"){const fr=slogFrom?new Date(slogFrom):null,to=slogTo?new Date(slogTo+"T23:59:59"):null;if(fr&&d<fr)matchDate=false;if(to&&d>to)matchDate=false;}
             }catch{matchDate=false;}}
             return matchBiz&&matchType&&matchDate;
@@ -3229,6 +3520,22 @@ function AppInner() {
         </div>}
 
       </div>
+
+      {/* Mobile bottom nav */}
+      <nav className="bnav">
+        {BNAV_TABS.map(t=>{const isAct=adminTab===t.id&&!showMoreDrawer;
+          return <button key={t.id} className={`bnavbtn${isAct?" active":""}`}
+            onClick={()=>{setAdminTab(t.id);setSearchQ("");setPModal(false);setShowMoreDrawer(false);}}>
+            <span className="bnav-icon">{t.ic}</span>
+            <span className="bnav-label" style={{color:isAct?C.g:C.t2}}>{t.label}</span>
+            {isAct&&<div className="bnav-dot"/>}
+          </button>;})}
+        <button className={`bnavbtn${isMoreTab||showMoreDrawer?" active":""}`} onClick={()=>setShowMoreDrawer(x=>!x)}>
+          <span className="bnav-icon" style={{fontSize:28,fontWeight:300,lineHeight:.9}}>⋯</span>
+          <span className="bnav-label" style={{color:isMoreTab||showMoreDrawer?C.g:C.t2}}>Lainnya</span>
+          {(isMoreTab||showMoreDrawer)&&<div className="bnav-dot"/>}
+        </button>
+      </nav>
     </div>;
   }
   return null;
