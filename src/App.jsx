@@ -1344,6 +1344,7 @@ function AppInner() {
   const [adminScanQ,setAdminScanQ]=useState("");
   const [adminBiz,setAdminBiz]=useState("JS_CLOTHING");
   const [searchQ,setSearchQ]=useState("");
+  const [showMoreDrawer,setShowMoreDrawer]=useState(false);
   const [reportBiz,setReportBiz]=useState("ALL");
   const [reportRange,setReportRange]=useState("month");
   const [reportKasir,setReportKasir]=useState("ALL");
@@ -2428,7 +2429,6 @@ function AppInner() {
       {id:"sheets",ic:"🔗",label:"Sheets"},
     ];
     const isMoreTab=MORE_TABS.some(t=>t.id===adminTab);
-    const [showMoreDrawer,setShowMoreDrawer]=useState(false);
     const adminPs=prods.filter(p=>p.business===adminBiz&&(!searchQ||p.name.toLowerCase().includes(searchQ.toLowerCase())||p.barcode.includes(searchQ)));
 
     return <div style={{fontFamily:F.sans,background:C.bg1,color:C.t0,height:"100vh",display:"flex",flexDirection:"column"}}>
