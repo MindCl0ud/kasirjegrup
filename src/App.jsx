@@ -606,6 +606,7 @@ function Invoice({receipt,biz,onClose,onNew}) {
       <div class="row"><span>No. Invoice</span><span class="mono bold">${receipt.id}</span></div>
       <div class="row"><span>Tanggal</span><span>${receipt.date}</span></div>
       <div class="row"><span>Kasir</span><span>${receipt.kasir}</span></div>
+      ${receipt.namaPembeli&&receipt.namaPembeli!=="Umum"?`<div class="row"><span>Pembeli</span><span><b>${receipt.namaPembeli}</b></span></div>`:""}
       <div class="line"></div>
       <table><tbody>${receipt.items.map(item=>`<tr>
         <td>${item.name}<br/><span style="font-size:10px;color:#666">${item.qty} × Rp ${Number(item.price).toLocaleString("id-ID")}</span></td>
@@ -634,7 +635,7 @@ function Invoice({receipt,biz,onClose,onNew}) {
       </div>
       <div style={{margin:"0 16px",background:C.bg3,borderRadius:12,border:`1px solid ${C.bo0}`,overflow:"hidden"}}>
         <div style={{padding:"10px 14px",borderBottom:`1px solid ${C.bo0}`}}>
-          {[["Tanggal",receipt.date],["Kasir",receipt.kasir],["Pembayaran",receipt.payment||"Tunai"],["No. Invoice",receipt.id]].map(([l,v])=>(
+          {([["Tanggal",receipt.date],["Kasir",receipt.kasir],[receipt.namaPembeli&&receipt.namaPembeli!=="Umum"?"Pembeli":null,receipt.namaPembeli],["Pembayaran",receipt.payment||"Tunai"],["No. Invoice",receipt.id]]).filter(([l])=>l).map(([l,v])=>(
             <div key={l} style={{display:"flex",justifyContent:"space-between",fontSize:12,marginBottom:4}}>
               <span style={{color:C.t2}}>{l}</span>
               <span className="mn" style={{fontWeight:600,fontSize:11}}>{v}</span>
@@ -1324,6 +1325,7 @@ function AppInner() {
   const [addonPrompt,setAddonPrompt]=useState(null); // {mainItem, addons:[]}
   const [discount,setDiscount]=useState({type:"pct",value:""});
   const [payMethod,setPayMethod]=useState("Tunai");
+  const [namaPembeli,setNamaPembeli]=useState("");
   const [showCheckout,setShowCheckout]=useState(false);
   const scanRef=useRef(null);
   useEffect(()=>{if(screen==="kasir"&&!receipt&&!showCheckout)setTimeout(()=>scanRef.current?.focus(),100);},[screen,receipt,showCheckout]);
@@ -1461,13 +1463,14 @@ function AppInner() {
     const total=subtotal-discAmt;
     const totalHpp=cart.reduce((s,c)=>s+(c.hpp||0)*c.qty,0);
     const trx={id:"TRX-"+uid().toUpperCase(),date:nowStr(),kasir:user.name,kasirId:user.id,business:biz,
+      namaPembeli:namaPembeli.trim()||"Umum",
       items:[...cart],subtotal,discount:discAmt,total,totalHpp,profit:total-totalHpp,payment:payMethod,returned:false};
     const stockUpdates=cart.map(c=>({productId:c.id,newStock:c.stock-c.qty}));
     const logs=cart.map(c=>({id:"LOG-"+uid(),date:nowStr(),barcode:c.barcode,name:c.name,
       type:"keluar",qty:c.qty,before:c.stock,after:c.stock-c.qty,by:user.name,business:biz}));
     try{
       await fbAddTransaction(trx,stockUpdates,logs);
-      setCart([]);setDiscount({type:"pct",value:""});setPayMethod("Tunai");
+      setCart([]);setDiscount({type:"pct",value:""});setPayMethod("Tunai");setNamaPembeli("");
       setShowCheckout(false);setReceipt(trx);toast("✅ Transaksi berhasil! "+rp(total));
     }catch(e){toast("Gagal: "+e.message,"err");}
   },[cart,user,biz,discount,payMethod,toast]);
@@ -1993,6 +1996,20 @@ function AppInner() {
         <div style={{width:"100%",maxWidth:420,background:C.bg2,borderRadius:"22px 22px 0 0",border:`1px solid ${C.bo1}`,borderBottom:"none",animation:"slideUp .25s ease",padding:"16px 18px 32px"}} onClick={e=>e.stopPropagation()}>
           <div style={{width:36,height:4,background:C.b1,borderRadius:2,margin:"0 auto 16px"}}/>
           <h3 style={{fontSize:15,fontWeight:800,marginBottom:14}}>💳 Konfirmasi Pembayaran</h3>
+          {/* Nama Pembeli */}
+          <div style={{marginBottom:12}}>
+            <div style={{fontSize:10,fontWeight:700,color:C.t2,textTransform:"uppercase",letterSpacing:1,marginBottom:6}}>Nama Pembeli (Opsional)</div>
+            <div style={{position:"relative"}}>
+              <span style={{position:"absolute",left:12,top:"50%",transform:"translateY(-50%)",fontSize:14,pointerEvents:"none",color:C.t2}}>🧑</span>
+              <input value={namaPembeli} onChange={e=>setNamaPembeli(e.target.value)}
+                placeholder="Kosongkan = Umum / Tunai"
+                style={{width:"100%",padding:"11px 13px 11px 36px",background:C.bg3,
+                  border:`1.5px solid ${namaPembeli?C.g+"88":C.bo0}`,borderRadius:10,
+                  color:C.t0,fontSize:13,fontFamily:F.sans,boxSizing:"border-box",transition:"border-color .15s"}}
+                onFocus={e=>e.target.style.borderColor=C.g+"88"}
+                onBlur={e=>e.target.style.borderColor=namaPembeli?C.g+"88":C.bo0}/>
+            </div>
+          </div>
           {/* Subtotal */}
           <div style={{display:"flex",justifyContent:"space-between",fontSize:13,marginBottom:8}}>
             <span style={{color:C.t2}}>Subtotal</span>
@@ -3138,34 +3155,100 @@ function AppInner() {
               </table>
             </TableWrap>
           </Card>}
-          {/* Produk performa */}
-          {prodPerf.length>0&&<Card noPad style={{overflow:"hidden"}}>
-            <div style={{padding:"12px 14px",borderBottom:`1px solid ${C.bo0}`}}>
-              <span style={{fontSize:10,fontWeight:700,color:C.t2,textTransform:"uppercase",letterSpacing:1}}>Performa Produk (Top {Math.min(prodPerf.length,20)})</span>
-            </div>
-            <TableWrap>
-              <table style={{width:"100%",borderCollapse:"collapse",fontSize:12,minWidth:500}}>
-                <THead cols={["Produk","Qty","Pendapatan","HPP","Laba","Margin"]}/>
-                <tbody>{prodPerf.slice(0,20).map((p,i)=>{const laba=p.rev-p.hpp,mg=p.rev>0?((laba/p.rev)*100).toFixed(1)+"%":"0%";
-                  return <tr key={p.barcode} className="hrow" style={{borderTop:`1px solid ${C.bo0}`,background:i%2===0?"transparent":C.bg0}}>
-                    <td style={{padding:"14px 13px",fontWeight:600,fontSize:12}}>{p.name}<div className="mn" style={{fontSize:9.5,color:C.t3,marginTop:1}}>{p.barcode}</div></td>
-                    <td style={{padding:"14px 13px",fontFamily:F.mono,fontWeight:700}}>{p.qty}</td>
-                    <td style={{padding:"14px 13px",fontFamily:F.mono,color:C.g,fontSize:11}}>{rp(p.rev)}</td>
-                    <td style={{padding:"14px 13px",fontFamily:F.mono,color:C.a,fontSize:11}}>{rp(p.hpp)}</td>
-                    <td style={{padding:"14px 13px",fontFamily:F.mono,color:C.cy,fontSize:11}}>{rp(laba)}</td>
-                    <td style={{padding:"14px 13px",fontFamily:F.mono,fontSize:11}}>
-                      <span style={{color:parseFloat(mg)>30?C.g:parseFloat(mg)>15?C.a:C.r}}>{mg}</span>
-                    </td>
-                  </tr>;})}
-                </tbody>
-              </table>
-              <div style={{padding:"12px 14px",borderTop:`1px solid ${C.bo0}`,display:"flex",gap:16,fontSize:11,flexWrap:"wrap"}}>
-                <span style={{color:C.t2}}>Pendapatan: <b className="mn" style={{color:C.g}}>{rp(totalRev)}</b></span>
-                <span style={{color:C.t2}}>Laba: <b className="mn" style={{color:C.cy}}>{rp(grossProfit)}</b></span>
-                <span style={{color:C.t2}}>Margin: <b className="mn" style={{color:C.b}}>{margin}</b> <span className="mn" style={{color:C.cy}}>({rp(grossProfit)})</span></span>
+          {/* Detail Produk per Transaksi */}
+          {(()=>{
+            // Expand: setiap item di setiap transaksi jadi satu baris
+            const rows=[];
+            filtTrx.forEach(t=>{
+              (t.items||[]).forEach(item=>{
+                rows.push({
+                  trxId:t.id, date:t.date,
+                  namaPembeli:t.namaPembeli||"Umum",
+                  kasir:t.kasir, bisnis:t.business,
+                  produk:item.name, barcode:item.barcode,
+                  qty:item.qty, harga:item.price,
+                  subtotalItem:item.price*item.qty,
+                  payment:t.payment||"Tunai",
+                  totalTrx:t.total,
+                });
+              });
+            });
+            if(!rows.length) return null;
+            return <Card noPad style={{overflow:"hidden"}}>
+              <div style={{padding:"12px 14px",borderBottom:`1px solid ${C.bo0}`,display:"flex",justifyContent:"space-between",alignItems:"center",flexWrap:"wrap",gap:8}}>
+                <span style={{fontSize:10,fontWeight:700,color:C.t2,textTransform:"uppercase",letterSpacing:1}}>
+                  Detail Penjualan per Produk ({rows.length} baris)
+                </span>
+                <button onClick={()=>downloadXLSX(rows,[
+                  {key:"date",label:"Tanggal",w:22},
+                  {key:"namaPembeli",label:"Nama Pembeli",w:20},
+                  {key:"kasir",label:"Kasir",w:18},
+                  {key:"bisnis",label:"Bisnis",fn:r=>BIZ[r.bisnis]?.name||r.bisnis,w:14},
+                  {key:"produk",label:"Produk",w:28},
+                  {key:"barcode",label:"Barcode",w:14},
+                  {key:"qty",label:"Qty",fn:r=>r.qty,num:true,w:8},
+                  {key:"harga",label:"Harga Satuan (Rp)",fn:r=>r.harga,num:true,w:18},
+                  {key:"subtotalItem",label:"Subtotal Item (Rp)",fn:r=>r.subtotalItem,num:true,w:18},
+                  {key:"payment",label:"Pembayaran",w:14},
+                  {key:"totalTrx",label:"Total Transaksi (Rp)",fn:r=>r.totalTrx,num:true,w:20},
+                  {key:"trxId",label:"ID Transaksi",w:24},
+                ],"Detail Penjualan","detail_penjualan")} className="press"
+                  style={{padding:"5px 12px",background:C.g1,border:`1px solid ${C.g}33`,borderRadius:8,color:C.g,fontSize:11,fontWeight:700,fontFamily:F.sans}}>⬇ Excel</button>
               </div>
-            </TableWrap>
-          </Card>}
+              {/* Desktop table */}
+              <div className="hide-mobile"><TableWrap maxH="60vh">
+                <table style={{width:"100%",borderCollapse:"collapse",fontSize:12,minWidth:620}}>
+                  <THead cols={["Tanggal","Nama Pembeli","Kasir","Produk","Qty","Harga","Subtotal","Bayar"]}/>
+                  <tbody>{rows.slice(0,200).map((r,i)=>(
+                    <tr key={i} className="hrow" style={{borderTop:`1px solid ${C.bo0}`,background:i%2===0?"transparent":C.bg0}}>
+                      <td style={{padding:"11px 13px",fontSize:10,color:C.t2,whiteSpace:"nowrap"}}>{r.date}</td>
+                      <td style={{padding:"11px 13px",fontWeight:600,fontSize:12}}>
+                        <div style={{display:"flex",alignItems:"center",gap:5}}>
+                          {r.namaPembeli!=="Umum"&&<span style={{fontSize:13}}>🧑</span>}
+                          <span style={{color:r.namaPembeli==="Umum"?C.t2:C.t0}}>{r.namaPembeli}</span>
+                        </div>
+                      </td>
+                      <td style={{padding:"11px 13px",fontSize:11,color:C.t2}}>{r.kasir}</td>
+                      <td style={{padding:"11px 13px",fontWeight:500}}>
+                        {r.produk}
+                        <div className="mn" style={{fontSize:9.5,color:C.t3,marginTop:1}}>{r.barcode}</div>
+                      </td>
+                      <td style={{padding:"11px 13px",fontFamily:F.mono,fontWeight:700,textAlign:"center"}}>{r.qty}</td>
+                      <td style={{padding:"11px 13px",fontFamily:F.mono,color:C.t1,fontSize:11}}>{rp(r.harga)}</td>
+                      <td style={{padding:"11px 13px",fontFamily:F.mono,color:C.g,fontSize:11,fontWeight:700}}>{rp(r.subtotalItem)}</td>
+                      <td style={{padding:"11px 13px",fontSize:10}}>
+                        <span style={{padding:"2px 7px",borderRadius:20,background:C.cy1,color:C.cy,fontSize:9.5,fontWeight:700}}>{r.payment}</span>
+                      </td>
+                    </tr>
+                  ))}</tbody>
+                </table>
+                {rows.length>200&&<div style={{padding:"10px 14px",fontSize:11,color:C.t3,borderTop:`1px solid ${C.bo0}`}}>
+                  Menampilkan 200 dari {rows.length} baris. Download Excel untuk data lengkap.
+                </div>}
+              </TableWrap></div>
+              {/* Mobile cards */}
+              <div className="hide-desktop" style={{padding:"8px 10px",display:"flex",flexDirection:"column",gap:8}}>
+                {rows.slice(0,50).map((r,i)=>(
+                  <div key={i} style={{background:C.bg3,borderRadius:10,padding:"10px 12px",border:`1px solid ${C.bo0}`}}>
+                    <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:6}}>
+                      <div>
+                        <div style={{fontWeight:700,fontSize:13}}>{r.produk}</div>
+                        <div className="mn" style={{fontSize:10,color:C.t2,marginTop:1}}>{r.barcode}</div>
+                      </div>
+                      <div className="mn" style={{fontSize:14,fontWeight:800,color:C.g}}>{rp(r.subtotalItem)}</div>
+                    </div>
+                    <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:4,marginTop:6}}>
+                      <div style={{fontSize:10,color:C.t2}}><span style={{color:C.t3}}>Pembeli: </span><b>{r.namaPembeli}</b></div>
+                      <div style={{fontSize:10,color:C.t2}}><span style={{color:C.t3}}>Qty: </span><b>{r.qty} × {rp(r.harga)}</b></div>
+                      <div style={{fontSize:10,color:C.t2}}><span style={{color:C.t3}}>Tanggal: </span>{r.date}</div>
+                      <div style={{fontSize:10,color:C.t2}}><span style={{color:C.t3}}>Bayar: </span>{r.payment}</div>
+                    </div>
+                  </div>
+                ))}
+                {rows.length>50&&<div style={{textAlign:"center",fontSize:11,color:C.t3,padding:"8px"}}>+{rows.length-50} baris lainnya. Download Excel untuk lengkap.</div>}
+              </div>
+            </Card>;
+          })()}
           {/* Transaksi */}
           <Card noPad style={{overflow:"hidden"}}>
             <div style={{padding:"12px 14px",borderBottom:`1px solid ${C.bo0}`}}>
@@ -3176,17 +3259,23 @@ function AppInner() {
               {/* Desktop */}
               <div className="hide-mobile"><TableWrap>
                 <table style={{width:"100%",borderCollapse:"collapse",fontSize:12,minWidth:540}}>
-                  <THead cols={["ID","Tanggal","Kasir","Bisnis","Subtotal","Diskon","Total","Laba","Bayar","Retur"]}/>
+                  <THead cols={["ID","Tanggal","Pembeli","Kasir","Bisnis","Total","Laba","Bayar","Retur"]}/>
                   <tbody>{filtTrx.slice(0,100).map((t,i)=><tr key={t.id} className="hrow" style={{borderTop:`1px solid ${C.bo0}`,background:i%2===0?"transparent":C.bg0}}>
                     <td style={{padding:"12px 13px",fontFamily:F.mono,fontSize:9.5,color:C.t3}}>{t.id?.slice(-10)}</td>
                     <td style={{padding:"12px 13px",fontSize:10,color:C.t2,whiteSpace:"nowrap"}}>{t.date}</td>
+                    <td style={{padding:"12px 13px",fontSize:11,fontWeight:600}}>
+                      <div style={{display:"flex",alignItems:"center",gap:4}}>
+                        {t.namaPembeli&&t.namaPembeli!=="Umum"&&<span style={{fontSize:12}}>🧑</span>}
+                        <span style={{color:!t.namaPembeli||t.namaPembeli==="Umum"?C.t3:C.t0}}>{t.namaPembeli||"Umum"}</span>
+                      </div>
+                    </td>
                     <td style={{padding:"12px 13px",fontWeight:500,fontSize:11}}>{t.kasir}</td>
                     <td style={{padding:"12px 13px"}}><BizChip biz={t.business} sm/></td>
-                    <td style={{padding:"12px 13px",fontFamily:F.mono,fontSize:11}}>{rp(t.subtotal||t.total)}</td>
-                    <td style={{padding:"12px 13px",fontFamily:F.mono,color:C.r,fontSize:11}}>{t.discount>0?`−${rp(t.discount)}`:"-"}</td>
                     <td style={{padding:"12px 13px",fontFamily:F.mono,color:C.g,fontSize:11,fontWeight:700}}>{rp(t.total)}</td>
                     <td style={{padding:"12px 13px",fontFamily:F.mono,color:C.cy,fontSize:11}}>{rp(t.profit||0)}</td>
-                    <td style={{padding:"12px 13px",fontSize:10,color:C.t2}}>{t.payment||"Tunai"}</td>
+                    <td style={{padding:"12px 13px",fontSize:10}}>
+                      <span style={{padding:"2px 7px",borderRadius:20,background:C.cy1,color:C.cy,fontSize:9.5,fontWeight:700}}>{t.payment||"Tunai"}</span>
+                    </td>
                     <td style={{padding:"12px 13px"}}>
                       {t.returned?<span style={{fontSize:10,color:C.a,fontWeight:600}}>✓ Retur</span>
                       :<button onClick={()=>{if(window.confirm(`Retur transaksi ${t.id}?\nStok akan dikembalikan.`))doRetur(t);}} className="press"
@@ -3210,6 +3299,7 @@ function AppInner() {
                   </div>
                   <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:6,background:C.bg3,borderRadius:8,padding:"8px 10px",marginBottom:8}}>
                     <div><div style={{fontSize:9,color:C.t3,marginBottom:1}}>KASIR</div><div style={{fontSize:11,fontWeight:600,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{t.kasir}</div></div>
+                  <div><div style={{fontSize:9,color:C.t3,marginBottom:1}}>PEMBELI</div><div style={{fontSize:11,fontWeight:600,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",color:!t.namaPembeli||t.namaPembeli==="Umum"?C.t3:C.t0}}>{t.namaPembeli||"Umum"}</div></div>
                     <div><div style={{fontSize:9,color:C.t3,marginBottom:1}}>LABA</div><div className="mn" style={{fontSize:11,color:C.cy,fontWeight:700}}>{rp(t.profit||0)}</div></div>
                     <div><div style={{fontSize:9,color:C.t3,marginBottom:1}}>BAYAR</div><div style={{fontSize:11,color:C.t1}}>{t.payment||"Tunai"}</div></div>
                   </div>
