@@ -1361,6 +1361,8 @@ function AppInner() {
   const [pModal,setPModal]=useState(false);
   const [pForm,setPForm]=useState({});
   const [editPid,setEditPid]=useState(null);
+  const [showPriceDrawer,setShowPriceDrawer]=useState(false);
+  const [inlineAddMode,setInlineAddMode]=useState(false); // "add" = form tambah di atas
   const [importModal,setImportModal]=useState(false);
   const [importRows,setImportRows]=useState([]);
   const [importErr,setImportErr]=useState("");
@@ -1610,8 +1612,21 @@ function AppInner() {
   };
 
   // ─── Admin: Product CRUD ───
-  const openAddP=()=>{setPForm({barcode:"",name:"",price:"",hpp:"",stock:"",category:"",business:adminBiz});setEditPid(null);setPModal(true);};
-  const openEditP=p=>{setPForm({...p,price:String(p.price),hpp:String(p.hpp||0),stock:String(p.stock)});setEditPid(p.id);setPModal(true);};
+  const openAddP=()=>{
+    setPForm({barcode:"",name:"",price:"",hpp:"",stock:"",category:"",business:adminBiz});
+    setEditPid(null);setPModal(true);setInlineAddMode(true);setShowPriceDrawer(false);
+    // scroll to top of products section
+    setTimeout(()=>document.getElementById("prod-form-anchor")?.scrollIntoView({behavior:"smooth",block:"start"}),50);
+  };
+  const openEditP=p=>{
+    // If same product clicked again → close
+    if(editPid===p.id&&pModal){setPModal(false);setEditPid(null);setInlineAddMode(false);return;}
+    setPForm({...p,price:String(p.price),hpp:String(p.hpp||0),stock:String(p.stock)});
+    setEditPid(p.id);setPModal(true);setInlineAddMode(false);
+    // Show price drawer only if price/hpp already exist
+    setShowPriceDrawer(!!(p.price||p.hpp));
+    setTimeout(()=>document.getElementById("prod-inline-"+p.id)?.scrollIntoView({behavior:"smooth",block:"nearest"}),80);
+  };
   // ─── Import Produk (XLSX/CSV) ───
   const normalizeKey=k=>k.toLowerCase().replace(/[^a-z0-9]/g,"");
   const parseImportRows=(raw)=>{
@@ -2534,7 +2549,7 @@ function AppInner() {
       {/* Tab bar */}
       {/* Desktop tab bar — hidden on mobile */}
       <div className="hide-mobile" style={{background:C.bg2,borderBottom:`1px solid ${C.bo0}`,display:"flex",overflowX:"auto",flexShrink:0,gap:0,padding:"0 4px"}}>
-        {TABS.map(t=><button key={t.id} onClick={()=>{setAdminTab(t.id);setSearchQ("");setPModal(false);setShowMoreDrawer(false);}}
+        {TABS.map(t=><button key={t.id} onClick={()=>{setAdminTab(t.id);setSearchQ("");setPModal(false);setShowMoreDrawer(false);setEditPid(null);setInlineAddMode(false);}}
           className={`atab${adminTab===t.id?" on":""}`}>{t.l}</button>)}
       </div>
 
@@ -2548,7 +2563,7 @@ function AppInner() {
           </div>
           <div style={{display:"grid",gridTemplateColumns:"repeat(5,1fr)",gap:6,padding:"10px 14px 4px"}}>
             {MORE_TABS.map(t=>{const isAct=adminTab===t.id;
-              return <button key={t.id} onClick={()=>{setAdminTab(t.id);setSearchQ("");setPModal(false);setShowMoreDrawer(false);}} className="press ripple-wrap"
+              return <button key={t.id} onClick={()=>{setAdminTab(t.id);setSearchQ("");setPModal(false);setShowMoreDrawer(false);setEditPid(null);setInlineAddMode(false);}} className="press ripple-wrap"
                 style={{padding:"12px 6px 10px",background:isAct?`linear-gradient(145deg,${C.g}22,${C.b}15)`:C.bg3,
                   border:`1.5px solid ${isAct?C.g:C.bo0}`,borderRadius:16,
                   display:"flex",flexDirection:"column",alignItems:"center",gap:5,cursor:"pointer",position:"relative",
@@ -2751,7 +2766,7 @@ function AppInner() {
         {adminTab==="products"&&<div style={{display:"flex",flexDirection:"column",gap:10}}>
           <div style={{display:"flex",gap:7,alignItems:"center",flexWrap:"wrap"}}>
             {Object.values(BIZ).map(b2=>{const isJ=b2.id==="JS_CLOTHING",active=adminBiz===b2.id;
-              return <button key={b2.id} onClick={()=>{setAdminBiz(b2.id);setSearchQ("");setPModal(false);}} className="press"
+              return <button key={b2.id} onClick={()=>{setAdminBiz(b2.id);setSearchQ("");setPModal(false);setEditPid(null);setInlineAddMode(false);}} className="press"
                 style={{padding:"7px 14px",borderRadius:9,cursor:"pointer",fontWeight:700,fontSize:12,background:active?(isJ?C.b1:C.p1):"transparent",border:`2px solid ${active?(isJ?C.b:C.p):C.bo0}`,color:active?(isJ?C.b:C.p):C.t2,fontFamily:F.sans}}>
                 {b2.icon} {b2.name}</button>;})}
             <input value={searchQ} onChange={e=>setSearchQ(e.target.value)} placeholder="Cari produk..."
@@ -2889,31 +2904,74 @@ function AppInner() {
             <button onClick={()=>{const bc=adminScanQ.trim();const found=prods.find(p=>p.barcode===bc&&p.business===adminBiz)||prods.find(p=>p.name.toLowerCase().includes(bc.toLowerCase())&&p.business===adminBiz);if(found){openEditP(found);setAdminScanQ("");}else toast("Tidak ditemukan","warn");}} className="press"
               style={{padding:"10px 14px",background:C.b,border:"none",borderRadius:9,color:"#fff",fontWeight:700,fontSize:12,flexShrink:0}}>Cari</button>
           </div>
-          {pModal&&<Card accent={C.g} style={{padding:16}}>
-            <h3 style={{fontSize:13,fontWeight:800,marginBottom:14,color:C.g}}>{editPid===null?"➕ Tambah Produk":"✏️ Edit Produk"}</h3>
-            <div style={{display:"grid",gridTemplateColumns:"repeat(2,1fr)",gap:9}}>
-              {[{k:"barcode",l:"Barcode *",full:true,dis:editPid!==null},{k:"name",l:"Nama Produk *",full:true},{k:"category",l:"Kategori"},{k:"stock",l:"Stok *",t:"number"}].map(f=>(
-                <div key={f.k} style={{gridColumn:f.full?"span 2":""}}>
-                  <div style={{fontSize:9.5,fontWeight:700,color:C.t2,textTransform:"uppercase",letterSpacing:.5,marginBottom:4}}>{f.l}</div>
-                  <input type={f.t||"text"} value={pForm[f.k]||""} disabled={f.dis} onChange={e=>setPForm(x=>({...x,[f.k]:e.target.value}))}
-                    style={{...IS,color:f.dis?C.t2:C.t0}} onFocus={e=>!f.dis&&(e.target.style.borderColor=C.g+"88")} onBlur={e=>e.target.style.borderColor=C.bo0}/>
-                </div>))}
-              <div>
-                <div style={{fontSize:9.5,fontWeight:700,color:C.t2,textTransform:"uppercase",letterSpacing:.5,marginBottom:4}}>Harga Jual *</div>
-                <input type="number" value={pForm.price||""} onChange={e=>setPForm(x=>({...x,price:e.target.value}))} style={IS} onFocus={e=>e.target.style.borderColor=C.g+"88"} onBlur={e=>e.target.style.borderColor=C.bo0}/>
-              </div>
-              <div>
-                <div style={{fontSize:9.5,fontWeight:700,color:C.a,textTransform:"uppercase",letterSpacing:.5,marginBottom:4}}>HPP / Modal</div>
-                <input type="number" value={pForm.hpp||""} onChange={e=>setPForm(x=>({...x,hpp:e.target.value}))} style={{...IS,borderColor:C.a+"44"}} onFocus={e=>e.target.style.borderColor=C.a+"88"} onBlur={e=>e.target.style.borderColor=C.a+"44"}/>
-              </div>
+          {/* ─── Form Tambah (inline di atas) ─── */}
+          <div id="prod-form-anchor"/>
+          {pModal&&inlineAddMode&&<div style={{background:C.bg2,borderRadius:14,border:`2px solid ${C.g}55`,padding:"14px 14px 12px",animation:"fadeUp .2s ease"}}>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
+              <span style={{fontSize:12,fontWeight:800,color:C.g}}>➕ Produk Baru</span>
+              <button onClick={()=>{setPModal(false);setInlineAddMode(false);}} style={{background:"transparent",border:"none",color:C.t3,fontSize:18,cursor:"pointer",lineHeight:1}}>×</button>
             </div>
-            {pForm.price&&pForm.hpp&&+pForm.price>0&&+pForm.hpp>0&&(
-              <div style={{marginTop:9,padding:"7px 11px",background:C.bg3,borderRadius:7,fontSize:11.5,display:"flex",gap:14}}>
-                <span style={{color:C.t2}}>Margin: <b style={{color:C.g}}>{((+pForm.price-+pForm.hpp)/+pForm.price*100).toFixed(1)}%</b></span>
-                <span style={{color:C.t2}}>Laba/pcs: <b style={{color:C.cy}}>{rp(+pForm.price-+pForm.hpp)}</b></span>
-              </div>)}
-            {/* Add-on configuration */}
-            <div style={{marginTop:12,paddingTop:12,borderTop:`1px solid ${C.bo0}`}}>
+            
+            {/* ─── Core fields ─── */}
+            <div style={{display:"flex",flexDirection:"column",gap:8}}>
+              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
+                <div style={{gridColumn:"span 2"}}>
+                  <div style={{fontSize:9,fontWeight:700,color:C.t2,textTransform:"uppercase",letterSpacing:.5,marginBottom:4}}>Barcode *</div>
+                  <input value={pForm.barcode||""} disabled={editPid!==null} onChange={e=>setPForm(x=>({...x,barcode:e.target.value}))}
+                    style={{...IS,width:"100%",boxSizing:"border-box",color:editPid!==null?C.t2:C.t0}}
+                    onFocus={e=>editPid===null&&(e.target.style.borderColor=C.g+"88")} onBlur={e=>e.target.style.borderColor=C.bo0}/>
+                </div>
+                <div style={{gridColumn:"span 2"}}>
+                  <div style={{fontSize:9,fontWeight:700,color:C.t2,textTransform:"uppercase",letterSpacing:.5,marginBottom:4}}>Nama Produk *</div>
+                  <input value={pForm.name||""} onChange={e=>setPForm(x=>({...x,name:e.target.value}))}
+                    style={{...IS,width:"100%",boxSizing:"border-box"}}
+                    onFocus={e=>e.target.style.borderColor=C.g+"88"} onBlur={e=>e.target.style.borderColor=C.bo0}/>
+                </div>
+                <div>
+                  <div style={{fontSize:9,fontWeight:700,color:C.t2,textTransform:"uppercase",letterSpacing:.5,marginBottom:4}}>Kategori</div>
+                  <input value={pForm.category||""} onChange={e=>setPForm(x=>({...x,category:e.target.value}))}
+                    style={{...IS,width:"100%",boxSizing:"border-box"}}
+                    onFocus={e=>e.target.style.borderColor=C.g+"88"} onBlur={e=>e.target.style.borderColor=C.bo0}/>
+                </div>
+                <div>
+                  <div style={{fontSize:9,fontWeight:700,color:C.t2,textTransform:"uppercase",letterSpacing:.5,marginBottom:4}}>Stok *</div>
+                  <input type="number" value={pForm.stock||""} onChange={e=>setPForm(x=>({...x,stock:e.target.value}))}
+                    style={{...IS,width:"100%",boxSizing:"border-box"}}
+                    onFocus={e=>e.target.style.borderColor=C.g+"88"} onBlur={e=>e.target.style.borderColor=C.bo0}/>
+                </div>
+              </div>
+              {/* ─── Price drawer ─── */}
+              <button onClick={()=>setShowPriceDrawer(x=>!x)} className="press"
+                style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"9px 12px",
+                  background:C.bg3,border:`1px solid ${C.bo0}`,borderRadius:9,cursor:"pointer",fontFamily:F.sans,width:"100%",textAlign:"left"}}>
+                <span style={{fontSize:11.5,fontWeight:700,color:C.t1}}>
+                  💰 Harga & HPP
+                  {pForm.price&&+pForm.price>0&&<span className="mn" style={{color:C.g,marginLeft:6}}>{rp(pForm.price)}</span>}
+                  {pForm.hpp&&+pForm.hpp>0&&<span className="mn" style={{color:C.a,marginLeft:4}}>/ {rp(pForm.hpp)}</span>}
+                </span>
+                <span style={{fontSize:12,color:C.t2,transition:"transform .2s",transform:showPriceDrawer?"rotate(180deg)":"rotate(0deg)",display:"inline-block"}}>▾</span>
+              </button>
+              {showPriceDrawer&&<div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,animation:"fadeUp .15s ease"}}>
+                <div>
+                  <div style={{fontSize:9,fontWeight:700,color:C.g,textTransform:"uppercase",letterSpacing:.5,marginBottom:4}}>Harga Jual *</div>
+                  <input type="number" value={pForm.price||""} onChange={e=>setPForm(x=>({...x,price:e.target.value}))}
+                    style={{...IS,width:"100%",boxSizing:"border-box"}}
+                    onFocus={e=>e.target.style.borderColor=C.g+"88"} onBlur={e=>e.target.style.borderColor=C.bo0}/>
+                </div>
+                <div>
+                  <div style={{fontSize:9,fontWeight:700,color:C.a,textTransform:"uppercase",letterSpacing:.5,marginBottom:4}}>HPP / Modal</div>
+                  <input type="number" value={pForm.hpp||""} onChange={e=>setPForm(x=>({...x,hpp:e.target.value}))}
+                    style={{...IS,width:"100%",boxSizing:"border-box",borderColor:C.a+"44"}}
+                    onFocus={e=>e.target.style.borderColor=C.a+"88"} onBlur={e=>e.target.style.borderColor=C.a+"44"}/>
+                </div>
+                {pForm.price&&pForm.hpp&&+pForm.price>0&&+pForm.hpp>0&&(
+                  <div style={{gridColumn:"span 2",padding:"6px 10px",background:C.g2,borderRadius:7,fontSize:11,display:"flex",gap:12,flexWrap:"wrap"}}>
+                    <span style={{color:C.t2}}>Margin: <b style={{color:C.g}}>{((+pForm.price-+pForm.hpp)/+pForm.price*100).toFixed(1)}%</b></span>
+                    <span style={{color:C.t2}}>Laba: <b style={{color:C.cy}}>{rp(+pForm.price-+pForm.hpp)}</b></span>
+                  </div>)}
+              </div>}
+              {/* ─── Add-on ─── */}
+              <div style={{marginTop:10,paddingTop:10,borderTop:`1px solid ${C.bo0}`}}>
               <div style={{fontSize:10,fontWeight:700,color:C.vi,textTransform:"uppercase",letterSpacing:1,marginBottom:8}}>
                 ➕ Konfigurasi Add-on (Opsional)
               </div>
@@ -2974,8 +3032,12 @@ function AppInner() {
                   Belum ada add-on — tambah produk di atas
                 </div>}
             </div>
-            <div style={{display:"flex",gap:8,marginTop:12}}><Btn onClick={saveProd}>Simpan</Btn><Btn onClick={()=>setPModal(false)} outline>Batal</Btn></div>
-          </Card>}
+              <div style={{display:"flex",gap:7,marginTop:10}}>
+                <Btn onClick={saveProd} full size="sm">✓ Simpan</Btn>
+                <Btn onClick={()=>{setPModal(false);setEditPid(null);setInlineAddMode(false);}} outline size="sm">Batal</Btn>
+              </div>
+            </div>
+          </div>}
           {/* Desktop table */}
           <div className="hide-mobile">
             <Card noPad style={{overflow:"hidden"}}>
@@ -2999,10 +3061,79 @@ function AppInner() {
                           :<span style={{fontSize:10,color:C.t3}}>—</span>}
                       </td>
                       <td style={{padding:"14px 13px",whiteSpace:"nowrap"}}>
-                        <button onClick={()=>openEditP(p)} className="press" style={{marginRight:4,padding:"3px 9px",background:"transparent",border:`1px solid ${C.bo1}`,borderRadius:6,color:C.t0,fontSize:10}}>Edit</button>
+                        <button onClick={()=>openEditP(p)} className="press"
+                          style={{marginRight:4,padding:"3px 9px",
+                            background:editPid===p.id&&pModal?"transparent":"transparent",
+                            border:`1px solid ${editPid===p.id&&pModal?C.g:C.bo1}`,
+                            borderRadius:6,color:editPid===p.id&&pModal?C.g:C.t0,fontSize:10,fontWeight:editPid===p.id&&pModal?700:400}}>
+                          {editPid===p.id&&pModal?"✓ Edit":"Edit"}</button>
                         <button onClick={()=>fbDeleteProduct(p.id,p.name,p.business,user.name).then(()=>toast("Produk dihapus")).catch(e=>toast(e.message,"err"))} className="press" style={{padding:"3px 9px",background:C.r1,border:`1px solid ${C.r}22`,borderRadius:6,color:C.r,fontSize:10}}>Hapus</button>
                       </td>
-                    </tr>;})}
+                    </tr>
+                    {/* ─── Inline edit form (desktop) ─── */}
+                    {editPid===p.id&&pModal&&!inlineAddMode&&<tr id={"prod-inline-"+p.id}>
+                      <td colSpan={9} style={{padding:"0 0 8px 0",background:C.bg1}}>
+                        <div style={{margin:"0 8px",background:C.bg2,borderRadius:12,border:`2px solid ${C.g}44`,padding:"14px",animation:"fadeUp .2s ease"}}>
+                          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
+                            <span style={{fontSize:12,fontWeight:800,color:C.g}}>✏️ Edit: {p.name}</span>
+                            <button onClick={()=>{setPModal(false);setEditPid(null);}} style={{background:"transparent",border:"none",color:C.t3,fontSize:18,cursor:"pointer",lineHeight:1}}>×</button>
+                          </div>
+                          <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:8,marginBottom:8}}>
+                            <div style={{gridColumn:"span 2"}}>
+                              <div style={{fontSize:9,fontWeight:700,color:C.t2,textTransform:"uppercase",letterSpacing:.5,marginBottom:3}}>Nama Produk *</div>
+                              <input value={pForm.name||""} onChange={e=>setPForm(x=>({...x,name:e.target.value}))}
+                                style={{...IS,width:"100%",boxSizing:"border-box",padding:"9px 11px"}}
+                                onFocus={e=>e.target.style.borderColor=C.g+"88"} onBlur={e=>e.target.style.borderColor=C.bo0}/>
+                            </div>
+                            <div>
+                              <div style={{fontSize:9,fontWeight:700,color:C.t2,textTransform:"uppercase",letterSpacing:.5,marginBottom:3}}>Kategori</div>
+                              <input value={pForm.category||""} onChange={e=>setPForm(x=>({...x,category:e.target.value}))}
+                                style={{...IS,width:"100%",boxSizing:"border-box",padding:"9px 11px"}}
+                                onFocus={e=>e.target.style.borderColor=C.g+"88"} onBlur={e=>e.target.style.borderColor=C.bo0}/>
+                            </div>
+                            <div>
+                              <div style={{fontSize:9,fontWeight:700,color:C.t2,textTransform:"uppercase",letterSpacing:.5,marginBottom:3}}>Stok *</div>
+                              <input type="number" value={pForm.stock||""} onChange={e=>setPForm(x=>({...x,stock:e.target.value}))}
+                                style={{...IS,width:"100%",boxSizing:"border-box",padding:"9px 11px"}}
+                                onFocus={e=>e.target.style.borderColor=C.g+"88"} onBlur={e=>e.target.style.borderColor=C.bo0}/>
+                            </div>
+                          </div>
+                          {/* Price drawer */}
+                          <button onClick={()=>setShowPriceDrawer(x=>!x)} className="press"
+                            style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"8px 11px",
+                              background:C.bg3,border:`1px solid ${C.bo0}`,borderRadius:8,cursor:"pointer",fontFamily:F.sans,width:"100%",textAlign:"left",marginBottom:6,boxSizing:"border-box"}}>
+                            <span style={{fontSize:11,fontWeight:700,color:C.t1}}>
+                              💰 Harga & HPP
+                              {pForm.price&&+pForm.price>0&&<span className="mn" style={{color:C.g,marginLeft:6}}>{rp(pForm.price)}</span>}
+                              {pForm.hpp&&+pForm.hpp>0&&<span className="mn" style={{color:C.a,marginLeft:4}}>/ HPP {rp(pForm.hpp)}</span>}
+                            </span>
+                            <span style={{fontSize:11,color:C.t2,transition:"transform .2s",transform:showPriceDrawer?"rotate(180deg)":"none",display:"inline-block"}}>▾</span>
+                          </button>
+                          {showPriceDrawer&&<div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:8,marginBottom:8,animation:"fadeUp .15s ease"}}>
+                            <div>
+                              <div style={{fontSize:9,fontWeight:700,color:C.g,textTransform:"uppercase",letterSpacing:.5,marginBottom:3}}>Harga Jual</div>
+                              <input type="number" value={pForm.price||""} onChange={e=>setPForm(x=>({...x,price:e.target.value}))}
+                                style={{...IS,width:"100%",boxSizing:"border-box",padding:"9px 11px"}}
+                                onFocus={e=>e.target.style.borderColor=C.g+"88"} onBlur={e=>e.target.style.borderColor=C.bo0}/>
+                            </div>
+                            <div>
+                              <div style={{fontSize:9,fontWeight:700,color:C.a,textTransform:"uppercase",letterSpacing:.5,marginBottom:3}}>HPP / Modal</div>
+                              <input type="number" value={pForm.hpp||""} onChange={e=>setPForm(x=>({...x,hpp:e.target.value}))}
+                                style={{...IS,width:"100%",boxSizing:"border-box",padding:"9px 11px",borderColor:C.a+"44"}}
+                                onFocus={e=>e.target.style.borderColor=C.a+"88"} onBlur={e=>e.target.style.borderColor=C.a+"44"}/>
+                            </div>
+                            {pForm.price&&pForm.hpp&&+pForm.price>0&&+pForm.hpp>0&&<div style={{display:"flex",alignItems:"center",padding:"0 4px",fontSize:11,flexDirection:"column",justifyContent:"center",gap:2}}>
+                              <span style={{color:C.g,fontWeight:700}}>{((+pForm.price-+pForm.hpp)/+pForm.price*100).toFixed(1)}%</span>
+                              <span style={{color:C.t3,fontSize:9}}>margin</span>
+                            </div>}
+                          </div>}
+                          <div style={{display:"flex",gap:7}}>
+                            <Btn onClick={saveProd} size="sm">✓ Simpan</Btn>
+                            <Btn onClick={()=>{setPModal(false);setEditPid(null);}} outline size="sm">Batal</Btn>
+                          </div>
+                        </div>
+                      </td>
+                    </tr>};})}
                   </tbody>
                 </table>
               </TableWrap>
@@ -3038,9 +3169,75 @@ function AppInner() {
                   </div>
                 </div>
                 <div style={{display:"flex",gap:8}}>
-                  <button onClick={()=>openEditP(p)} className="press" style={{flex:1,padding:"11px",background:"transparent",border:`1.5px solid ${C.bo1}`,borderRadius:10,color:C.t0,fontSize:13,fontWeight:600,fontFamily:F.sans}}>✏️ Edit</button>
+                  <button onClick={()=>openEditP(p)} className="press"
+                    style={{flex:1,padding:"11px",
+                      background:editPid===p.id&&pModal?C.g1:"transparent",
+                      border:`1.5px solid ${editPid===p.id&&pModal?C.g:C.bo1}`,
+                      borderRadius:10,color:editPid===p.id&&pModal?C.g:C.t0,fontSize:13,fontWeight:600,fontFamily:F.sans}}>
+                    {editPid===p.id&&pModal?"✓ Sedang Diedit":"✏️ Edit"}</button>
                   <button onClick={()=>fbDeleteProduct(p.id,p.name,p.business,user.name).then(()=>toast("Produk dihapus")).catch(e=>toast(e.message,"err"))} className="press" style={{padding:"11px 16px",background:C.r1,border:`1.5px solid ${C.r}33`,borderRadius:10,color:C.r,fontSize:13,fontFamily:F.sans}}>🗑</button>
                 </div>
+                {/* Inline edit form (mobile) */}
+                {editPid===p.id&&pModal&&!inlineAddMode&&<div id={"prod-inline-"+p.id} style={{marginTop:10,background:C.bg3,borderRadius:12,border:`2px solid ${C.g}44`,padding:"12px",animation:"fadeUp .2s ease"}}>
+                  <div style={{fontSize:11,fontWeight:800,color:C.g,marginBottom:10}}>✏️ Edit Produk</div>
+                  <div style={{display:"flex",flexDirection:"column",gap:8}}>
+                    <div>
+                      <div style={{fontSize:9,fontWeight:700,color:C.t2,textTransform:"uppercase",letterSpacing:.5,marginBottom:3}}>Nama Produk *</div>
+                      <input value={pForm.name||""} onChange={e=>setPForm(x=>({...x,name:e.target.value}))}
+                        style={{...IS,width:"100%",boxSizing:"border-box"}}
+                        onFocus={e=>e.target.style.borderColor=C.g+"88"} onBlur={e=>e.target.style.borderColor=C.bo0}/>
+                    </div>
+                    <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
+                      <div>
+                        <div style={{fontSize:9,fontWeight:700,color:C.t2,textTransform:"uppercase",letterSpacing:.5,marginBottom:3}}>Kategori</div>
+                        <input value={pForm.category||""} onChange={e=>setPForm(x=>({...x,category:e.target.value}))}
+                          style={{...IS,width:"100%",boxSizing:"border-box"}}
+                          onFocus={e=>e.target.style.borderColor=C.g+"88"} onBlur={e=>e.target.style.borderColor=C.bo0}/>
+                      </div>
+                      <div>
+                        <div style={{fontSize:9,fontWeight:700,color:C.t2,textTransform:"uppercase",letterSpacing:.5,marginBottom:3}}>Stok *</div>
+                        <input type="number" value={pForm.stock||""} onChange={e=>setPForm(x=>({...x,stock:e.target.value}))}
+                          style={{...IS,width:"100%",boxSizing:"border-box"}}
+                          onFocus={e=>e.target.style.borderColor=C.g+"88"} onBlur={e=>e.target.style.borderColor=C.bo0}/>
+                      </div>
+                    </div>
+                    {/* Price drawer */}
+                    <button onClick={()=>setShowPriceDrawer(x=>!x)} className="press"
+                      style={{display:"flex",alignItems:"center",justifyContent:"space-between",
+                        padding:"9px 12px",background:C.bg2,border:`1px solid ${C.bo0}`,
+                        borderRadius:9,cursor:"pointer",fontFamily:F.sans,width:"100%",textAlign:"left",boxSizing:"border-box"}}>
+                      <span style={{fontSize:11,fontWeight:700,color:C.t1}}>
+                        💰 Harga & HPP
+                        {pForm.price&&+pForm.price>0&&<span className="mn" style={{color:C.g,marginLeft:5}}>{rp(pForm.price)}</span>}
+                        {pForm.hpp&&+pForm.hpp>0&&<span className="mn" style={{color:C.a,marginLeft:4}}>/ {rp(pForm.hpp)}</span>}
+                      </span>
+                      <span style={{fontSize:11,color:C.t2,transition:"transform .2s",transform:showPriceDrawer?"rotate(180deg)":"none",display:"inline-block"}}>▾</span>
+                    </button>
+                    {showPriceDrawer&&<div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,animation:"fadeUp .15s ease"}}>
+                      <div>
+                        <div style={{fontSize:9,fontWeight:700,color:C.g,textTransform:"uppercase",letterSpacing:.5,marginBottom:3}}>Harga Jual</div>
+                        <input type="number" value={pForm.price||""} onChange={e=>setPForm(x=>({...x,price:e.target.value}))}
+                          style={{...IS,width:"100%",boxSizing:"border-box"}}
+                          onFocus={e=>e.target.style.borderColor=C.g+"88"} onBlur={e=>e.target.style.borderColor=C.bo0}/>
+                      </div>
+                      <div>
+                        <div style={{fontSize:9,fontWeight:700,color:C.a,textTransform:"uppercase",letterSpacing:.5,marginBottom:3}}>HPP / Modal</div>
+                        <input type="number" value={pForm.hpp||""} onChange={e=>setPForm(x=>({...x,hpp:e.target.value}))}
+                          style={{...IS,width:"100%",boxSizing:"border-box",borderColor:C.a+"44"}}
+                          onFocus={e=>e.target.style.borderColor=C.a+"88"} onBlur={e=>e.target.style.borderColor=C.a+"44"}/>
+                      </div>
+                      {pForm.price&&pForm.hpp&&+pForm.price>0&&+pForm.hpp>0&&(
+                        <div style={{gridColumn:"span 2",padding:"6px 10px",background:C.g2,borderRadius:7,fontSize:11,display:"flex",gap:12}}>
+                          <span style={{color:C.t2}}>Margin: <b style={{color:C.g}}>{((+pForm.price-+pForm.hpp)/+pForm.price*100).toFixed(1)}%</b></span>
+                          <span style={{color:C.t2}}>Laba: <b style={{color:C.cy}}>{rp(+pForm.price-+pForm.hpp)}</b></span>
+                        </div>)}
+                    </div>}
+                    <div style={{display:"flex",gap:7,marginTop:2}}>
+                      <Btn onClick={saveProd} full size="sm">✓ Simpan</Btn>
+                      <Btn onClick={()=>{setPModal(false);setEditPid(null);}} outline size="sm">Batal</Btn>
+                    </div>
+                  </div>
+                </div>}
               </div>;})}
           </div>
         </div>}
@@ -3615,7 +3812,7 @@ function AppInner() {
       <nav className="bnav">
         {BNAV_TABS.map(t=>{const isAct=adminTab===t.id&&!showMoreDrawer;
           return <button key={t.id} className={`bnavbtn${isAct?" active":""}`}
-            onClick={()=>{setAdminTab(t.id);setSearchQ("");setPModal(false);setShowMoreDrawer(false);}}>
+            onClick={()=>{setAdminTab(t.id);setSearchQ("");setPModal(false);setShowMoreDrawer(false);setEditPid(null);setInlineAddMode(false);}}>
             <span className="bnav-icon">{t.ic}</span>
             <span className="bnav-label" style={{color:isAct?C.g:C.t2}}>{t.label}</span>
             {isAct&&<div className="bnav-dot"/>}
