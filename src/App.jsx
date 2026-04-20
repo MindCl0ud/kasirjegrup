@@ -3052,7 +3052,25 @@ function AppInner() {
                       <td style={{padding:"14px 13px",fontFamily:F.mono,color:C.a,fontSize:11}}>{rp(p.hpp||0)}</td>
                       <td style={{padding:"14px 13px",fontFamily:F.mono,color:C.g,fontSize:11}}>{rp(p.price)}</td>
                       <td style={{padding:"14px 13px",fontFamily:F.mono,fontSize:11,color:C.cy}}>{mg}</td>
-                      <td style={{padding:"14px 13px"}}><StockBadge s={p.stock}/></td>
+                      <td style={{padding:"10px 13px"}}>
+                        <div style={{display:"flex",alignItems:"center",gap:5}}>
+                          <button onClick={e=>{e.stopPropagation();doQuickAdj(p,-1);}} disabled={p.stock===0}
+                            className="press"
+                            style={{width:26,height:26,borderRadius:7,display:"flex",alignItems:"center",justifyContent:"center",
+                              fontSize:16,fontWeight:700,flexShrink:0,
+                              background:p.stock===0?C.bg4:C.r1,
+                              border:`1.5px solid ${p.stock===0?C.bo0:C.r+"44"}`,
+                              color:p.stock===0?C.t3:C.r,
+                              cursor:p.stock===0?"not-allowed":"pointer"}}>−</button>
+                          <span className="mn" style={{minWidth:28,textAlign:"center",fontSize:14,fontWeight:800,
+                            color:p.stock===0?C.r:p.stock<10?C.a:C.t0}}>{p.stock}</span>
+                          <button onClick={e=>{e.stopPropagation();doQuickAdj(p,1);}}
+                            className="press"
+                            style={{width:26,height:26,borderRadius:7,display:"flex",alignItems:"center",justifyContent:"center",
+                              fontSize:16,fontWeight:700,flexShrink:0,
+                              background:C.g1,border:`1.5px solid ${C.g}44`,color:C.g,cursor:"pointer"}}>+</button>
+                        </div>
+                      </td>
                       <td style={{padding:"14px 13px"}}>
                         {(p.addons||[]).length>0
                           ?<span style={{padding:"2px 8px",borderRadius:20,fontSize:9.5,fontWeight:700,background:C.vi1,color:C.vi,border:`1px solid ${C.vi}22`,cursor:"pointer"}}
@@ -3152,7 +3170,27 @@ function AppInner() {
                       {(p.addons||[]).length>0&&<span style={{fontSize:10,background:C.vi1,color:C.vi,padding:"1px 7px",borderRadius:20,fontWeight:700}}>+{(p.addons||[]).length} add-on</span>}
                     </div>
                   </div>
-                  <StockBadge s={p.stock}/>
+                  {/* Stock +/- controls */}
+                  <div style={{display:"flex",alignItems:"center",gap:6,flexShrink:0}}>
+                    <button onClick={e=>{e.stopPropagation();doQuickAdj(p,-1);}} disabled={p.stock===0}
+                      className="press"
+                      style={{width:30,height:30,borderRadius:8,display:"flex",alignItems:"center",justifyContent:"center",
+                        fontSize:18,fontWeight:700,
+                        background:p.stock===0?C.bg4:C.r1,
+                        border:`1.5px solid ${p.stock===0?C.bo0:C.r+"44"}`,
+                        color:p.stock===0?C.t3:C.r,
+                        cursor:p.stock===0?"not-allowed":"pointer"}}>−</button>
+                    <div style={{textAlign:"center",minWidth:32}}>
+                      <div className="mn" style={{fontSize:20,fontWeight:800,lineHeight:1,
+                        color:p.stock===0?C.r:p.stock<10?C.a:C.t0}}>{p.stock}</div>
+                      <div style={{fontSize:9,color:C.t3,marginTop:1}}>stok</div>
+                    </div>
+                    <button onClick={e=>{e.stopPropagation();doQuickAdj(p,1);}}
+                      className="press"
+                      style={{width:30,height:30,borderRadius:8,display:"flex",alignItems:"center",justifyContent:"center",
+                        fontSize:18,fontWeight:700,
+                        background:C.g1,border:`1.5px solid ${C.g}44`,color:C.g,cursor:"pointer"}}>+</button>
+                  </div>
                 </div>
                 <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:8,marginBottom:10,background:C.bg3,borderRadius:10,padding:"10px 12px"}}>
                   <div>
