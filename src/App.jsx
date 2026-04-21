@@ -1350,6 +1350,7 @@ function AppInner() {
   const [reportBiz,setReportBiz]=useState("ALL");
   const [reportRange,setReportRange]=useState("month");
   const [reportKasir,setReportKasir]=useState("ALL");
+  const [reportCategory,setReportCategory]=useState("ALL");
   const [lapFrom,setLapFrom]=useState("");
   const [lapTo,setLapTo]=useState("");
   const [gsUrl,setGsUrl]=useState(()=>localStorage.getItem("je_gs_url")||"");
@@ -1773,8 +1774,22 @@ function AppInner() {
       return true;
     });
   };
+  // Collect all categories from products (not from transactions — categories live on products)
+  const allCategories=[...new Set(prods.map(p=>p.category).filter(Boolean))].sort();
   const filtTrx=getDateFilter(
-    trxs.filter(t=>(reportBiz==="ALL"||t.business===reportBiz)&&(reportKasir==="ALL"||String(t.kasirId)===reportKasir))
+    trxs.filter(t=>{
+      if(reportBiz!=="ALL"&&t.business!==reportBiz) return false;
+      if(reportKasir!=="ALL"&&String(t.kasirId)!==reportKasir) return false;
+      if(reportCategory!=="ALL"){
+        // keep trx only if it has at least one item in selected category
+        const hasCategory=(t.items||[]).some(item=>{
+          const prod=prods.find(p=>p.barcode===item.barcode);
+          return prod?.category===reportCategory;
+        });
+        if(!hasCategory) return false;
+      }
+      return true;
+    })
   );
   const totalRev=filtTrx.reduce((s,t)=>s+t.total,0);
   const totalHppAll=filtTrx.reduce((s,t)=>s+(t.totalHpp||0),0);
@@ -3325,6 +3340,15 @@ function AppInner() {
               <option value="ALL">👤 Semua Kasir</option>
               {users.filter(u=>u.role==="kasir"||u.role==="admin").map(u=><option key={u.id} value={String(u.id)}>{u.name}</option>)}
             </select>
+            <div style={{width:1,height:20,background:C.bo0,alignSelf:"center"}}/>
+            {/* Kategori filter */}
+            <select value={reportCategory} onChange={e=>setReportCategory(e.target.value)}
+              style={{padding:"8px 12px",background:reportCategory!=="ALL"?C.cy1:C.bg2,
+                border:`1.5px solid ${reportCategory!=="ALL"?C.cy:C.bo0}`,borderRadius:50,
+                color:reportCategory!=="ALL"?C.cy:C.t0,fontSize:12,fontFamily:F.sans,cursor:"pointer",fontWeight:600}}>
+              <option value="ALL">🏷 Semua Kategori</option>
+              {allCategories.map(cat=><option key={cat} value={cat}>{cat}</option>)}
+            </select>
           </div>
           {/* Period chips */}
           <div style={{display:"flex",gap:6,flexWrap:"wrap",alignItems:"center",marginTop:2}}>
@@ -3339,6 +3363,29 @@ function AppInner() {
                 style={{padding:"8px 10px",background:C.bg3,border:`1.5px solid ${C.bo1}`,borderRadius:10,color:C.t0,fontSize:12,fontFamily:F.sans}}/>
             </div>}
           </div>
+          {/* Active filter badges */}
+          {(reportBiz!=="ALL"||reportKasir!=="ALL"||reportCategory!=="ALL")&&(
+            <div style={{display:"flex",gap:6,flexWrap:"wrap",alignItems:"center"}}>
+              <span style={{fontSize:10,color:C.t3,fontWeight:600}}>Filter aktif:</span>
+              {reportBiz!=="ALL"&&<span style={{padding:"3px 10px",borderRadius:20,fontSize:11,fontWeight:700,
+                background:reportBiz==="JB_STORE"?C.p1:C.b1,color:reportBiz==="JB_STORE"?C.p:C.b}}>
+                {BIZ[reportBiz]?.icon} {BIZ[reportBiz]?.name}
+                <button onClick={()=>setReportBiz("ALL")} style={{background:"none",border:"none",color:"inherit",marginLeft:4,cursor:"pointer",fontSize:12,lineHeight:1}}>×</button>
+              </span>}
+              {reportKasir!=="ALL"&&<span style={{padding:"3px 10px",borderRadius:20,fontSize:11,fontWeight:700,background:C.vi1,color:C.vi}}>
+                👤 {users.find(u=>String(u.id)===reportKasir)?.name||reportKasir}
+                <button onClick={()=>setReportKasir("ALL")} style={{background:"none",border:"none",color:"inherit",marginLeft:4,cursor:"pointer",fontSize:12,lineHeight:1}}>×</button>
+              </span>}
+              {reportCategory!=="ALL"&&<span style={{padding:"3px 10px",borderRadius:20,fontSize:11,fontWeight:700,background:C.cy1,color:C.cy}}>
+                🏷 {reportCategory}
+                <button onClick={()=>setReportCategory("ALL")} style={{background:"none",border:"none",color:"inherit",marginLeft:4,cursor:"pointer",fontSize:12,lineHeight:1}}>×</button>
+              </span>}
+              <button onClick={()=>{setReportBiz("ALL");setReportKasir("ALL");setReportCategory("ALL");setReportRange("month");}}
+                style={{padding:"3px 10px",borderRadius:20,fontSize:11,fontWeight:600,background:C.r1,border:`1px solid ${C.r}22`,color:C.r,cursor:"pointer"}}>
+                Reset semua
+              </button>
+            </div>
+          )}
           {/* KPI */}
           {/* Desktop */}
           <div className="hide-mobile stat-grid-4" style={{display:"grid",gap:8}}>
@@ -3395,7 +3442,11 @@ function AppInner() {
             // Expand: setiap item di setiap transaksi jadi satu baris
             const rows=[];
             filtTrx.forEach(t=>{
-              (t.items||[]).forEach(item=>{
+              (t.items||[]).filter(item=>{
+                if(reportCategory==="ALL") return true;
+                const prod=prods.find(p=>p.barcode===item.barcode);
+                return prod?.category===reportCategory;
+              }).forEach(item=>{
                 rows.push({
                   trxId:t.id, date:t.date,
                   namaPembeli:t.namaPembeli||"Umum",
