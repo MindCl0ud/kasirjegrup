@@ -1351,6 +1351,8 @@ function AppInner() {
   const [reportRange,setReportRange]=useState("month");
   const [reportKasir,setReportKasir]=useState("ALL");
   const [reportCategory,setReportCategory]=useState("ALL");
+  const [searchInvoice,setSearchInvoice]=useState("");
+  const [expandedTrx,setExpandedTrx]=useState({}); // {trxId: true}
   const [lapFrom,setLapFrom]=useState("");
   const [lapTo,setLapTo]=useState("");
   const [gsUrl,setGsUrl]=useState(()=>localStorage.getItem("je_gs_url")||"");
@@ -3535,69 +3537,141 @@ function AppInner() {
               </div>
             </Card>;
           })()}
-          {/* Transaksi */}
-          <Card noPad style={{overflow:"hidden"}}>
-            <div style={{padding:"12px 14px",borderBottom:`1px solid ${C.bo0}`}}>
-              <span style={{fontSize:10,fontWeight:700,color:C.t2,textTransform:"uppercase",letterSpacing:1}}>Riwayat Transaksi ({filtTrx.length})</span>
-            </div>
-            {filtTrx.length===0?<div style={{padding:"24px",textAlign:"center",color:C.t3,fontSize:12}}>Belum ada transaksi</div>
-            :<>
-              {/* Desktop */}
-              <div className="hide-mobile"><TableWrap>
-                <table style={{width:"100%",borderCollapse:"collapse",fontSize:12,minWidth:540}}>
-                  <THead cols={["ID","Tanggal","Pembeli","Kasir","Bisnis","Total","Laba","Bayar","Retur"]}/>
-                  <tbody>{filtTrx.slice(0,100).map((t,i)=><tr key={t.id} className="hrow" style={{borderTop:`1px solid ${C.bo0}`,background:i%2===0?"transparent":C.bg0}}>
-                    <td style={{padding:"12px 13px",fontFamily:F.mono,fontSize:9.5,color:C.t3}}>{t.id?.slice(-10)}</td>
-                    <td style={{padding:"12px 13px",fontSize:10,color:C.t2,whiteSpace:"nowrap"}}>{t.date}</td>
-                    <td style={{padding:"12px 13px",fontSize:11,fontWeight:600}}>
-                      <div style={{display:"flex",alignItems:"center",gap:4}}>
-                        {t.namaPembeli&&t.namaPembeli!=="Umum"&&<span style={{fontSize:12}}>🧑</span>}
-                        <span style={{color:!t.namaPembeli||t.namaPembeli==="Umum"?C.t3:C.t0}}>{t.namaPembeli||"Umum"}</span>
-                      </div>
-                    </td>
-                    <td style={{padding:"12px 13px",fontWeight:500,fontSize:11}}>{t.kasir}</td>
-                    <td style={{padding:"12px 13px"}}><BizChip biz={t.business} sm/></td>
-                    <td style={{padding:"12px 13px",fontFamily:F.mono,color:C.g,fontSize:11,fontWeight:700}}>{rp(t.total)}</td>
-                    <td style={{padding:"12px 13px",fontFamily:F.mono,color:C.cy,fontSize:11}}>{rp(t.profit||0)}</td>
-                    <td style={{padding:"12px 13px",fontSize:10}}>
-                      <span style={{padding:"2px 7px",borderRadius:20,background:C.cy1,color:C.cy,fontSize:9.5,fontWeight:700}}>{t.payment||"Tunai"}</span>
-                    </td>
-                    <td style={{padding:"12px 13px"}}>
-                      {t.returned?<span style={{fontSize:10,color:C.a,fontWeight:600}}>✓ Retur</span>
-                      :<button onClick={()=>{if(window.confirm(`Retur transaksi ${t.id}?\nStok akan dikembalikan.`))doRetur(t);}} className="press"
-                        style={{padding:"3px 9px",background:C.a1,border:`1px solid ${C.a}22`,borderRadius:6,color:C.a,fontSize:10,fontWeight:700}}>Retur</button>}
-                    </td>
-                  </tr>)}</tbody>
-                </table>
-              </TableWrap></div>
-              {/* Mobile cards */}
-              <div className="hide-desktop mobile-card-list">
-                {filtTrx.slice(0,100).map(t=><div key={t.id} style={{background:C.bg2,borderRadius:14,border:`1px solid ${C.bo0}`,padding:"13px 14px"}}>
-                  <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:8}}>
-                    <div>
-                      <div style={{fontSize:13,fontWeight:700,color:C.g,marginBottom:2}}>{rp(t.total)}</div>
-                      <div style={{fontSize:10,color:C.t2}}>{t.date}</div>
-                    </div>
-                    <div style={{display:"flex",flexDirection:"column",alignItems:"flex-end",gap:4}}>
-                      <BizChip biz={t.business} sm/>
-                      <span style={{fontSize:9.5,color:C.t3,fontFamily:F.mono}}>{t.id?.slice(-8)}</span>
-                    </div>
-                  </div>
-                  <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:6,background:C.bg3,borderRadius:8,padding:"8px 10px",marginBottom:8}}>
-                    <div><div style={{fontSize:9,color:C.t3,marginBottom:1}}>KASIR</div><div style={{fontSize:11,fontWeight:600,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{t.kasir}</div></div>
-                  <div><div style={{fontSize:9,color:C.t3,marginBottom:1}}>PEMBELI</div><div style={{fontSize:11,fontWeight:600,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",color:!t.namaPembeli||t.namaPembeli==="Umum"?C.t3:C.t0}}>{t.namaPembeli||"Umum"}</div></div>
-                    <div><div style={{fontSize:9,color:C.t3,marginBottom:1}}>LABA</div><div className="mn" style={{fontSize:11,color:C.cy,fontWeight:700}}>{rp(t.profit||0)}</div></div>
-                    <div><div style={{fontSize:9,color:C.t3,marginBottom:1}}>BAYAR</div><div style={{fontSize:11,color:C.t1}}>{t.payment||"Tunai"}</div></div>
-                  </div>
-                  {t.discount>0&&<div style={{fontSize:11,color:C.r,marginBottom:6}}>Diskon: −{rp(t.discount)}</div>}
-                  {t.returned?<span style={{fontSize:11,color:C.a,fontWeight:600,display:"block"}}>✓ Sudah diretur</span>
-                  :<button onClick={()=>{if(window.confirm(`Retur transaksi ${t.id}?\nStok akan dikembalikan.`))doRetur(t);}} className="press"
-                    style={{width:"100%",padding:"10px",background:C.a1,border:`1.5px solid ${C.a}33`,borderRadius:9,color:C.a,fontSize:12,fontWeight:700,fontFamily:F.sans}}>↩ Retur Transaksi</button>}
-                </div>)}
+          {/* Invoice — satu baris, expand untuk detail */}
+          {(()=>{
+            const sq=searchInvoice.trim().toLowerCase();
+            const trxFiltered=filtTrx.filter(t=>!sq||
+              (t.namaPembeli||"").toLowerCase().includes(sq)||
+              (t.id||"").toLowerCase().includes(sq)||
+              (t.kasir||"").toLowerCase().includes(sq)
+            );
+            const toggleExpand=id=>setExpandedTrx(p=>({...p,[id]:!p[id]}));
+            return <Card noPad style={{overflow:"hidden"}}>
+              <div style={{padding:"12px 14px",borderBottom:`1px solid ${C.bo0}`,display:"flex",gap:8,alignItems:"center",flexWrap:"wrap"}}>
+                <span style={{fontSize:10,fontWeight:700,color:C.t2,textTransform:"uppercase",letterSpacing:1,flex:1,whiteSpace:"nowrap"}}>
+                  Invoice ({trxFiltered.length}{sq?` dari ${filtTrx.length}`:""})
+                </span>
+                <div style={{position:"relative",flex:"0 1 220px",minWidth:160}}>
+                  <span style={{position:"absolute",left:9,top:"50%",transform:"translateY(-50%)",fontSize:13,color:C.t2,pointerEvents:"none"}}>🔍</span>
+                  <input value={searchInvoice} onChange={e=>setSearchInvoice(e.target.value)}
+                    placeholder="Cari nama pembeli / ID..."
+                    style={{width:"100%",padding:"7px 10px 7px 30px",background:C.bg3,
+                      border:`1.5px solid ${searchInvoice?C.g+"88":C.bo0}`,borderRadius:20,
+                      color:C.t0,fontSize:12,fontFamily:F.sans,boxSizing:"border-box"}}/>
+                  {searchInvoice&&<button onClick={()=>setSearchInvoice("")}
+                    style={{position:"absolute",right:8,top:"50%",transform:"translateY(-50%)",
+                      background:"none",border:"none",color:C.t3,fontSize:16,cursor:"pointer",lineHeight:1}}>×</button>}
+                </div>
+                {trxFiltered.length>0&&<button onClick={()=>{
+                  const allEx=trxFiltered.every(t=>expandedTrx[t.id]);
+                  const upd={};trxFiltered.forEach(t=>upd[t.id]=!allEx);
+                  setExpandedTrx(p=>({...p,...upd}));
+                }} className="press"
+                  style={{padding:"6px 12px",background:C.bg3,border:`1px solid ${C.bo0}`,
+                    borderRadius:20,color:C.t2,fontSize:11,fontWeight:600,whiteSpace:"nowrap"}}>
+                  {trxFiltered.every(t=>expandedTrx[t.id])?"↑ Tutup semua":"↓ Buka semua"}
+                </button>}
               </div>
-            </>}
-          </Card>
+              {trxFiltered.length===0
+                ?<div style={{padding:"32px",textAlign:"center",color:C.t3,fontSize:13}}>
+                  {searchInvoice?"Tidak ditemukan: "+searchInvoice:"Belum ada transaksi"}
+                </div>
+                :<div>
+                  {trxFiltered.slice(0,150).map((t,i)=>{
+                    const expanded=!!expandedTrx[t.id];
+                    const itemCount=(t.items||[]).reduce((s,it)=>s+it.qty,0);
+                    const hasPembeli=t.namaPembeli&&t.namaPembeli!=="Umum";
+                    return <div key={t.id} style={{borderTop:i>0?`1px solid ${C.bo0}`:undefined}}>
+                      {/* Baris ringkasan invoice */}
+                      <div onClick={()=>toggleExpand(t.id)} className="hrow"
+                        style={{padding:"12px 14px",cursor:"pointer",display:"flex",
+                          alignItems:"center",gap:10,
+                          background:expanded?`${C.g}07`:"transparent",transition:"background .15s"}}>
+                        <span style={{fontSize:12,color:C.t3,flexShrink:0,transition:"transform .2s",
+                          display:"inline-block",transform:expanded?"rotate(90deg)":"rotate(0deg)"}}>▶</span>
+                        <div style={{flex:1,minWidth:0}}>
+                          <div style={{display:"flex",alignItems:"center",gap:6,flexWrap:"wrap",marginBottom:3}}>
+                            <span className="mn" style={{fontSize:10,color:C.t3}}>{t.id?.slice(-12)}</span>
+                            {hasPembeli&&<span style={{padding:"1px 8px",borderRadius:20,
+                              background:C.b1,color:C.b,fontSize:10,fontWeight:700}}>🧑 {t.namaPembeli}</span>}
+                            {t.returned&&<span style={{padding:"1px 7px",borderRadius:20,
+                              background:C.a1,color:C.a,fontSize:9.5,fontWeight:700}}>Retur</span>}
+                          </div>
+                          <div style={{display:"flex",gap:6,alignItems:"center",flexWrap:"wrap"}}>
+                            <span style={{fontSize:10,color:C.t2}}>{t.date}</span>
+                            <span style={{fontSize:10,color:C.t3}}>·</span>
+                            <span style={{fontSize:10,color:C.t2}}>{t.kasir}</span>
+                            <span style={{fontSize:10,color:C.t3}}>·</span>
+                            <BizChip biz={t.business} sm/>
+                            <span style={{fontSize:10,color:C.t3}}>·</span>
+                            <span style={{fontSize:10,color:C.t2}}>{itemCount} item</span>
+                            <span style={{padding:"1px 7px",borderRadius:20,
+                              background:C.cy1,color:C.cy,fontSize:9.5,fontWeight:700}}>{t.payment||"Tunai"}</span>
+                          </div>
+                        </div>
+                        <div style={{textAlign:"right",flexShrink:0}}>
+                          <div className="mn" style={{fontSize:15,fontWeight:800,color:C.g}}>{rp(t.total)}</div>
+                          {(t.profit||0)>0&&<div className="mn" style={{fontSize:10,color:C.cy,marginTop:1}}>+{rp(t.profit)}</div>}
+                        </div>
+                      </div>
+                      {/* Detail invoice (expanded) */}
+                      {expanded&&<div style={{background:C.bg0,borderTop:`1px solid ${C.bo0}`,
+                        padding:"10px 14px 14px",animation:"fadeUp .15s ease"}}>
+                        <div style={{display:"flex",flexDirection:"column",gap:6,marginBottom:10}}>
+                          {(t.items||[]).map((item,ii)=>(
+                            <div key={ii} style={{display:"flex",alignItems:"center",gap:10,
+                              padding:"8px 12px",background:C.bg2,borderRadius:9,border:`1px solid ${C.bo0}`}}>
+                              <div style={{flex:1,minWidth:0}}>
+                                <div style={{fontSize:12.5,fontWeight:600,overflow:"hidden",
+                                  textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{item.name}</div>
+                                <div className="mn" style={{fontSize:10,color:C.t2,marginTop:1}}>{item.barcode}</div>
+                              </div>
+                              <div style={{textAlign:"right",flexShrink:0}}>
+                                <div className="mn" style={{fontSize:11,color:C.t2}}>{item.qty} × {rp(item.price)}</div>
+                                <div className="mn" style={{fontSize:14,fontWeight:800,color:C.g,marginTop:1}}>{rp(item.price*item.qty)}</div>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                        <div style={{background:C.bg2,borderRadius:9,border:`1px solid ${C.bo0}`,padding:"10px 12px",marginBottom:10}}>
+                          {t.discount>0&&<>
+                            <div style={{display:"flex",justifyContent:"space-between",fontSize:12,marginBottom:4,color:C.t2}}>
+                              <span>Subtotal</span><span className="mn">{rp(t.subtotal||t.total)}</span>
+                            </div>
+                            <div style={{display:"flex",justifyContent:"space-between",fontSize:12,marginBottom:4}}>
+                              <span style={{color:C.r}}>Diskon</span><span className="mn" style={{color:C.r}}>− {rp(t.discount)}</span>
+                            </div>
+                          </>}
+                          <div style={{display:"flex",justifyContent:"space-between",alignItems:"baseline"}}>
+                            <span style={{fontWeight:700,fontSize:13}}>Total</span>
+                            <span className="mn" style={{fontSize:18,fontWeight:800,color:C.g}}>{rp(t.total)}</span>
+                          </div>
+                          {(t.profit||0)>0&&<div style={{display:"flex",justifyContent:"space-between",fontSize:11,marginTop:4,color:C.t2}}>
+                            <span>Laba</span><span className="mn" style={{color:C.cy}}>{rp(t.profit)}</span>
+                          </div>}
+                        </div>
+                        <div style={{display:"flex",gap:8}}>
+                          {t.returned
+                            ?<span style={{flex:1,padding:"9px",textAlign:"center",color:C.a,fontSize:12,fontWeight:600}}>✓ Sudah diretur</span>
+                            :<button onClick={e=>{e.stopPropagation();if(window.confirm("Retur transaksi ini?\nStok akan dikembalikan."))doRetur(t);}} className="press"
+                              style={{flex:1,padding:"9px",background:C.a1,border:`1.5px solid ${C.a}33`,
+                                borderRadius:9,color:C.a,fontSize:12,fontWeight:700,fontFamily:F.sans}}>↩ Retur</button>}
+                          <button onClick={e=>{e.stopPropagation();toggleExpand(t.id);}} className="press"
+                            style={{padding:"9px 16px",background:C.bg3,border:`1px solid ${C.bo0}`,
+                              borderRadius:9,color:C.t2,fontSize:12,fontFamily:F.sans}}>Tutup</button>
+                        </div>
+                      </div>}
+                    </div>;
+                  })}
+                  {trxFiltered.length>150&&<div style={{padding:"12px 14px",fontSize:11,color:C.t3,
+                    textAlign:"center",borderTop:`1px solid ${C.bo0}`}}>
+                    Tampil 150 dari {trxFiltered.length}. Gunakan filter/pencarian untuk mempersempit.
+                  </div>}
+                </div>}
+            </Card>;
+          })()}
         </div>}
+
 
 
         {/* ── ABSENSI ── */}
