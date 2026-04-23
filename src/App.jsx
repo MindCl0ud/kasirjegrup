@@ -331,6 +331,46 @@ function ProgressBar({value,max,color=C.g,label}) {
   </div>;
 }
 
+
+// ─────────────────────────────────────────────────────────────
+//  UPDATE BANNER
+// ─────────────────────────────────────────────────────────────
+function UpdateBanner({onUpdate}) {
+  const [visible,setVisible] = React.useState(true);
+  if(!visible) return null;
+  return (
+    <div style={{
+      position:"fixed",bottom:80,left:"50%",transform:"translateX(-50%)",
+      zIndex:9000,maxWidth:"calc(100vw - 32px)",width:"max-content",
+      background:"linear-gradient(135deg,#0f1e36,#152440)",
+      border:`1px solid ${DARK_C.g}44`,borderRadius:16,
+      padding:"12px 16px",boxShadow:"0 8px 32px rgba(0,0,0,.7)",
+      display:"flex",alignItems:"center",gap:12,
+      animation:"fadeUp .3s ease",fontFamily:"system-ui,sans-serif"
+    }}>
+      <span style={{fontSize:20}}>🆕</span>
+      <div style={{flex:1,minWidth:0}}>
+        <div style={{fontSize:13,fontWeight:700,color:DARK_C.t0,marginBottom:1}}>Update tersedia!</div>
+        <div style={{fontSize:11,color:DARK_C.t2}}>Versi baru sudah siap dipasang</div>
+      </div>
+      <div style={{display:"flex",gap:6,flexShrink:0}}>
+        <button onClick={onUpdate}
+          style={{padding:"8px 16px",background:"linear-gradient(90deg,#00e5a0,#38bdf8)",
+            border:"none",borderRadius:10,color:"#020817",fontSize:12,fontWeight:800,
+            cursor:"pointer",fontFamily:"inherit",whiteSpace:"nowrap"}}>
+          ↻ Update
+        </button>
+        <button onClick={()=>setVisible(false)}
+          style={{padding:"8px 12px",background:"transparent",
+            border:`1px solid ${DARK_C.bo0}`,borderRadius:10,color:DARK_C.t2,
+            fontSize:12,cursor:"pointer",fontFamily:"inherit"}}>
+          Nanti
+        </button>
+      </div>
+    </div>
+  );
+}
+
 // ─────────────────────────────────────────────────────────────
 //  HEADER
 // ─────────────────────────────────────────────────────────────
@@ -1157,6 +1197,7 @@ function AppInner() {
   const [fbLoad,setFbLoad]=useState(true);
   // ─── Theme ───
   const [isDark,setIsDark]=useState(()=>localStorage.getItem("je_theme")!=="light");
+  const [updateReady,setUpdateReady]=useState(false);
   const toggleTheme=()=>{
     const next=!isDark;
     Object.assign(C,next?DARK_C:LIGHT_C);
@@ -1170,6 +1211,15 @@ function AppInner() {
     const on=()=>setOnline(true),off=()=>setOnline(false);
     window.addEventListener("online",on);window.addEventListener("offline",off);
     return()=>{window.removeEventListener("online",on);window.removeEventListener("offline",off);};
+  },[]);
+
+  // ── SW Update listener ────────────────────────────────────
+  useEffect(()=>{
+    // Callback dipanggil dari index.html saat ada versi baru
+    window.__onUpdateReady=()=>setUpdateReady(true);
+    // Cek apakah sudah ada update sebelum React mount
+    if(window.__pendingSW) setUpdateReady(true);
+    return()=>{ window.__onUpdateReady=null; };
   },[]);
   // ─── Firebase init ───
   useEffect(()=>{
@@ -1880,6 +1930,11 @@ function AppInner() {
   // ─────────────────────────────────────────────────────────────
   //  RENDER: Loading
   // ─────────────────────────────────────────────────────────────
+  // Update banner — tampil di semua layar
+  const UpdateBannerEl = updateReady
+    ? <UpdateBanner onUpdate={()=>{ window.__applyUpdate?.(); }}/>
+    : null;
+
   if(fbLoad) return <div style={{fontFamily:F.sans,background:C.bg1,color:C.t0,height:"100vh",
     display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:14}}>
     <style>{CSS}</style>
@@ -1909,6 +1964,7 @@ function AppInner() {
   // ─────────────────────────────────────────────────────────────
   if(screen==="login") return <div style={{fontFamily:F.sans,background:C.bg1,color:C.t0,minHeight:"100vh",
     display:"flex",alignItems:"center",justifyContent:"center",padding:16}}>
+    {UpdateBannerEl}
     <style>{CSS}</style><Toast n={notif}/>
     <div style={{position:"fixed",inset:0,pointerEvents:"none",overflow:"hidden"}}>
       <div style={{position:"absolute",top:"-15%",right:"-10%",width:"50%",paddingBottom:"50%",borderRadius:"50%",background:`radial-gradient(circle,${C.g}07,transparent 70%)`}}/>
@@ -2220,6 +2276,7 @@ function AppInner() {
     const filtered=bizProds().filter(p=>!stokSearch||p.name.toLowerCase().includes(stokSearch.toLowerCase())||p.barcode.includes(stokSearch));
     return <div style={{fontFamily:F.sans,background:C.bg1,color:C.t0,height:"100vh",display:"flex",flexDirection:"column"}}>
       <style>{CSS}</style><Toast n={notif}/>
+      {UpdateBannerEl}
       {showLowStock&&<LowStockPopup prods={prods} onClose={()=>setShowLowStock(false)}/>}
       <Header biz={biz} user={user} online={online} onLogout={doLogout}
         onSwitchBiz={user?.access?.length>1?()=>{setStokTarget(null);setIsNewProduct(false);setScreen("bizselect");}:null}
@@ -2482,6 +2539,7 @@ function AppInner() {
 
     return <div style={{fontFamily:F.sans,background:C.bg1,color:C.t0,height:"100vh",display:"flex",flexDirection:"column"}}>
       <style>{CSS}</style><Toast n={notif}/>
+      {UpdateBannerEl}
       <Header title="Admin Panel" user={user} online={online} onLogout={doLogout} lowStockCount={lowStockCount} onToggleTheme={toggleTheme} isDark={isDark} onLowStockClick={()=>setShowLowStock(true)}/>
 
       {/* Change password modal */}
@@ -3963,8 +4021,23 @@ function AppInner() {
           <Card style={{marginTop:10}}>
              <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
                <div style={{fontSize:11,color:C.t3}}>Project: <b>{loadConfig()?.projectId||"-"}</b></div>
-               <button onClick={()=>{if(window.confirm("Hapus config Firebase? Anda akan keluar.")) {clearConfig();window.location.reload();}}}
-                 style={{background:"transparent",border:"none",color:C.r,fontSize:10,textDecoration:"underline",cursor:"pointer"}}>Reset Koneksi Firebase</button>
+               <div style={{display:"flex",gap:8,alignItems:"center"}}>
+                 <button onClick={()=>{
+                   if("serviceWorker" in navigator){
+                     navigator.serviceWorker.getRegistration().then(reg=>{
+                       if(reg){reg.update().then(()=>{
+                         if(reg.waiting){setUpdateReady(true);toast("🆕 Update tersedia! Klik banner untuk pasang.","ok");}
+                         else toast("✅ Sudah versi terbaru","ok");
+                       });}
+                     });
+                   } else toast("Service Worker tidak tersedia","warn");
+                 }} className="press"
+                   style={{padding:"4px 12px",background:C.b1,border:`1px solid ${C.b}33`,borderRadius:8,color:C.b,fontSize:11,fontWeight:700}}>
+                   ↻ Cek Update
+                 </button>
+                 <button onClick={()=>{if(window.confirm("Hapus config Firebase? Anda akan keluar.")) {clearConfig();window.location.reload();}}}
+                   style={{background:"transparent",border:"none",color:C.r,fontSize:10,textDecoration:"underline",cursor:"pointer"}}>Reset Firebase</button>
+               </div>
              </div>
           </Card>
         </div>}
