@@ -1,5 +1,5 @@
 // KASIR JE GRUP — Service Worker v7 (Offline-First)
-const CACHE_NAME = "kasir-je-grup-v7";
+const CACHE_NAME = "kasir-je-grup-v8";
 
 // File list diisi otomatis saat build oleh vite plugin
 const PRECACHE_URLS = [];
