@@ -374,7 +374,7 @@ function UpdateBanner({onUpdate}) {
 // ─────────────────────────────────────────────────────────────
 //  HEADER
 // ─────────────────────────────────────────────────────────────
-function Header({title,biz,user,onLogout,onSwitchBiz,onAbsenPulang,hasCheckedIn,online,onToggleTheme,isDark,lowStockCount=0,onLowStockClick}) {
+function Header({title,biz,user,onLogout,onSwitchBiz,onAbsenPulang,hasCheckedIn,online,onToggleTheme,isDark,lowStockCount=0,onLowStockClick,expireCount=0,expiredCount=0,onExpireClick}) {
   const b=BIZ[biz];
   return <header style={{background:`${C.bg2}ee`,backdropFilter:"blur(20px)",WebkitBackdropFilter:"blur(20px)",
     borderBottom:`1px solid ${C.bo0}`,padding:"0 12px",height:52,
@@ -394,6 +394,14 @@ function Header({title,biz,user,onLogout,onSwitchBiz,onAbsenPulang,hasCheckedIn,
     </div>
     <div style={{display:"flex",alignItems:"center",gap:5,flexShrink:0}}>
       <div className="hide-mobile"><OnlineDot online={online}/></div>
+      {expiredCount>0&&<button onClick={onExpireClick} className="press"
+        style={{padding:"3px 8px",borderRadius:20,background:C.r1,
+        border:`1px solid ${C.r}33`,color:C.r,fontSize:10,fontWeight:700,cursor:"pointer"}}>
+        ⛔ {expiredCount} kadaluarsa</button>}
+      {expireCount>0&&<button onClick={onExpireClick} className="press"
+        style={{padding:"3px 8px",borderRadius:20,background:`${C.a}18`,
+        border:`1px solid ${C.a}44`,color:C.a,fontSize:10,fontWeight:700,cursor:"pointer"}}>
+        ⏰ {expireCount} mau expire</button>}
       {lowStockCount>0&&<button onClick={onLowStockClick} className="press"
         style={{padding:"3px 8px",borderRadius:20,background:C.a1,
         border:`1px solid ${C.a}33`,color:C.a,fontSize:10,fontWeight:700,cursor:"pointer"}}>⚠ {lowStockCount} menipis</button>}
@@ -1018,6 +1026,85 @@ function AddonPrompt({prompt, onAdd, onSkip}) {
   );
 }
 
+
+// ─────────────────────────────────────────────────────────────
+//  EXPIRE POPUP
+// ─────────────────────────────────────────────────────────────
+function ExpirePopup({nearExpiry, expiredProds, onClose}) {
+  const all=[...expiredProds,...nearExpiry];
+  const daysDiff=(dateStr)=>{
+    const d=Math.ceil((new Date(dateStr)-new Date())/(1000*60*60*24));
+    return d;
+  };
+  return <div style={{position:"fixed",inset:0,background:"rgba(2,8,24,.88)",zIndex:800,
+    display:"flex",alignItems:"flex-end",justifyContent:"center",fontFamily:F.sans}}
+    onClick={onClose}>
+    <div style={{width:"100%",maxWidth:480,background:C.bg2,borderRadius:"22px 22px 0 0",
+      border:`1px solid ${C.r}44`,borderBottom:"none",animation:"slideUp .25s ease",
+      maxHeight:"82vh",display:"flex",flexDirection:"column"}} onClick={e=>e.stopPropagation()}>
+      <div style={{width:36,height:4,background:C.bo1,borderRadius:2,margin:"14px auto 0"}}/>
+      <div style={{padding:"10px 16px 12px",borderBottom:`1px solid ${C.bo0}`,flexShrink:0}}>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+          <div>
+            <div style={{fontSize:14,fontWeight:800}}>⏰ Peringatan Expire</div>
+            <div style={{fontSize:11,color:C.t2,marginTop:2}}>
+              {expiredProds.length>0&&<span style={{color:C.r,fontWeight:700}}>{expiredProds.length} sudah kadaluarsa · </span>}
+              {nearExpiry.length} mendekati expire (≤6 bulan)
+            </div>
+          </div>
+          <button onClick={onClose} style={{background:"transparent",border:"none",color:C.t2,fontSize:20,cursor:"pointer",lineHeight:1}}>×</button>
+        </div>
+      </div>
+      <div style={{overflowY:"auto",flex:1}}>
+        {all.length===0
+          ?<div style={{padding:"32px",textAlign:"center",color:C.t3,fontSize:13}}>Semua produk aman ✅</div>
+          :all.map((p,i)=>{
+            const days=daysDiff(p.expireDate);
+            const expired=days<0;
+            const urgent=days>=0&&days<=30;
+            const warn=days>30&&days<=90;
+            const color=expired?C.r:urgent?C.r:warn?C.a:C.g;
+            const bg=expired?C.r1:urgent?C.r1:warn?C.a1:C.g1;
+            return <div key={p.id} style={{display:"flex",alignItems:"center",gap:12,padding:"12px 16px",
+              borderTop:i>0?`1px solid ${C.bo0}`:undefined,
+              background:expired?`${C.r}04`:undefined}}>
+              <div style={{width:42,height:42,borderRadius:11,flexShrink:0,display:"flex",
+                flexDirection:"column",alignItems:"center",justifyContent:"center",
+                background:bg,border:`1px solid ${color}33`,padding:"2px"}}>
+                <span style={{fontSize:expired?16:14}}>{expired?"⛔":urgent?"🔴":warn?"🟡":"🟢"}</span>
+              </div>
+              <div style={{flex:1,minWidth:0}}>
+                <div style={{fontWeight:600,fontSize:13,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{p.name}</div>
+                <div style={{display:"flex",gap:6,marginTop:2,flexWrap:"wrap",alignItems:"center"}}>
+                  <span className="mn" style={{fontSize:10,color:C.t2}}>{p.barcode}</span>
+                  <BizChip biz={p.business} sm/>
+                  <span style={{fontSize:10,color:C.t2}}>Stok: {p.stock}</span>
+                </div>
+              </div>
+              <div style={{textAlign:"right",flexShrink:0}}>
+                <div className="mn" style={{fontSize:12,fontWeight:800,color}}>
+                  {expired?`${Math.abs(days)}h lalu`:days===0?"Hari ini":`${days} hari`}
+                </div>
+                <div className="mn" style={{fontSize:10,color:C.t2,marginTop:2}}>
+                  {new Date(p.expireDate).toLocaleDateString("id-ID",{day:"numeric",month:"short",year:"numeric"})}
+                </div>
+              </div>
+            </div>;
+          })}
+      </div>
+      <div style={{padding:"10px 16px",borderTop:`1px solid ${C.bo0}`,flexShrink:0,
+        display:"flex",justifyContent:"space-between",alignItems:"center",fontSize:12}}>
+        <span style={{color:C.t2}}>
+          {expiredProds.length>0&&<span style={{color:C.r,fontWeight:700}}>{expiredProds.length} kadaluarsa · </span>}
+          {nearExpiry.length} akan expire
+        </span>
+        <button onClick={onClose} style={{padding:"7px 16px",background:C.bg3,border:`1px solid ${C.bo1}`,
+          borderRadius:8,color:C.t1,fontSize:12,fontWeight:600,cursor:"pointer",fontFamily:"inherit"}}>Tutup</button>
+      </div>
+    </div>
+  </div>;
+}
+
 // ─────────────────────────────────────────────────────────────
 //  CHART BOUNDARY
 // ─────────────────────────────────────────────────────────────
@@ -1310,6 +1397,19 @@ function AppInner() {
   const todayAtt=(uid,b)=>attend.find(a=>a.userId===uid&&a.date===todayDate()&&a.business===(b||biz));
   const hasCheckedIn=user?!!todayAtt(user.id,biz)&&!todayAtt(user.id,biz)?.checkOut:false;
   const lowStockCount=prods.filter(p=>p.stock<10).length;
+  // Expire: produk expire dalam 6 bulan ke depan
+  const expireWarningDays=180;
+  const nearExpiry=(()=>{
+    const now=new Date(); const cutoff=new Date(now);
+    cutoff.setDate(cutoff.getDate()+expireWarningDays);
+    return prods.filter(p=>{
+      if(!p.expireDate) return false;
+      const exp=new Date(p.expireDate);
+      return exp>=now && exp<=cutoff;
+    }).sort((a,b)=>new Date(a.expireDate)-new Date(b.expireDate));
+  })();
+  const expiredProds=prods.filter(p=>p.expireDate&&new Date(p.expireDate)<new Date());
+  const [showExpirePopup,setShowExpirePopup]=useState(false);
   const doCheckIn=async(u,b)=>{
     // Prevent duplicate: check local state first
     const existing=attend.find(a=>a.userId===u.id&&a.date===todayDate()&&a.business===b);
@@ -1402,6 +1502,7 @@ function AppInner() {
   const [reportKasir,setReportKasir]=useState("ALL");
   const [reportCategory,setReportCategory]=useState("ALL");
   const [searchInvoice,setSearchInvoice]=useState("");
+  const [showDetailPenjualan,setShowDetailPenjualan]=useState(false);
   const [expandedTrx,setExpandedTrx]=useState({}); // {trxId: true}
   const [lapFrom,setLapFrom]=useState("");
   const [lapTo,setLapTo]=useState("");
@@ -1666,7 +1767,7 @@ function AppInner() {
 
   // ─── Admin: Product CRUD ───
   const openAddP=()=>{
-    setPForm({barcode:"",name:"",price:"",hpp:"",stock:"",category:"",business:adminBiz});
+    setPForm({barcode:"",name:"",price:"",hpp:"",stock:"",category:"",business:adminBiz,expireDate:""});
     setEditPid(null);setPModal(true);setInlineAddMode(true);setShowPriceDrawer(false);
     // scroll to top of products section
     setTimeout(()=>document.getElementById("prod-form-anchor")?.scrollIntoView({behavior:"smooth",block:"start"}),50);
@@ -1674,7 +1775,7 @@ function AppInner() {
   const openEditP=p=>{
     // If same product clicked again → close
     if(editPid===p.id&&pModal){setPModal(false);setEditPid(null);setInlineAddMode(false);return;}
-    setPForm({...p,price:String(p.price),hpp:String(p.hpp||0),stock:String(p.stock)});
+    setPForm({...p,price:String(p.price),hpp:String(p.hpp||0),stock:String(p.stock),expireDate:p.expireDate||""});
     setEditPid(p.id);setPModal(true);setInlineAddMode(false);
     // Show price drawer only if price/hpp already exist
     setShowPriceDrawer(!!(p.price||p.hpp));
@@ -1688,6 +1789,21 @@ function AppInner() {
       Object.keys(r).forEach(k=>n[normalizeKey(k)]=String(r[k]||"").trim());
       // map common column names
       const get=(...keys)=>{for(const k of keys){if(n[k]!==undefined) return n[k];}return "";};
+      // Parse tanggal expire — YYYY-MM-DD, DD/MM/YYYY, atau Excel serial
+      const rawExp=get("expiredate","expire","tanggalexpire","kadaluarsa","exp","tglexpire","tanggalkadaluarsa");
+      let expireDate="";
+      if(rawExp){
+        if(/^\d{4}-\d{2}-\d{2}$/.test(rawExp)){
+          expireDate=rawExp;
+        } else if(/^\d{1,2}\/\d{1,2}\/\d{4}$/.test(rawExp)){
+          const[dd,mm,yyyy]=rawExp.split("/");
+          expireDate=`${yyyy}-${mm.padStart(2,"0")}-${dd.padStart(2,"0")}`;
+        } else if(!isNaN(Number(rawExp))&&Number(rawExp)>40000){
+          // Excel serial date
+          const d=new Date(Date.UTC(1899,11,30)+Math.round(Number(rawExp))*86400000);
+          expireDate=d.toISOString().slice(0,10);
+        }
+      }
       return {
         barcode: get("barcode","kodebarcode","kode","sku"),
         name:    get("name","nama","namaproduk","produk","namabarang"),
@@ -1696,6 +1812,7 @@ function AppInner() {
         hpp:     get("hpp","modal","hargabeli","cost","cogs","hargapokok"),
         stock:   get("stock","stok","qty","jumlah","quantity"),
         business:get("business","bisnis"),
+        expireDate,
         _ok: true,
       };
     }).filter(r=>r.barcode&&r.name);
@@ -1755,6 +1872,7 @@ function AppInner() {
           category:row.category||"Umum", business:biz,
           price:Math.round(+row.price||0), hpp:Math.round(+row.hpp||0),
           stock:Math.round(+row.stock||0),
+          expireDate:row.expireDate||null,
         };
         await fbAddProduct(prod,user.name);
         ok++;
@@ -1770,10 +1888,10 @@ function AppInner() {
     try{
       if(editPid===null){
         if(prods.find(p=>p.barcode===pForm.barcode)){toast("Barcode sudah ada!","err");return;}
-        await fbAddProduct({...pForm,id:NEXT_ID++,price:+pForm.price,hpp:+pForm.hpp||0,stock:+pForm.stock},user.name);
+        await fbAddProduct({...pForm,id:NEXT_ID++,price:+pForm.price,hpp:+pForm.hpp||0,stock:+pForm.stock,expireDate:pForm.expireDate||null},user.name);
         toast("✓ Produk ditambahkan");
       }else{
-        await fbUpdateProduct(editPid,{...pForm,id:editPid,price:+pForm.price,hpp:+pForm.hpp||0,stock:+pForm.stock},user.name);
+        await fbUpdateProduct(editPid,{...pForm,id:editPid,price:+pForm.price,hpp:+pForm.hpp||0,stock:+pForm.stock,expireDate:pForm.expireDate||null},user.name);
         toast("✓ Produk diperbarui");
       }
       setPModal(false);
@@ -2053,7 +2171,7 @@ function AppInner() {
       <Header biz={biz} user={user} online={online} onLogout={doLogout}
         onSwitchBiz={user?.access?.length>1?()=>{setCart([]);setScreen("bizselect");}:null}
         onAbsenPulang={handlePulang} hasCheckedIn={hasCheckedIn}
-        onToggleTheme={toggleTheme} isDark={isDark} lowStockCount={lowStockCount} onLowStockClick={()=>setShowLowStock(true)}/>
+        onToggleTheme={toggleTheme} isDark={isDark} lowStockCount={lowStockCount} onLowStockClick={()=>setShowLowStock(true)} expireCount={nearExpiry.length} expiredCount={expiredProds.length} onExpireClick={()=>setShowExpirePopup(true)}/>
 
       {/* Invoice */}
       {addonPrompt&&<AddonPrompt
@@ -2078,6 +2196,7 @@ function AppInner() {
         onAddToCart={(p)=>{addToCart(p);toast("✓ "+p.name+" → keranjang");}}
       />}
       {showLowStock&&<LowStockPopup prods={prods} onClose={()=>setShowLowStock(false)}/>}
+      {showExpirePopup&&<ExpirePopup nearExpiry={nearExpiry} expiredProds={expiredProds} onClose={()=>setShowExpirePopup(false)}/>}
 
       {/* Checkout modal */}
       {showCheckout&&<div style={{position:"fixed",inset:0,background:"rgba(2,8,24,.88)",zIndex:500,display:"flex",alignItems:"flex-end",justifyContent:"center"}} onClick={()=>setShowCheckout(false)}>
@@ -2278,9 +2397,10 @@ function AppInner() {
       <style>{CSS}</style><Toast n={notif}/>
       {UpdateBannerEl}
       {showLowStock&&<LowStockPopup prods={prods} onClose={()=>setShowLowStock(false)}/>}
+      {showExpirePopup&&<ExpirePopup nearExpiry={nearExpiry} expiredProds={expiredProds} onClose={()=>setShowExpirePopup(false)}/>}
       <Header biz={biz} user={user} online={online} onLogout={doLogout}
         onSwitchBiz={user?.access?.length>1?()=>{setStokTarget(null);setIsNewProduct(false);setScreen("bizselect");}:null}
-        onAbsenPulang={handlePulang} hasCheckedIn={hasCheckedIn} onToggleTheme={toggleTheme} isDark={isDark} onLowStockClick={()=>setShowLowStock(true)}/>
+        onAbsenPulang={handlePulang} hasCheckedIn={hasCheckedIn} onToggleTheme={toggleTheme} isDark={isDark} onLowStockClick={()=>setShowLowStock(true)} expireCount={nearExpiry.length} expiredCount={expiredProds.length} onExpireClick={()=>setShowExpirePopup(true)}/>
       <div style={{flex:1,overflowY:"auto",padding:10,display:"flex",flexDirection:"column",gap:10,minHeight:0}}>
         
         {/* Scan / Cari Barcode */}
@@ -2540,7 +2660,7 @@ function AppInner() {
     return <div style={{fontFamily:F.sans,background:C.bg1,color:C.t0,height:"100vh",display:"flex",flexDirection:"column"}}>
       <style>{CSS}</style><Toast n={notif}/>
       {UpdateBannerEl}
-      <Header title="Admin Panel" user={user} online={online} onLogout={doLogout} lowStockCount={lowStockCount} onToggleTheme={toggleTheme} isDark={isDark} onLowStockClick={()=>setShowLowStock(true)}/>
+      <Header title="Admin Panel" user={user} online={online} onLogout={doLogout} lowStockCount={lowStockCount} onToggleTheme={toggleTheme} isDark={isDark} onLowStockClick={()=>setShowLowStock(true)} expireCount={nearExpiry.length} expiredCount={expiredProds.length} onExpireClick={()=>setShowExpirePopup(true)}/>
 
       {/* Change password modal */}
       {cpwdModal&&<div style={{position:"fixed",inset:0,background:"rgba(2,8,24,.85)",zIndex:500,display:"flex",alignItems:"flex-end",justifyContent:"center"}} onClick={()=>setCpwdModal(null)}>
@@ -2621,6 +2741,7 @@ function AppInner() {
       </div>}
 
       {showLowStock&&<LowStockPopup prods={prods} onClose={()=>setShowLowStock(false)}/>}
+      {showExpirePopup&&<ExpirePopup nearExpiry={nearExpiry} expiredProds={expiredProds} onClose={()=>setShowExpirePopup(false)}/>}
       {/* Tab bar */}
       {/* Desktop tab bar — hidden on mobile */}
       <div className="hide-mobile" style={{background:C.bg2,borderBottom:`1px solid ${C.bo0}`,display:"flex",overflowX:"auto",flexShrink:0,gap:0,padding:"0 4px"}}>
@@ -2852,6 +2973,7 @@ function AppInner() {
               {key:"price",label:"Harga Jual (Rp)",fn:r=>r.price,num:true,w:18},{key:"stock",label:"Stok",fn:r=>r.stock,num:true,w:10},
               {key:"business",label:"Bisnis",fn:r=>BIZ[r.business]?.name||r.business,w:14},
               {key:"margin",label:"Margin %",fn:r=>r.price>0?(((r.price-(r.hpp||0))/r.price)*100).toFixed(1)+"%":"0%",w:12},
+              {key:"expireDate",label:"Tanggal Expire",fn:r=>r.expireDate||"",w:16},
             ],"Produk","produk_"+adminBiz)} className="press"
               style={{padding:"7px 12px",background:C.g1,border:`1px solid ${C.g}33`,borderRadius:8,color:C.g,fontSize:12,fontWeight:700,fontFamily:F.sans}}>⬇ Excel</button>
             <button onClick={()=>{setImportModal(true);setImportRows([]);setImportErr("");}} className="press"
@@ -2872,12 +2994,13 @@ function AppInner() {
                 </div>
                 <button onClick={()=>downloadXLSX([
                   {barcode:"JSC999",name:"Contoh Produk",category:"Kaos",price:50000,hpp:30000,stock:100,business:"JS Clothing"},
-                  {barcode:"JBS999",name:"Contoh Skincare",category:"Serum",price:120000,hpp:75000,stock:50,business:"JB Store"},
+                  {barcode:"JBS999",name:"Contoh Skincare",category:"Serum",price:120000,hpp:75000,stock:50,business:"JB Store",expireDate:"2025-12-31"},
                 ],[
                   {key:"barcode",label:"Barcode",w:14},{key:"name",label:"Nama",w:28},
                   {key:"category",label:"Kategori",w:16},{key:"price",label:"Harga Jual",fn:r=>r.price,num:true,w:14},
                   {key:"hpp",label:"HPP",fn:r=>r.hpp,num:true,w:14},{key:"stock",label:"Stok",fn:r=>r.stock,num:true,w:10},
                   {key:"business",label:"Bisnis",fn:r=>r.business,w:16},
+                  {key:"expireDate",label:"Tanggal Expire",fn:r=>r.expireDate||"",w:16},
                 ],"Template","template_import_produk")}
                   className="press" style={{padding:"7px 14px",background:C.g1,border:`1px solid ${C.g}33`,borderRadius:8,color:C.g,fontSize:12,fontWeight:700,fontFamily:F.sans}}>⬇ Template</button>
               </div>
@@ -3015,6 +3138,29 @@ function AppInner() {
                     onFocus={e=>e.target.style.borderColor=C.g+"88"} onBlur={e=>e.target.style.borderColor=C.bo0}/>
                 </div>
               </div>
+
+              {/* ─── Expire date ─── */}
+              <div style={{display:"flex",flexDirection:"column",gap:4}}>
+                <div style={{fontSize:9,fontWeight:700,color:C.r,textTransform:"uppercase",letterSpacing:.5}}>
+                  ⏰ Tanggal Expire <span style={{color:C.t3,fontWeight:400,fontSize:8}}>(opsional)</span>
+                </div>
+                <input type="date" value={pForm.expireDate||""} onChange={e=>setPForm(x=>({...x,expireDate:e.target.value}))}
+                  style={{...IS,width:"100%",boxSizing:"border-box",
+                    borderColor:pForm.expireDate?C.r+"55":C.bo0}}
+                  onFocus={e=>e.target.style.borderColor=C.r+"88"}
+                  onBlur={e=>e.target.style.borderColor=pForm.expireDate?C.r+"55":C.bo0}/>
+                {pForm.expireDate&&(()=>{
+                  const days=Math.ceil((new Date(pForm.expireDate)-new Date())/86400000);
+                  const col=days<0?C.r:days<=30?C.r:days<=90?C.a:C.g;
+                  return <div style={{fontSize:10,color:col,fontWeight:600}}>
+                    {days<0?`⛔ Sudah kadaluarsa ${Math.abs(days)} hari lalu`:
+                     days===0?"⛔ Expire hari ini":
+                     days<=30?`🔴 ${days} hari lagi`:
+                     days<=90?`🟡 ${days} hari lagi`:
+                     `🟢 ${days} hari lagi`}
+                  </div>;
+                })()}
+              </div>
               {/* ─── Price drawer ─── */}
               <button onClick={()=>setShowPriceDrawer(x=>!x)} className="press"
                 style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"9px 12px",
@@ -3118,7 +3264,7 @@ function AppInner() {
             <Card noPad style={{overflow:"hidden"}}>
               <TableWrap>
                 <table style={{width:"100%",borderCollapse:"collapse",fontSize:12,minWidth:580}}>
-                  <THead cols={["Barcode","Nama","Kategori","HPP","Harga Jual","Margin","Stok","Add-on","Aksi"]}/>
+                  <THead cols={["Barcode","Nama","Kategori","HPP","Harga Jual","Margin","Stok","Expire","Add-on","Aksi"]}/>
                   <tbody>{adminPs.map((p,i)=>{const mg=p.price>0?((p.price-(p.hpp||0))/p.price*100).toFixed(0)+"%":"-";
                     return <tr key={p.id} className="hrow" style={{borderTop:`1px solid ${C.bo0}`,background:i%2===0?"transparent":C.bg0}}>
                       <td style={{padding:"14px 13px",fontFamily:F.mono,fontSize:10,color:C.t2}}>{p.barcode}</td>
@@ -3145,6 +3291,17 @@ function AppInner() {
                               fontSize:16,fontWeight:700,flexShrink:0,
                               background:C.g1,border:`1.5px solid ${C.g}44`,color:C.g,cursor:"pointer"}}>+</button>
                         </div>
+                      </td>
+                      <td style={{padding:"12px 13px"}}>
+                        {p.expireDate?(()=>{
+                          const days=Math.ceil((new Date(p.expireDate)-new Date())/86400000);
+                          const expired=days<0;
+                          const color=expired?C.r:days<=30?C.r:days<=90?C.a:C.t2;
+                          return <span className="mn" style={{fontSize:10,fontWeight:700,color}}>
+                            {expired?`⛔ ${Math.abs(days)}h lalu`:days===0?"⛔ Hari ini":
+                             days<=30?`🔴 ${days}h`:days<=90?`🟡 ${days}h`:`🟢 ${days}h`}
+                          </span>;
+                        })():<span style={{fontSize:10,color:C.t3}}>—</span>}
                       </td>
                       <td style={{padding:"14px 13px"}}>
                         {(p.addons||[]).length>0
@@ -3190,6 +3347,17 @@ function AppInner() {
                                 style={{...IS,width:"100%",boxSizing:"border-box",padding:"9px 11px"}}
                                 onFocus={e=>e.target.style.borderColor=C.g+"88"} onBlur={e=>e.target.style.borderColor=C.bo0}/>
                             </div>
+                          </div>
+                          {/* Expire date */}
+                          <div style={{marginBottom:8}}>
+                            <div style={{fontSize:9,fontWeight:700,color:C.r,textTransform:"uppercase",letterSpacing:.5,marginBottom:3}}>
+                              ⏰ Expire <span style={{color:C.t3,fontWeight:400}}>(opsional)</span>
+                            </div>
+                            <input type="date" value={pForm.expireDate||""} onChange={e=>setPForm(x=>({...x,expireDate:e.target.value}))}
+                              style={{...IS,width:"100%",boxSizing:"border-box",padding:"8px 10px",borderColor:pForm.expireDate?C.r+"55":C.bo0}}
+                              onFocus={e=>e.target.style.borderColor=C.r+"88"} onBlur={e=>e.target.style.borderColor=pForm.expireDate?C.r+"55":C.bo0}/>
+                            {pForm.expireDate&&(()=>{const d=Math.ceil((new Date(pForm.expireDate)-new Date())/86400000);const col=d<0?C.r:d<=90?C.a:C.g;
+                              return <div style={{fontSize:10,color:col,fontWeight:600,marginTop:3}}>{d<0?`⛔ Kadaluarsa ${Math.abs(d)}h lalu`:d===0?"⛔ Hari ini":`${d<=30?"🔴":"🟡"} ${d} hari lagi`}</div>;})()}
                           </div>
                           {/* Price drawer */}
                           <button onClick={()=>setShowPriceDrawer(x=>!x)} className="press"
@@ -3313,6 +3481,17 @@ function AppInner() {
                           style={{...IS,width:"100%",boxSizing:"border-box"}}
                           onFocus={e=>e.target.style.borderColor=C.g+"88"} onBlur={e=>e.target.style.borderColor=C.bo0}/>
                       </div>
+                    </div>
+                    {/* Expire date */}
+                    <div>
+                      <div style={{fontSize:9,fontWeight:700,color:C.r,textTransform:"uppercase",letterSpacing:.5,marginBottom:3}}>
+                        ⏰ Expire <span style={{color:C.t3,fontWeight:400}}>(opsional)</span>
+                      </div>
+                      <input type="date" value={pForm.expireDate||""} onChange={e=>setPForm(x=>({...x,expireDate:e.target.value}))}
+                        style={{...IS,width:"100%",boxSizing:"border-box",borderColor:pForm.expireDate?C.r+"55":C.bo0}}
+                        onFocus={e=>e.target.style.borderColor=C.r+"88"} onBlur={e=>e.target.style.borderColor=pForm.expireDate?C.r+"55":C.bo0}/>
+                      {pForm.expireDate&&(()=>{const d=Math.ceil((new Date(pForm.expireDate)-new Date())/86400000);const col=d<0?C.r:d<=90?C.a:C.g;
+                        return <div style={{fontSize:10,color:col,fontWeight:600,marginTop:3}}>{d<0?`⛔ ${Math.abs(d)}h lalu`:d===0?"⛔ Hari ini":`${d<=30?"🔴":"🟡"} ${d} hari lagi`}</div>;})()}
                     </div>
                     {/* Price drawer */}
                     <button onClick={()=>setShowPriceDrawer(x=>!x)} className="press"
@@ -3497,8 +3676,20 @@ function AppInner() {
               </table>
             </TableWrap>
           </Card>}
-          {/* Detail Produk per Transaksi */}
-          {(()=>{
+          {/* Detail Penjualan Per Produk — collapsible, di bawah invoice */}
+          <div style={{background:C.bg2,borderRadius:14,border:`1px solid ${C.bo0}`,overflow:"hidden"}}>
+            <button onClick={()=>setShowDetailPenjualan(x=>!x)} className="press"
+              style={{width:"100%",display:"flex",alignItems:"center",justifyContent:"space-between",
+                padding:"13px 16px",background:"transparent",border:"none",cursor:"pointer",fontFamily:F.sans}}>
+              <div style={{display:"flex",alignItems:"center",gap:8}}>
+                <span style={{fontSize:13,fontWeight:800,color:C.t0}}>📋 Detail Penjualan Per Produk</span>
+                <span style={{fontSize:11,color:C.t2}}>(per item transaksi)</span>
+              </div>
+              <span style={{fontSize:14,color:C.t2,transition:"transform .2s",
+                transform:showDetailPenjualan?"rotate(180deg)":"rotate(0deg)",display:"inline-block"}}>▾</span>
+            </button>
+            {showDetailPenjualan&&<div style={{borderTop:`1px solid ${C.bo0}`,animation:"fadeUp .15s ease"}}>
+              {(()=>{
             // Expand: setiap item di setiap transaksi jadi satu baris
             const rows=[];
             filtTrx.forEach(t=>{
@@ -3594,7 +3785,9 @@ function AppInner() {
                 {rows.length>50&&<div style={{textAlign:"center",fontSize:11,color:C.t3,padding:"8px"}}>+{rows.length-50} baris lainnya. Download Excel untuk lengkap.</div>}
               </div>
             </Card>;
-          })()}
+            })()}
+            </div>}
+          </div>
           {/* Invoice — satu baris, expand untuk detail */}
           {(()=>{
             const sq=searchInvoice.trim().toLowerCase();
