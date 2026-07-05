@@ -9,6 +9,8 @@ import {
   fbDeleteAttendance, fbClearAttendanceByDate,
   fbSetTarget, fbDeleteTarget, fbChangePassword,
   fbLogActivity, verifyPassword, syncToSheets,
+  subscribeOpnames, subscribeOpnameItems, fbCreateOpname, fbCloseOpname,
+  fbDeleteOpname, fbUpdateOpnameItem, fbBulkUpdateOpnameItems, fbApplyOpnameAdjustments,
 } from "./firebase.js";
 
 // ─────────────────────────────────────────────────────────────
@@ -1241,6 +1243,528 @@ function KasirStokPanel({prods, biz, onClose, onAdjust, onAddToCart}) {
     </div>
   );
 }
+function TemplateOpnameTab({ opnameItems, bizProds, physInput, setPhysInput, notesInput, setNotesInput, searchQ, setSearchQ, C, F, rp, uid, toast, fbUpdateOpnameItem, selectedOpname, opnames, slogs, showImportOpname, setShowImportOpname, importOpnameRows, setImportOpnameRows, loadSheetJS, downloadXLSX, BIZ }) {
+  const filtered = bizProds().filter(p => !searchQ || p.name.toLowerCase().includes(searchQ.toLowerCase()) || p.barcode.includes(searchQ));
+  return <div>
+    <div style={{display:"flex",gap:8,marginBottom:12,flexWrap:"wrap",alignItems:"center"}}>
+      <input value={searchQ} onChange={e=>setSearchQ(e.target.value)} placeholder="Cari barcode / nama..."
+        style={{flex:1,minWidth:160,padding:"9px 12px",background:C.bg3,border:`1.5px solid ${C.bo0}`,borderRadius:9,color:C.t0,fontSize:12}}/>
+      <button onClick={async()=>{
+        await exportOpnameExcel(selectedOpname, opnameItems, bizProds, opnames.find(o=>o.id===selectedOpname), slogs, BIZ, rp);
+        toast("✅ Excel diunduh");
+      }} className="press"
+        style={{padding:"7px 12px",background:C.g1,border:`1px solid ${C.g}44`,borderRadius:8,color:C.g,fontSize:11,fontWeight:700,cursor:"pointer"}}>
+        ⬇ Export
+      </button>
+      <button onClick={()=>setShowImportOpname(true)} className="press"
+        style={{padding:"7px 12px",background:C.b1,border:`1px solid ${C.b}44`,borderRadius:8,color:C.b,fontSize:11,fontWeight:700,cursor:"pointer"}}>
+        ⬆ Import
+      </button>
+    </div>
+    <div style={{overflowX:"auto"}}>
+      <table style={{width:"100%",borderCollapse:"collapse",fontSize:11,whiteSpace:"nowrap"}}>
+        <thead>{["No","Barcode","Nama","Stok Sistem","Stok Fisik","Selisih","Status","Keterangan"].map(h=>
+          <th key={h} style={{padding:"8px 10px",textAlign:"left",color:C.t3,fontWeight:700,borderBottom:`1px solid ${C.bo0}`,fontSize:9.5,textTransform:"uppercase"}}>{h}</th>)}
+        </thead>
+        <tbody>
+          {filtered.map((p,i)=>{
+            const existing = opnameItems.find(x => x.productId === p.id);
+            const phys = physInput[p.id] !== undefined ? Number(physInput[p.id]) : existing?.stockPhysical;
+            const diff = phys !== undefined ? phys - p.stock : 0;
+            const status = phys === undefined ? "" : diff === 0 ? "OK" : diff > 0 ? "Surplus" : "Kurang";
+            const bg = status === "OK" ? "#0a3d0a33" : status === "Kurang" ? "#3d0a0a33" : status === "Surplus" ? "#3d3d0a33" : "transparent";
+            return <tr key={p.id} style={{background:bg}}>
+              <td style={{padding:"8px 10px",color:C.t2}}>{i+1}</td>
+              <td style={{padding:"8px 10px",color:C.t2,fontFamily:F.mono,fontSize:10}}>{p.barcode}</td>
+              <td style={{padding:"8px 10px",fontWeight:600}}>{p.name}</td>
+              <td style={{padding:"8px 10px"}}><span className="mn">{p.stock}</span></td>
+              <td style={{padding:"8px 10px"}}>
+                <input type="number" value={physInput[p.id] ?? (existing?.stockPhysical ?? "")}
+                  onChange={e=>setPhysInput(prev=>({...prev,[p.id]:e.target.value}))}
+                  onBlur={()=>{
+                    const v = physInput[p.id];
+                    if (v === undefined || v === "") return;
+                    fbUpdateOpnameItem(selectedOpname, p.id, {
+                      productId:p.id, barcode:p.barcode, name:p.name, category:p.category,
+                      business:p.business, stockSystem:p.stock, stockPhysical:Number(v),
+                      difference: Number(v) - p.stock,
+                      status: Number(v) - p.stock === 0 ? "OK" : Number(v) - p.stock > 0 ? "Surplus" : "Kurang",
+                      notes: notesInput[p.id] || "",
+                    });
+                  }}
+                  style={{width:70,padding:"6px 8px",background:C.bg3,border:`1.5px solid ${C.bo0}`,borderRadius:7,color:C.t0,fontSize:12,textAlign:"center"}}/>
+              </td>
+              <td style={{padding:"8px 10px"}}><span className="mn" style={{color:diff<0?C.r:diff>0?C.a:C.t2,fontWeight:700}}>{diff>0?"+":""}{diff}</span></td>
+              <td style={{padding:"8px 10px"}}>{status && <span style={{padding:"2px 8px",borderRadius:4,fontSize:10,fontWeight:700,
+                color:status==="OK"?C.g:status==="Kurang"?C.r:C.a,
+                background:status==="OK"?`${C.g}22`:status==="Kurang"?`${C.r}22`:`${C.a}22`}}>{status}</span>}</td>
+              <td style={{padding:"8px 10px"}}>
+                <input value={notesInput[p.id]??""} onChange={e=>setNotesInput(prev=>({...prev,[p.id]:e.target.value}))}
+                  placeholder="Catatan" style={{width:100,padding:"6px 8px",background:C.bg3,border:`1px solid ${C.bo0}`,borderRadius:7,color:C.t0,fontSize:10}}/>
+              </td>
+            </tr>;
+          })}
+        </tbody>
+      </table>
+    </div>
+  </div>;
+}
+function RingkasanTab({ opnameItems, selectedOpname, opnames, user, toast, fbCloseOpname, fbApplyOpnameAdjustments, C, F, rp }) {
+  const total = opnameItems.length;
+  const ok = opnameItems.filter(i => i.status === "OK").length;
+  const kurang = opnameItems.filter(i => i.status === "Kurang");
+  const surplus = opnameItems.filter(i => i.status === "Surplus");
+  const kurangUnit = kurang.reduce((s,i) => s + Math.abs(i.difference), 0);
+  const surplusUnit = surplus.reduce((s,i) => s + i.difference, 0);
+  const session = opnames.find(o => o.id === selectedOpname);
+  const isClosed = session?.status === "closed" || session?.status === "applied";
+
+  const handleClose = async () => {
+    if (!confirm("Tutup sesi opname? Tidak bisa edit lagi setelah ditutup.")) return;
+    await fbCloseOpname(selectedOpname, {
+      totalItems: total, totalOk: ok, totalKurang: kurang.length, totalSurplus: surplus.length,
+      totalKurangUnit: kurangUnit, totalSurplusUnit: surplusUnit,
+    });
+    toast("Sesi opname ditutup");
+  };
+
+  const handleApply = async () => {
+    if (!confirm("Apply adjustments? Stok akan diupdate sesuai stok fisik.")) return;
+    await fbApplyOpnameAdjustments(selectedOpname, user.name);
+    toast("✅ Stok diupdate berdasarkan opname");
+  };
+
+  return <div>
+    <div style={{display:"flex",gap:12,marginBottom:16}}>
+      <Stat icon="🟢" label="OK" value={ok} color={C.g}/>
+      <Stat icon="🔴" label="Kurang" value={kurang.length} color={C.r} sub={`-${kurangUnit} unit`}/>
+      <Stat icon="🟡" label="Surplus" value={surplus.length} color={C.a} sub={`+${surplusUnit} unit`}/>
+    </div>
+    <div style={{marginBottom:16}}>
+      <div style={{fontSize:11,color:C.t2,marginBottom:4}}>Total SKU diperiksa: <b style={{color:C.t0}}>{total}</b></div>
+    </div>
+    {!isClosed && <div style={{display:"flex",gap:8,marginBottom:16}}>
+      <button onClick={handleClose} style={{flex:1,padding:"11px",background:C.a1,border:`1px solid ${C.a}44`,borderRadius:10,color:C.a,fontSize:12,fontWeight:700,cursor:"pointer"}}>🔒 Tutup Sesi</button>
+      <button onClick={handleApply} style={{flex:1,padding:"11px",background:C.g1,border:`1px solid ${C.g}44`,borderRadius:10,color:C.g,fontSize:12,fontWeight:700,cursor:"pointer"}}>✅ Apply Adjustment</button>
+    </div>}
+    {session?.status === "applied" && <div style={{padding:"10px 14px",background:`${C.g}15`,borderRadius:10,border:`1px solid ${C.g}33`,fontSize:12,color:C.g,fontWeight:600}}>✓ Adjustment sudah diapply</div>}
+  </div>;
+}
+function KartuStockTab({ slogs, prods, biz, BIZ, C, F, rp, loadSheetJS, downloadXLSX, selectedOpname, opnameItems, opnames, toast }) {
+  const [ksProduct, setKsProduct] = useState("");
+  const [ksFrom, setKsFrom] = useState("");
+  const [ksTo, setKsTo] = useState("");
+
+  const filtered = slogs.filter(l => {
+    if (l.business !== biz) return false;
+    if (ksProduct && l.barcode !== ksProduct && l.name !== ksProduct) return false;
+    if (ksFrom) { try { if (new Date(l.date) < new Date(ksFrom)) return false; } catch {} }
+    if (ksTo) { try { if (new Date(l.date) > new Date(ksTo + "T23:59:59")) return false; } catch {} }
+    return true;
+  }).sort((a,b) => new Date(a.date) - new Date(b.date));
+
+  const perProduct = {};
+  filtered.forEach(l => {
+    if (!perProduct[l.barcode]) perProduct[l.barcode] = { name: l.name, barcode: l.barcode, logs: [] };
+    perProduct[l.barcode].logs.push(l);
+  });
+
+  const productOptions = [...new Set(slogs.filter(l=>l.business===biz).map(l=>l.barcode))];
+
+  return <div>
+    <div style={{display:"flex",gap:8,marginBottom:12,flexWrap:"wrap",alignItems:"center"}}>
+      <select value={ksProduct} onChange={e=>setKsProduct(e.target.value)}
+        style={{padding:"8px 10px",background:C.bg3,border:`1.5px solid ${C.bo0}`,borderRadius:9,color:C.t0,fontSize:12,flex:1}}>
+        <option value="">Semua Produk</option>
+        {productOptions.map(b=>{
+          const p = prods.find(x=>x.barcode===b);
+          return <option key={b} value={b}>{p?.name||b}</option>;
+        })}
+      </select>
+      <input type="date" value={ksFrom} onChange={e=>setKsFrom(e.target.value)}
+        style={{padding:"8px 10px",background:C.bg3,border:`1.5px solid ${C.bo0}`,borderRadius:9,color:C.t0,fontSize:12}}/>
+      <span style={{color:C.t3,fontSize:11}}>sd</span>
+      <input type="date" value={ksTo} onChange={e=>setKsTo(e.target.value)}
+        style={{padding:"8px 10px",background:C.bg3,border:`1.5px solid ${C.bo0}`,borderRadius:9,color:C.t0,fontSize:12}}/>
+      <button onClick={async()=>{
+        await exportOpnameExcel(selectedOpname, opnameItems, bizProds, opnames.find(o=>o.id===selectedOpname), slogs, BIZ, rp);
+        toast("✅ Excel diunduh");
+      }} className="press"
+        style={{padding:"7px 12px",background:C.g1,border:`1px solid ${C.g}44`,borderRadius:8,color:C.g,fontSize:11,fontWeight:700,cursor:"pointer"}}>
+        ⬇ Export
+      </button>
+    </div>
+    <div style={{overflowX:"auto"}}>
+      <table style={{width:"100%",borderCollapse:"collapse",fontSize:11,whiteSpace:"nowrap"}}>
+        <thead>
+          <tr style={{background:C.bg0}}>
+            {["Tanggal","Produk","Barcode","Masuk (D)","Keluar (K)","Saldo (S)","Harga","Nilai"].map(h=>
+              <th key={h} style={{padding:"8px 10px",textAlign:"left",color:C.t3,fontWeight:700,borderBottom:`1px solid ${C.bo0}`,fontSize:9.5,textTransform:"uppercase"}}>{h}</th>)}
+          </tr>
+        </thead>
+        <tbody>
+          {Object.values(perProduct).map(pp => {
+            let running = 0;
+            return pp.logs.map((l,li) => {
+              const inQty = l.type === "masuk" ? l.qty : 0;
+              const outQty = (l.type === "keluar" || l.type === "opname") ? l.qty : 0;
+              running = running + inQty - outQty;
+              const price = prods.find(p=>p.barcode===l.barcode)?.price||0;
+              return <tr key={li}>
+                <td style={{padding:"6px 10px",color:C.t2,fontSize:10}}>{l.date}</td>
+                <td style={{padding:"6px 10px",fontWeight:600}}>{li === 0 ? pp.name : ""}</td>
+                <td style={{padding:"6px 10px",color:C.t2,fontFamily:F.mono,fontSize:10}}>{li === 0 ? l.barcode : ""}</td>
+                <td style={{padding:"6px 10px",color:C.g}}>{inQty > 0 ? <span className="mn">{inQty}</span> : ""}</td>
+                <td style={{padding:"6px 10px",color:C.r}}>{outQty > 0 ? <span className="mn">{outQty}</span> : ""}</td>
+                <td style={{padding:"6px 10px",fontWeight:700}}><span className="mn">{running}</span></td>
+                <td style={{padding:"6px 10px",color:C.t2}}>{price > 0 ? <span className="mn">{rp(price)}</span> : ""}</td>
+                <td style={{padding:"6px 10px",color:C.t2}}>{price > 0 ? <span className="mn">{rp(running * price)}</span> : ""}</td>
+              </tr>;
+            });
+          })}
+        </tbody>
+      </table>
+    </div>
+  </div>;
+}
+async function exportOpnameExcel(opnameId, opnameItems, bizProds, session, slogs, BIZ, rp) {
+  const XLSX = await loadSheetJS();
+  const wb = XLSX.utils.book_new();
+
+  const petunjuk = XLSX.utils.aoa_to_sheet([
+    ["","TEMPLATE LAPORAN STOCK OPNAME"],
+    ["","Gratis dari HashMicro — hashmicro.com"],
+    [],
+    ["","CARA PAKAI"],
+    ["","Langkah 1","Buka sheet 'TEMPLATE OPNAME'"],
+    ["","Langkah 2","Isi kolom Stok Fisik sesuai kondisi nyata"],
+    ["","Langkah 3","Simpan dan upload kembali ke aplikasi"],
+    [],
+    ["","KETERANGAN"],
+    ["","Kolom Stok Sistem","Terisi otomatis dari database"],
+    ["","Kolom Selisih","Stok Fisik - Stok Sistem"],
+    ["","Status OK","Jika Stok Fisik = Stok Sistem"],
+    ["","Status Kurang","Jika Stok Fisik < Stok Sistem"],
+    ["","Status Surplus","Jika Stok Fisik > Stok Sistem"],
+  ]);
+  XLSX.utils.book_append_sheet(wb, petunjuk, "PETUNJUK");
+
+  const ksData = [["Tanggal","Produk","Barcode","Masuk (D)","Keluar (K)","Saldo (S)","Harga","Nilai"]];
+  const biz = session?.business || "";
+  const bizLogs = slogs.filter(l => l.business === biz).sort((a,b) => new Date(a.date) - new Date(b.date));
+  const perProduct = {};
+  bizLogs.forEach(l => {
+    if (!perProduct[l.barcode]) perProduct[l.barcode] = { name: l.name, barcode: l.barcode, logs: [] };
+    perProduct[l.barcode].logs.push(l);
+  });
+  Object.values(perProduct).forEach(pp => {
+    let running = 0;
+    pp.logs.forEach(l => {
+      const inQty = l.type === "masuk" ? l.qty : 0;
+      const outQty = (l.type === "keluar" || l.type === "opname") ? l.qty : 0;
+      running = running + inQty - outQty;
+      const price = 0;
+      ksData.push([l.date, l.name, l.barcode, inQty||"", outQty||"", running, price||"", (running * price)||""]);
+    });
+  });
+  const ksWS = XLSX.utils.aoa_to_sheet(ksData);
+  XLSX.utils.book_append_sheet(wb, ksWS, "KARTU STOCK");
+
+  const headers = ["No","Kode SKU","Nama Barang","Satuan","Opening Stock","Barang Keluar","Stok Sistem","Stok Fisik","Selisih","Status","Keterangan"];
+  const prods = bizProds();
+  const rows = prods.map((p,i) => {
+    const item = opnameItems.find(x => x.productId === p.id);
+    return [
+      i+1, p.barcode, p.name, "Buah",
+      "", "", p.stock,
+      item?.stockPhysical ?? "",
+      item ? (item.stockPhysical - p.stock) : "",
+      item?.status ?? "",
+      item?.notes ?? ""
+    ];
+  });
+  const ws = XLSX.utils.aoa_to_sheet([headers, ...rows]);
+  XLSX.utils.book_append_sheet(wb, ws, "TEMPLATE OPNAME");
+
+  const ringkasan = XLSX.utils.aoa_to_sheet([
+    ["","RINGKASAN STOCK OPNAME"],
+    [],
+    ["","ITEM","Jumlah"],
+    ["","Total SKU diperiksa", opnameItems.length],
+    ["","Item Status OK", opnameItems.filter(i => i.status === "OK").length],
+    ["","Item Kurang", opnameItems.filter(i => i.status === "Kurang").length],
+    ["","Item Surplus", opnameItems.filter(i => i.status === "Surplus").length],
+    [],
+    ["","SELISIH","Nilai"],
+    ["","Total Unit Kurang", opnameItems.filter(i => i.status === "Kurang").reduce((s,i) => s + Math.abs(i.difference), 0)],
+    ["","Total Unit Surplus", opnameItems.filter(i => i.status === "Surplus").reduce((s,i) => s + i.difference, 0)],
+  ]);
+  XLSX.utils.book_append_sheet(wb, ringkasan, "RINGKASAN");
+
+  XLSX.writeFile(wb, `opname_${session?.business || "all"}_${new Date().toLocaleDateString("id-ID").replace(/\//g,"-")}.xlsx`);
+}
+function ImportOpnameModal({ show, onClose, onImport, C, F, loadSheetJS, prods, biz, BIZ }) {
+  const [rows, setRows] = useState([]);
+  const [err, setErr] = useState("");
+  const [loading, setLoading] = useState(false);
+
+  const handleFile = async (file) => {
+    if (!file) return;
+    setErr(""); setRows([]);
+    try {
+      const XLSX = await loadSheetJS();
+      const buf = await file.arrayBuffer();
+      const wb = XLSX.read(buf, { type: "array" });
+      const ws = wb.Sheets["TEMPLATE OPNAME"];
+      if (!ws) { setErr("Sheet 'TEMPLATE OPNAME' tidak ditemukan"); return; }
+      const data = XLSX.utils.sheet_to_json(ws, { defval: "", header: 1 });
+      const headerIdx = data.findIndex(r => r.some(c => String(c).includes("Kode SKU") || String(c).includes("Nama Barang")));
+      if (headerIdx === -1) { setErr("Header tidak ditemukan"); return; }
+
+      const mapKey = k => k.toLowerCase().replace(/[^a-z0-9]/g, "");
+      const headerRow = data[headerIdx].map(h => mapKey(String(h)));
+      const nameCol = headerRow.findIndex(h => h.includes("namabarang") || h.includes("nama"));
+      const skuCol = headerRow.findIndex(h => h.includes("kode") || h.includes("sku") || h.includes("barcode"));
+      const physCol = headerRow.findIndex(h => h.includes("stokfisik"));
+      const notesCol = headerRow.findIndex(h => h.includes("keterangan"));
+
+      const parsed = [];
+      for (let i = headerIdx + 1; i < data.length; i++) {
+        const row = data[i];
+        const name = String(row[nameCol] || "").trim();
+        const sku = String(row[skuCol] || "").trim();
+        const phys = String(row[physCol] || "").trim();
+        const notes = String(row[notesCol] || "").trim();
+        if (!name && !sku) continue;
+        const product = prods.find(p => p.business === biz && (p.barcode === sku || p.name.toLowerCase() === name.toLowerCase() || p.name.toLowerCase().includes(name.toLowerCase())));
+        parsed.push({ row: i, sku, name, phys, notes, product: product || null });
+      }
+      setRows(parsed);
+    } catch (e) { setErr("Gagal parse: " + e.message); }
+  };
+
+  if (!show) return null;
+
+  return <div style={{position:"fixed",inset:0,background:"rgba(2,8,24,.85)",zIndex:500,display:"flex",alignItems:"flex-end",justifyContent:"center",fontFamily:F.sans}}
+    onClick={onClose}>
+    <div style={{width:"100%",maxWidth:520,background:C.bg2,borderRadius:"22px 22px 0 0",border:`1px solid ${C.bo1}`,borderBottom:"none",animation:"slideUp .25s ease",maxHeight:"88vh",display:"flex",flexDirection:"column"}} onClick={e=>e.stopPropagation()}>
+      <div style={{width:36,height:4,background:C.bo1,borderRadius:2,margin:"14px auto 0"}}/>
+      <div style={{padding:"14px 18px 12px",borderBottom:`1px solid ${C.bo0}`,flexShrink:0}}>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
+          <div style={{fontSize:15,fontWeight:800}}>⬆ Import Opname</div>
+          <button onClick={onClose} style={{background:"transparent",border:"none",color:C.t2,fontSize:22,cursor:"pointer",lineHeight:1}}>×</button>
+        </div>
+        <div style={{fontSize:11,color:C.t2}}>Upload file Excel hasil export. Data Stok Fisik akan diisi otomatis.</div>
+      </div>
+      <div style={{overflowY:"auto",flex:1,padding:"14px 18px"}}>
+        <label className="press" style={{display:"flex",flexDirection:"column",alignItems:"center",gap:8,padding:"28px 20px",border:`2px dashed ${C.bo1}`,borderRadius:12,background:C.bg3,cursor:"pointer",marginBottom:12}}>
+          <span style={{fontSize:26}}>📁</span>
+          <span style={{fontSize:13,fontWeight:600,color:C.t1}}>{rows.length > 0 ? "File terpilih" : "Tap untuk pilih file .xlsx"}</span>
+          <span style={{fontSize:10,color:C.t3}}>{rows.length > 0 ? `${rows.length} baris terbaca` : "File export dari aplikasi ini"}</span>
+          <input type="file" accept=".xlsx,.xls" style={{display:"none"}} onChange={e=>{handleFile(e.target.files[0]);e.target.value="";}}/>
+        </label>
+
+        {err && <div style={{padding:"10px 14px",background:`${C.r}15`,borderRadius:8,border:`1px solid ${C.r}33`,fontSize:11,color:C.r,marginBottom:10}}>{err}</div>}
+
+        {rows.length > 0 && <>
+          <div style={{fontSize:11,fontWeight:700,color:C.t2,marginBottom:8}}>Pratinjau ({rows.filter(r=>r.product).length} dari {rows.length} produk cocok)</div>
+          <div style={{overflowX:"auto"}}>
+            <table style={{width:"100%",borderCollapse:"collapse",fontSize:10,whiteSpace:"nowrap"}}>
+              <thead>
+                <tr style={{background:C.bg0}}>
+                  {["#","SKU","Nama","Stok Fisik","Status"].map(h=>
+                    <th key={h} style={{padding:"6px 8px",textAlign:"left",color:C.t3,fontWeight:700,borderBottom:`1px solid ${C.bo0}`}}>{h}</th>)}
+                </tr>
+              </thead>
+              <tbody>
+                {rows.map((r,i)=>(
+                  <tr key={i} style={{background:r.product?"transparent":`${C.a}10`}}>
+                    <td style={{padding:"6px 8px",color:C.t2}}>{i+1}</td>
+                    <td style={{padding:"6px 8px",fontFamily:F.mono,color:C.t2}}>{r.sku}</td>
+                    <td style={{padding:"6px 8px",fontWeight:600}}>{r.name}</td>
+                    <td style={{padding:"6px 8px"}}><span className="mn">{r.phys}</span></td>
+                    <td style={{padding:"6px 8px"}}>
+                      {r.product
+                        ? <span style={{color:C.g,fontWeight:700}}>✅ Ditemukan</span>
+                        : <span style={{color:C.a,fontWeight:700}}>⚠️ Tidak ditemukan</span>}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </>}
+      </div>
+      {rows.length > 0 && <div style={{padding:"12px 18px",paddingBottom:`calc(12px + var(--safe-b))`,borderTop:`1px solid ${C.bo0}`,display:"flex",gap:8,flexShrink:0}}>
+        <button onClick={onClose} style={{flex:1,padding:"11px",background:C.bg3,border:`1px solid ${C.bo1}`,borderRadius:10,color:C.t1,fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>Batal</button>
+        <button onClick={async()=>{
+          const matched = rows.filter(r => r.product).map(r => ({
+            productId: r.product.id, barcode: r.product.barcode, name: r.product.name, category: r.product.category,
+            business: r.product.business, stockSystem: r.product.stock, stockPhysical: Number(r.phys),
+            difference: Number(r.phys) - r.product.stock,
+            status: Number(r.phys) - r.product.stock === 0 ? "OK" : Number(r.phys) - r.product.stock > 0 ? "Surplus" : "Kurang",
+            notes: "",
+          }));
+          await onImport(matched);
+        }} className="press"
+          style={{flex:1,padding:"11px",background:`linear-gradient(90deg,${C.g},${C.b})`,border:"none",borderRadius:10,color:"#fff",fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>
+          Import {rows.filter(r=>r.product).length} Produk
+        </button>
+      </div>}
+    </div>
+  </div>;
+}
+function OpnamePanel({
+  opnames, opnameItems, selectedOpname, setSelectedOpname,
+  opnameTab, setOpnameTab, showCreateOpname, setShowCreateOpname,
+  showImportOpname, setShowImportOpname, importOpnameRows, setImportOpnameRows,
+  bizProds, prods, user, biz, toast, rp, uid, nowStr,
+  fbCreateOpname, fbCloseOpname, fbDeleteOpname, fbUpdateOpnameItem,
+  fbBulkUpdateOpnameItems, fbApplyOpnameAdjustments,
+  slogs, loadSheetJS, downloadXLSX, BIZ, C, F,
+}) {
+  const [opnameForm, setOpnameForm] = useState({ business: "JS_CLOTHING", date: new Date().toISOString().slice(0,10), notes: "" });
+  const [physInput, setPhysInput] = useState({});
+  const [notesInput, setNotesInput] = useState({});
+  const [searchQ, setSearchQ] = useState("");
+  const [activeSession, setActiveSession] = useState(null);
+
+  const filteredSessions = opnames.filter(o => o.business === biz && o.status !== "deleted");
+
+  const handleCreate = async () => {
+    if (!opnameForm.date) { toast("Pilih tanggal dulu", "warn"); return; }
+    const id = await fbCreateOpname({
+      business: opnameForm.business,
+      date: opnameForm.date,
+      notes: opnameForm.notes,
+      pic: user.name,
+      picId: user.id,
+      status: "open",
+    });
+    setSelectedOpname(id);
+    setShowCreateOpname(false);
+    setOpnameForm({ business: "JS_CLOTHING", date: new Date().toISOString().slice(0,10), notes: "" });
+    toast("Sesi opname dibuat");
+  };
+
+  const handleDelete = async (id) => {
+    if (!confirm("Hapus sesi opname ini?")) return;
+    await fbDeleteOpname(id);
+    if (selectedOpname === id) setSelectedOpname(null);
+    toast("Sesi dihapus");
+  };
+
+  const statusColors = { open: C.g, closed: C.a, applied: C.b };
+  const statusLabels = { open: "OPEN", closed: "CLOSED", applied: "APPLIED" };
+
+  return <div style={{maxWidth:800,margin:"0 auto",display:"flex",flexDirection:"column",gap:10}}>
+    {showCreateOpname && <div style={{position:"fixed",inset:0,background:"rgba(2,8,24,.85)",zIndex:500,display:"flex",alignItems:"flex-end",justifyContent:"center"}}
+      onClick={()=>setShowCreateOpname(false)}>
+      <div style={{width:"100%",maxWidth:420,background:C.bg2,borderRadius:"22px 22px 0 0",padding:"18px 20px 32px",
+        border:`1px solid ${C.bo1}`,borderBottom:"none",animation:"slideUp .25s ease"}} onClick={e=>e.stopPropagation()}>
+        <div style={{width:36,height:4,background:C.b1,borderRadius:2,margin:"0 auto 16px"}}/>
+        <h3 style={{fontSize:14,fontWeight:800,marginBottom:14,color:C.a}}>📋 Buat Sesi Opname Baru</h3>
+        <div style={{display:"flex",flexDirection:"column",gap:10}}>
+          <div style={{fontSize:11,color:C.t2}}>PIC: <b style={{color:C.t0}}>{user.name}</b></div>
+          <select value={opnameForm.business} onChange={e=>setOpnameForm(f=>({...f,business:e.target.value}))}
+            style={{padding:"11px 13px",background:C.bg3,border:`1.5px solid ${C.bo0}`,borderRadius:10,color:C.t0,fontSize:12}}>
+            {Object.values(BIZ).map(b=><option key={b.id} value={b.id}>{b.icon} {b.name}</option>)}
+          </select>
+          <input type="date" value={opnameForm.date} onChange={e=>setOpnameForm(f=>({...f,date:e.target.value}))}
+            style={{padding:"11px 13px",background:C.bg3,border:`1.5px solid ${C.bo0}`,borderRadius:10,color:C.t0,fontSize:12}}/>
+          <input value={opnameForm.notes} onChange={e=>setOpnameForm(f=>({...f,notes:e.target.value}))}
+            placeholder="Catatan (opsional)"
+            style={{padding:"11px 13px",background:C.bg3,border:`1.5px solid ${C.bo0}`,borderRadius:10,color:C.t0,fontSize:12}}/>
+          <div style={{display:"flex",gap:8,marginTop:4}}>
+            <button onClick={()=>setShowCreateOpname(false)}
+              style={{flex:1,padding:"11px",background:C.bg3,border:`1px solid ${C.bo1}`,borderRadius:10,color:C.t1,fontSize:12,fontWeight:600,cursor:"pointer",fontFamily:"inherit"}}>Batal</button>
+            <button onClick={handleCreate}
+              style={{flex:1,padding:"11px",background:C.g1,border:`1px solid ${C.g}44`,borderRadius:10,color:C.g,fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>Buat Sesi</button>
+          </div>
+        </div>
+      </div>
+    </div>}
+
+    {showImportOpname && <ImportOpnameModal
+      show={showImportOpname}
+      onClose={()=>setShowImportOpname(false)}
+      onImport={async (items)=>{
+        if (!selectedOpname || !items.length) return;
+        await fbBulkUpdateOpnameItems(selectedOpname, items);
+        setShowImportOpname(false);
+        toast(`✅ ${items.length} produk diimport`);
+      }}
+      C={C} F={F} loadSheetJS={loadSheetJS} prods={prods} biz={biz} BIZ={BIZ}
+    />}
+
+    {selectedOpname ? <div>
+      <button onClick={()=>{setSelectedOpname(null);setOpnameTab("opname");}}
+        style={{background:"transparent",border:"none",color:C.a,fontSize:12,fontWeight:600,cursor:"pointer",padding:"6px 0",display:"flex",alignItems:"center",gap:4,marginBottom:8,fontFamily:"inherit"}}>
+        ← Kembali ke daftar sesi</button>
+
+      <div style={{display:"flex",gap:4,marginBottom:14,padding:"4px",background:C.bg0,borderRadius:12}}>
+        {[
+          {id:"opname",label:"TEMPLATE OPNAME"},
+          {id:"ringkasan",label:"RINGKASAN"},
+          {id:"kartustok",label:"KARTU STOCK"},
+        ].map(t=>(
+          <button key={t.id} onClick={()=>setOpnameTab(t.id)}
+            style={{flex:1,padding:"8px 0",border:"none",borderRadius:8,fontSize:10,fontWeight:700,
+              background:opnameTab===t.id?C.g1:"transparent",color:opnameTab===t.id?C.g:C.t3,cursor:"pointer",fontFamily:"inherit"}}>{t.label}</button>
+        ))}
+      </div>
+
+      {opnameTab==="opname"&&<TemplateOpnameTab
+        opnameItems={opnameItems} bizProds={bizProds}
+        physInput={physInput} setPhysInput={setPhysInput}
+        notesInput={notesInput} setNotesInput={setNotesInput}
+        searchQ={searchQ} setSearchQ={setSearchQ}
+        C={C} F={F} rp={rp} uid={uid} toast={toast}
+        fbUpdateOpnameItem={fbUpdateOpnameItem} selectedOpname={selectedOpname}
+        opnames={opnames} slogs={slogs}
+        showImportOpname={showImportOpname} setShowImportOpname={setShowImportOpname}
+        importOpnameRows={importOpnameRows} setImportOpnameRows={setImportOpnameRows}
+        loadSheetJS={loadSheetJS} downloadXLSX={downloadXLSX} BIZ={BIZ}/>}
+
+      {opnameTab==="ringkasan"&&<RingkasanTab
+        opnameItems={opnameItems} selectedOpname={selectedOpname}
+        opnames={opnames} user={user} toast={toast}
+        fbCloseOpname={fbCloseOpname} fbApplyOpnameAdjustments={fbApplyOpnameAdjustments}
+        C={C} F={F} rp={rp}/>}
+
+      {opnameTab==="kartustok"&&<KartuStockTab
+        slogs={slogs} prods={prods} biz={biz} BIZ={BIZ}
+        C={C} F={F} rp={rp} loadSheetJS={loadSheetJS} downloadXLSX={downloadXLSX}
+        selectedOpname={selectedOpname} opnameItems={opnameItems} opnames={opnames} toast={toast}/>}
+    </div> : <div>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14}}>
+        <h2 style={{fontSize:15,fontWeight:800}}>📋 Opname Sessions</h2>
+        <button onClick={()=>setShowCreateOpname(true)}
+          style={{padding:"9px 16px",background:C.g1,border:`1px solid ${C.g}44`,borderRadius:10,color:C.g,fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>+ Buat Sesi Baru</button>
+      </div>
+      {filteredSessions.length === 0 ? <div style={{padding:20,textAlign:"center",color:C.t3,fontSize:12}}>Belum ada sesi opname</div>
+      : filteredSessions.map(s=>{
+        const st = s.status || "open";
+        return <Card key={s.id} style={{marginBottom:8}} onClick={()=>setSelectedOpname(s.id)}>
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+            <div>
+              <div style={{fontWeight:600,fontSize:13,marginBottom:3}}>{BIZ[s.business]?.icon} {BIZ[s.business]?.name || s.business}</div>
+              <div style={{fontSize:11,color:C.t2}}>📅 {s.date} · 👤 {s.pic}</div>
+              {s.notes && <div style={{fontSize:10,color:C.t3,marginTop:2}}>📝 {s.notes}</div>}
+            </div>
+            <div style={{display:"flex",alignItems:"center",gap:6}}>
+              <span style={{padding:"2px 8px",borderRadius:4,fontSize:9,fontWeight:700,textTransform:"uppercase",
+                color:statusColors[st]||C.t2,background:`${(statusColors[st]||C.t2)}22`}}>
+                {statusLabels[st]||st.toUpperCase()}</span>
+              {st === "open" && <button onClick={e=>{e.stopPropagation();handleDelete(s.id);}}
+                style={{background:"transparent",border:"none",color:C.r,fontSize:14,cursor:"pointer",padding:2}}>🗑️</button>}
+            </div>
+          </div>
+        </Card>;
+      })}
+    </div>}
+  </div>;
+}
 
 // ─────────────────────────────────────────────────────────────
 //  APPSCRIPT CODE
@@ -1339,9 +1863,16 @@ function AppInner() {
       subscribeReturns(d=>setReturns(d)),
       subscribeActivityLogs(d=>setActLogs(d)),
       subscribeTargets(d=>setTargets(d)),
+      subscribeOpnames(d=>setOpnames(d)),
     ];
     return()=>uns.forEach(u=>u());
   },[fbReady]);
+  // ─── Subscribe opname items when session selected ───
+  useEffect(() => {
+    if (!selectedOpname || !fbReady) { setOpnameItems([]); return; }
+    const unsub = subscribeOpnameItems(selectedOpname, d => setOpnameItems(d));
+    return () => unsub();
+  }, [selectedOpname, fbReady]);
   // ─── Hide splash screen when app is ready ───
   useEffect(()=>{
     if(fbReady||fbSetup) window.__hideSplash?.();
@@ -1486,6 +2017,7 @@ function AppInner() {
   const [stokPrice,setStokPrice]=useState("");
   const [stokTarget,setStokTarget]=useState(null);
   const [stokSearch,setStokSearch]=useState("");
+  const [showOpnamePanel,setShowOpnamePanel]=useState(false);
   const [isNewProduct, setIsNewProduct] = useState(false);
   const [newPForm, setNewPForm] = useState({ barcode: "", name: "", category: "Umum", price: "", stock: "" });
   const stokScanRef=useRef(null),stokQRef=useRef(null);
@@ -1535,6 +2067,15 @@ function AppInner() {
   const [slogFrom,setSlogFrom]=useState("");
   const [slogTo,setSlogTo]=useState("");
   const [slogType,setSlogType]=useState("ALL");
+  // ─── Opname state ───
+  const [opnames, setOpnames] = useState([]);
+  const [opnameItems, setOpnameItems] = useState([]);
+  const [selectedOpname, setSelectedOpname] = useState(null);
+  const [opnameTab, setOpnameTab] = useState("opname"); // "opname" | "ringkasan" | "kartustok"
+  const [opnameBiz, setOpnameBiz] = useState(null);
+  const [showCreateOpname, setShowCreateOpname] = useState(false);
+  const [showImportOpname, setShowImportOpname] = useState(false);
+  const [importOpnameRows, setImportOpnameRows] = useState([]);
 
   // ─── Helpers ───
   const bizProds=(b=biz)=>prods.filter(p=>p.business===b);
@@ -2395,6 +2936,28 @@ function AppInner() {
     const filtered=bizProds().filter(p=>!stokSearch||p.name.toLowerCase().includes(stokSearch.toLowerCase())||p.barcode.includes(stokSearch));
     return <div style={{fontFamily:F.sans,background:C.bg1,color:C.t0,height:"100vh",display:"flex",flexDirection:"column"}}>
       <style>{CSS}</style><Toast n={notif}/>
+      {showOpnamePanel && <div style={{position:"fixed",inset:0,zIndex:600,background:C.bg1,overflowY:"auto"}}>
+        <div style={{padding:"8px 12px",display:"flex",justifyContent:"flex-end",position:"sticky",top:0,background:C.bg2,borderBottom:`1px solid ${C.bo0}`,zIndex:1}}>
+          <button onClick={()=>setShowOpnamePanel(false)} className="press"
+            style={{padding:"6px 12px",background:C.r1,border:`1px solid ${C.r}44`,borderRadius:8,color:C.r,fontSize:11,fontWeight:700,cursor:"pointer"}}>
+            × Tutup Opname
+          </button>
+        </div>
+        <OpnamePanel
+          opnames={opnames} opnameItems={opnameItems}
+          selectedOpname={selectedOpname} setSelectedOpname={setSelectedOpname}
+          opnameTab={opnameTab} setOpnameTab={setOpnameTab}
+          showCreateOpname={showCreateOpname} setShowCreateOpname={setShowCreateOpname}
+          showImportOpname={showImportOpname} setShowImportOpname={setShowImportOpname}
+          importOpnameRows={importOpnameRows} setImportOpnameRows={setImportOpnameRows}
+          bizProds={bizProds} prods={prods} user={user} biz={biz}
+          toast={toast} rp={rp} uid={uid} nowStr={nowStr}
+          fbCreateOpname={fbCreateOpname} fbCloseOpname={fbCloseOpname}
+          fbDeleteOpname={fbDeleteOpname} fbUpdateOpnameItem={fbUpdateOpnameItem}
+          fbBulkUpdateOpnameItems={fbBulkUpdateOpnameItems} fbApplyOpnameAdjustments={fbApplyOpnameAdjustments}
+          slogs={slogs} loadSheetJS={loadSheetJS} downloadXLSX={downloadXLSX} BIZ={BIZ} C={C} F={F}
+        />
+      </div>}
       {UpdateBannerEl}
       {showLowStock&&<LowStockPopup prods={prods} onClose={()=>setShowLowStock(false)}/>}
       {showExpirePopup&&<ExpirePopup nearExpiry={nearExpiry} expiredProds={expiredProds} onClose={()=>setShowExpirePopup(false)}/>}
@@ -2508,6 +3071,11 @@ function AppInner() {
             </div>
           </Card>
         )}
+
+        <button onClick={()=>setShowOpnamePanel(true)} className="press"
+          style={{padding:"11px 16px",background:C.vi1,border:`1px solid ${C.vi}44`,borderRadius:12,color:C.vi,fontSize:13,fontWeight:700,width:"100%",textAlign:"center",cursor:"pointer",fontFamily:"inherit"}}>
+          📋 Buka Opname
+        </button>
 
         {/* Daftar Produk dengan Quick Adjust */}
         <Card noPad style={{overflow:"hidden"}}>
@@ -2638,7 +3206,7 @@ function AppInner() {
     const TABS=[
       {id:"dashboard",l:"📊 Dashboard"},{id:"users",l:"👥 Pengguna"},{id:"products",l:"📦 Produk"},
       {id:"laporan",l:"💰 Laporan"},{id:"absensi",l:"🕐 Absensi"},{id:"stoklog",l:"📋 Log Stok"},
-      {id:"returns",l:"↩ Retur"},{id:"actlog",l:"🔍 Aktivitas"},{id:"sheets",l:"🔗 Sheets"},
+      {id:"returns",l:"↩ Retur"},{id:"actlog",l:"🔍 Aktivitas"},{id:"sheets",l:"🔗 Sheets"},{id:"opname",l:"📋 Opname"},
     ];
     // Bottom nav tabs (mobile)
     const BNAV_TABS=[
@@ -2653,6 +3221,7 @@ function AppInner() {
       {id:"returns",ic:"↩",label:"Retur"},
       {id:"actlog",ic:"🔍",label:"Aktivitas"},
       {id:"sheets",ic:"🔗",label:"Sheets"},
+      {id:"opname",ic:"📋",label:"Opname"},
     ];
     const isMoreTab=MORE_TABS.some(t=>t.id===adminTab);
     const adminPs=prods.filter(p=>p.business===adminBiz&&(!searchQ||p.name.toLowerCase().includes(searchQ.toLowerCase())||p.barcode.includes(searchQ)));
@@ -4106,8 +4675,10 @@ function AppInner() {
                     <td style={{padding:"14px 13px",color:C.t2,fontSize:10,whiteSpace:"nowrap"}}>{l.date}</td>
                     <td style={{padding:"14px 13px",fontWeight:500,fontSize:12}}>{l.name}<div className="mn" style={{fontSize:9,color:C.t3}}>{l.barcode}</div></td>
                     <td style={{padding:"14px 13px"}}><BizChip biz={l.business} sm/></td>
-                    <td style={{padding:"14px 13px"}}><span style={{padding:"2px 8px",borderRadius:20,fontSize:9.5,fontWeight:700,background:l.type==="masuk"?C.g1:C.r1,color:l.type==="masuk"?C.g:C.r,textTransform:"uppercase"}}>{l.type}</span></td>
-                    <td style={{padding:"14px 13px",fontFamily:F.mono,fontWeight:700,color:l.type==="masuk"?C.g:C.r}}>{l.type==="masuk"?"+":"-"}{l.qty}</td>
+                    <td style={{padding:"14px 13px"}}><span style={{padding:"2px 8px",borderRadius:20,fontSize:9.5,fontWeight:700,textTransform:"uppercase",
+                      background:l.type==="masuk"?C.g1:l.type==="opname"?C.vi1:C.r1,
+                      color:l.type==="masuk"?C.g:l.type==="opname"?C.vi:C.r}}>{l.type==="opname"?"OPNAME":l.type}</span></td>
+                    <td style={{padding:"14px 13px",fontFamily:F.mono,fontWeight:700,color:l.type==="masuk"?C.g:l.type==="opname"?C.vi:C.r}}>{l.type==="masuk"?"+":l.type==="opname"?"±":"-"}{l.qty}</td>
                     <td style={{padding:"14px 13px",fontFamily:F.mono,fontSize:11}}>{l.before}</td>
                     <td style={{padding:"14px 13px",fontFamily:F.mono,fontWeight:700}}>{l.after}</td>
                     <td style={{padding:"14px 13px",color:C.t2,fontSize:11}}>{l.by}</td>
@@ -4234,6 +4805,23 @@ function AppInner() {
              </div>
           </Card>
         </div>}
+
+        {/* ── OPNAME ── */}
+        {adminTab==="opname"&&<OpnamePanel
+          opnames={opnames} opnameItems={opnameItems}
+          selectedOpname={selectedOpname} setSelectedOpname={setSelectedOpname}
+          opnameTab={opnameTab} setOpnameTab={setOpnameTab}
+          showCreateOpname={showCreateOpname} setShowCreateOpname={setShowCreateOpname}
+          showImportOpname={showImportOpname} setShowImportOpname={setShowImportOpname}
+          importOpnameRows={importOpnameRows} setImportOpnameRows={setImportOpnameRows}
+          bizProds={bizProds} prods={prods} user={user} biz={adminBiz}
+          toast={toast} rp={rp} uid={uid} nowStr={nowStr}
+          fbCreateOpname={fbCreateOpname} fbCloseOpname={fbCloseOpname}
+          fbDeleteOpname={fbDeleteOpname} fbUpdateOpnameItem={fbUpdateOpnameItem}
+          fbBulkUpdateOpnameItems={fbBulkUpdateOpnameItems}
+          fbApplyOpnameAdjustments={fbApplyOpnameAdjustments}
+          slogs={slogs} loadSheetJS={loadSheetJS} downloadXLSX={downloadXLSX}
+          BIZ={BIZ} C={C} F={F}/>}
 
       </div>
 
