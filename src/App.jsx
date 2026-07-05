@@ -1852,6 +1852,9 @@ function AppInner() {
   const [returns,setReturns]=useState([]);
   const [actLogs,setActLogs]=useState([]);
   const [targets,setTargets]=useState([]);
+  const [opnames, setOpnames] = useState([]);
+  const [opnameItems, setOpnameItems] = useState([]);
+  const [selectedOpname, setSelectedOpname] = useState(null);
   useEffect(()=>{
     if(!fbReady) return;
     const uns=[
@@ -2067,11 +2070,8 @@ function AppInner() {
   const [slogFrom,setSlogFrom]=useState("");
   const [slogTo,setSlogTo]=useState("");
   const [slogType,setSlogType]=useState("ALL");
-  // ─── Opname state ───
-  const [opnames, setOpnames] = useState([]);
-  const [opnameItems, setOpnameItems] = useState([]);
-  const [selectedOpname, setSelectedOpname] = useState(null);
-  const [opnameTab, setOpnameTab] = useState("opname"); // "opname" | "ringkasan" | "kartustok"
+  // ─── Opname UI state ───
+  const [opnameTab, setOpnameTab] = useState("opname");
   const [opnameBiz, setOpnameBiz] = useState(null);
   const [showCreateOpname, setShowCreateOpname] = useState(false);
   const [showImportOpname, setShowImportOpname] = useState(false);
