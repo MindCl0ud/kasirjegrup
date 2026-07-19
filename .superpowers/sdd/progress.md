@@ -1,0 +1,7 @@
+Task 1: complete (build OK, all 8 functions added)
+Task 2: complete (state+subscriptions added, build OK)
+Task 3: complete (OpnamePanel + 3 subtab components, build OK)
+Task 4-6: complete (embedded in Task 3 - full tab implementations)
+Task 7: complete (export Excel 4-sheet)
+Task 8: complete (import Excel parse & preview)
+Task 9-10: complete (stok integration + log polish)

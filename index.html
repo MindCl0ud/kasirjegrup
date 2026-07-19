@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="id">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/icons/icon-192.png" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no" />
+    <meta name="theme-color" content="#020817" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="Kasir JE Grup" />
+    <meta name="description" content="Sistem Kasir & Inventori JE Grup" />
+    <link rel="apple-touch-icon" href="/icons/icon-192.png" />
+    <link rel="manifest" href="/manifest.json" />
+    <title>Kasir JE Grup</title>
+    <style>
+      body { margin: 0; background: #020817; }
+      #splash {
+        position: fixed; inset: 0; background: #020817;
+        display: flex; flex-direction: column;
+        align-items: center; justify-content: center;
+        z-index: 9999; transition: opacity .4s;
+        font-family: system-ui, sans-serif;
+      }
+      #splash.hide { opacity: 0; pointer-events: none; }
+      #splash-icon { font-size: 64px; margin-bottom: 16px; }
+      #splash-title {
+        font-size: 22px; font-weight: 700; letter-spacing: 3px;
+        background: linear-gradient(90deg, #00e5a0, #38bdf8);
+        -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+        margin-bottom: 8px;
+      }
+      #splash-sub { font-size: 13px; color: #4a6480; }
+      #splash-bar { margin-top: 32px; width: 120px; height: 3px; background: #0a1628; border-radius: 2px; overflow: hidden; }
+      #splash-progress { height: 100%; width: 0%; border-radius: 2px; background: linear-gradient(90deg, #00e5a0, #38bdf8); animation: load 1.5s ease forwards; }
+      @keyframes load { to { width: 100%; } }
+    </style>
+  </head>
+  <body>
+    <div id="splash">
+      <img id="splash-icon" src="/logo.png" alt="JE Grup" style="width:64px;height:64px;border-radius:16px;margin-bottom:16px"/>
+      <div id="splash-title">KASIR JE GRUP</div>
+      <div id="splash-sub">Memuat aplikasi...</div>
+      <div id="splash-bar"><div id="splash-progress"></div></div>
+    </div>
+
+    <div id="root"></div>
+    <script type="module" src="/src/main.jsx"></script>
+
+    <script>
+      // ── Service Worker ─────────────────────────────────────────
+      if ('serviceWorker' in navigator) {
+        window.addEventListener('load', async () => {
+          try {
+            const reg = await navigator.serviceWorker.register('/sw.js', { scope: '/' });
+
+            // Cek update setiap 60 detik (saat app aktif)
+            setInterval(() => reg.update(), 60_000);
+
+            // Update ditemukan → notif ke React
+            const notifyUpdate = (sw) => {
+              sw.addEventListener('statechange', () => {
+                if (sw.state === 'installed' && navigator.serviceWorker.controller) {
+                  // Ada versi baru, simpan referensi SW baru
+                  window.__pendingSW = sw;
+                  // Panggil callback React jika sudah siap
+                  window.__onUpdateReady?.();
+                }
+              });
+            };
+
+            // Cek apakah sudah ada SW baru yang menunggu
+            if (reg.waiting) {
+              window.__pendingSW = reg.waiting;
+              window.__onUpdateReady?.();
+            }
+
+            reg.addEventListener('updatefound', () => {
+              notifyUpdate(reg.installing);
+            });
+
+            // Setelah SW baru aktif → reload untuk pakai versi baru
+            navigator.serviceWorker.addEventListener('controllerchange', () => {
+              window.location.reload();
+            });
+
+          } catch(e) {
+            console.warn('SW failed:', e);
+          }
+        });
+      }
+
+      // Fungsi untuk trigger update (dipanggil dari React)
+      window.__applyUpdate = () => {
+        if (window.__pendingSW) {
+          window.__pendingSW.postMessage({ type: 'SKIP_WAITING' });
+        } else {
+          window.location.reload();
+        }
+      };
+
+      // Hide splash
+      window.__hideSplash = () => {
+        const s = document.getElementById('splash');
+        if (s) { s.classList.add('hide'); setTimeout(() => s.remove(), 500); }
+      };
+      setTimeout(() => window.__hideSplash?.(), 3000);
+    </script>
+  </body>
+</html>
