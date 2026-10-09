@@ -8,7 +8,6 @@ root.render(
     <App />
   </StrictMode>
 );
-
 // Hide splash screen after React mounts
 if (window.__hideSplash) {
   setTimeout(window.__hideSplash, 300);
