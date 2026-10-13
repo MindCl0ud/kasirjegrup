@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useCallback, Component } from "react";
 import React from "react"; // Pastikan React terimport untuk komponen fungsional
 import {
-  loadConfig, saveConfig, clearConfig, initFirebase, isSeeded, seedDatabase,
+  loadConfig, hasEnvConfig, saveConfig, clearConfig, initFirebase, isSeeded, seedDatabase,
   subscribeUsers, subscribeProducts, subscribeTransactions, subscribeStockLogs,
   subscribeAttendance, subscribeReturns, subscribeActivityLogs, subscribeTargets,
   fbAddUser, fbUpdateUser, fbDeleteUser, fbAddProduct, fbUpdateProduct, fbDeleteProduct,
@@ -12,6 +12,13 @@ import {
   subscribeOpnames, subscribeOpnameItems, fbCreateOpname, fbCloseOpname,
   fbDeleteOpname, fbUpdateOpnameItem, fbBulkUpdateOpnameItems, fbApplyOpnameAdjustments,
 } from "./firebase.js";
+import {
+  Check, CheckCircle2, X, AlertTriangle, Ban, Package, User, Users, Crown, ClipboardList, ClipboardCheck, Wallet, Clock,
+  Search, Pencil, Plus, ScanLine, Target, Store, Receipt, CalendarDays, CreditCard, KeyRound, Trash2,
+  Briefcase, Factory, Sun, Moon, Flame, Lightbulb, ShoppingCart, Lock, BarChart3, TrendingUp, Link2, Tag,
+  Shirt, Sparkles, Home, Printer, RefreshCw, Folder, FileText, Eye, EyeOff, Building2, LayoutDashboard,
+  Undo2, Activity, ChevronRight, LogOut, Bell, ArrowLeftRight, ArrowLeft, MoreHorizontal, WifiOff, Info,
+} from "lucide-react";
 
 // ─────────────────────────────────────────────────────────────
 //  CONSTANTS
@@ -64,32 +71,44 @@ const SESSION_TTL = 8 * 60 * 60 * 1000; // 8 hours
 // ─────────────────────────────────────────────────────────────
 //  DESIGN TOKENS
 // ─────────────────────────────────────────────────────────────
+// Palet "Tenun Sumba": indigo tarum sebagai warna merek, hijau khusus untuk sukses/uang.
+// Catatan: C.on = warna teks di atas warna aksen (putih di tema terang, indigo gelap di tema gelap).
 const DARK_C = {
-  bg0:"#020817",bg1:"#060e1e",bg2:"#0a1628",bg3:"#0f1e36",bg4:"#152440",
-  bo0:"rgba(255,255,255,0.06)",bo1:"rgba(255,255,255,0.1)",bo2:"rgba(255,255,255,0.16)",
-  t0:"#e8f4ff",t1:"#8aaac8",t2:"#4a6480",t3:"#253347",
-  g:"#00e5a0",g1:"rgba(0,229,160,0.12)",g2:"rgba(0,229,160,0.06)",
-  a:"#fbbf24",a1:"rgba(251,191,36,0.13)",
-  r:"#fb7185",r1:"rgba(251,113,133,0.13)",
-  b:"#38bdf8",b1:"rgba(56,189,248,0.12)",
-  p:"#f472b6",p1:"rgba(244,114,182,0.12)",
-  cy:"#22d3ee",cy1:"rgba(34,211,238,0.12)",
-  vi:"#a78bfa",vi1:"rgba(167,139,250,0.12)",
+  bg0:"#0A0D1F",bg1:"#0F1330",bg2:"#171C40",bg3:"#1E2450",bg4:"#2A3166",
+  bo0:"rgba(190,200,255,0.09)",bo1:"rgba(190,200,255,0.16)",bo2:"rgba(190,200,255,0.26)",
+  t0:"#EEF0FF",t1:"#B8BFE3",t2:"#8991BC",t3:"#6F78AB",
+  pri:"#8E9CFF",pri1:"rgba(142,156,255,0.16)",on:"#0F1330",
+  g:"#3FD99B",g1:"rgba(63,217,155,0.14)",g2:"rgba(63,217,155,0.07)",
+  a:"#F5B945",a1:"rgba(245,185,69,0.15)",
+  r:"#FF7B8C",r1:"rgba(255,123,140,0.15)",
+  b:"#62B6F5",b1:"rgba(98,182,245,0.15)",
+  p:"#F27BAE",p1:"rgba(242,123,174,0.15)",
+  cy:"#4CC9DB",cy1:"rgba(76,201,219,0.14)",
+  vi:"#B49BFF",vi1:"rgba(180,155,255,0.15)",
+  sh:"0 1px 0 rgba(255,255,255,0.03)",sh2:"0 16px 40px rgba(2,4,20,0.6)",
 };
 const LIGHT_C = {
-  bg0:"#e8edf2",bg1:"#f0f4f8",bg2:"#ffffff",bg3:"#f4f7fa",bg4:"#e2e8ef",
-  bo0:"rgba(0,0,0,0.08)",bo1:"rgba(0,0,0,0.12)",bo2:"rgba(0,0,0,0.18)",
-  t0:"#0f172a",t1:"#334155",t2:"#64748b",t3:"#94a3b8",
-  g:"#059669",g1:"rgba(5,150,105,0.1)",g2:"rgba(5,150,105,0.05)",
-  a:"#b45309",a1:"rgba(180,83,9,0.1)",
-  r:"#e11d48",r1:"rgba(225,29,72,0.1)",
-  b:"#0284c7",b1:"rgba(2,132,199,0.1)",
-  p:"#be185d",p1:"rgba(190,24,93,0.1)",
-  cy:"#0e7490",cy1:"rgba(14,116,144,0.1)",
-  vi:"#6d28d9",vi1:"rgba(109,40,217,0.1)",
+  bg0:"#E6E9F3",bg1:"#F4F5FA",bg2:"#FFFFFF",bg3:"#F0F2F9",bg4:"#E1E5F1",
+  bo0:"rgba(28,36,88,0.09)",bo1:"rgba(28,36,88,0.15)",bo2:"rgba(28,36,88,0.26)",
+  t0:"#12173A",t1:"#3E4670",t2:"#5F678E",t3:"#8E95B5",
+  pri:"#2F3C94",pri1:"rgba(47,60,148,0.09)",on:"#FFFFFF",
+  g:"#0F7B58",g1:"rgba(15,123,88,0.10)",g2:"rgba(15,123,88,0.05)",
+  a:"#A85F00",a1:"rgba(168,95,0,0.11)",
+  r:"#C4263B",r1:"rgba(196,38,59,0.10)",
+  b:"#1B64B0",b1:"rgba(27,100,176,0.10)",
+  p:"#B8316A",p1:"rgba(184,49,106,0.10)",
+  cy:"#0B7487",cy1:"rgba(11,116,135,0.10)",
+  vi:"#6842BD",vi1:"rgba(104,66,189,0.10)",
+  sh:"0 1px 2px rgba(18,23,58,0.05), 0 4px 14px rgba(18,23,58,0.04)",sh2:"0 12px 36px rgba(18,23,58,0.18)",
 };
-let C = { ...(localStorage.getItem("je_theme")==="light" ? LIGHT_C : DARK_C) };
-const F = { sans:"'Plus Jakarta Sans',system-ui,sans-serif", mono:"'JetBrains Mono',monospace" };
+let C = { ...(localStorage.getItem("je_theme")==="dark" ? DARK_C : LIGHT_C) };
+const isDarkTheme = () => C.bg2 === DARK_C.bg2;
+const F = { sans:"'Figtree Variable','Figtree',system-ui,-apple-system,'Segoe UI',Roboto,sans-serif", mono:"'Figtree Variable','Figtree',system-ui,-apple-system,'Segoe UI',Roboto,sans-serif" };
+const syncThemeColor = () => { try { document.querySelector('meta[name="theme-color"]')?.setAttribute("content", C.bg2); } catch {} };
+syncThemeColor();
+
+// Pita ikat (elemen khas): deretan belah ketupat gading + merah mengkudu di atas indigo.
+const IKAT_TILE = encodeURIComponent("<svg xmlns='http://www.w3.org/2000/svg' width='28' height='28' viewBox='0 0 28 28'><path d='M14 2 26 14 14 26 2 14Z' fill='none' stroke='#E9E1CC' stroke-width='1.6'/><path d='M14 8 20 14 14 20 8 14Z' fill='#A33A2D'/></svg>");
 
 // ─────────────────────────────────────────────────────────────
 //  XLSX DOWNLOAD
@@ -119,218 +138,275 @@ const downloadXLSX = async (rows, cols, sheetName, filename) => {
 //  GLOBAL CSS
 // ─────────────────────────────────────────────────────────────
 const makeCSS = () => `
-  @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap');
+  :root{color-scheme:${isDarkTheme()?"dark":"light"};--safe-t:env(safe-area-inset-top,0px);--safe-b:env(safe-area-inset-bottom,0px);
+    --ik1:#232C75;--ik2:#E9E1CC;--ik3:#A33A2D;}
   *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
-  :root{color-scheme:${C.bg0==="#020817"?"dark":"light"};--safe-t:env(safe-area-inset-top,0px);--safe-b:env(safe-area-inset-bottom,0px);}
-  html{height:100%;-webkit-tap-highlight-color:transparent;}
-  body{font-family:${F.sans};background:${C.bg1};color:${C.t0};height:100%;-webkit-font-smoothing:antialiased;overscroll-behavior:none;}
+  html{height:100%;-webkit-tap-highlight-color:transparent;-webkit-text-size-adjust:100%;}
+  body{font-family:${F.sans};background:${C.bg1};color:${C.t0};height:100%;-webkit-font-smoothing:antialiased;
+    overscroll-behavior:none;font-feature-settings:"tnum" 1;}
   #root{height:100%;display:flex;flex-direction:column;}
   input,button,select,textarea{font-family:inherit;}
-  input:focus,textarea:focus,select:focus{outline:none;}
   button{-webkit-tap-highlight-color:transparent;cursor:pointer;}
-  ::-webkit-scrollbar{width:3px;height:3px;}
+  button:disabled{cursor:not-allowed;}
+  input:focus,textarea:focus,select:focus{outline:none;}
+  button:focus-visible,[role=button]:focus-visible,[role=switch]:focus-visible{outline:2px solid ${C.pri};outline-offset:2px;}
+  input:focus-visible,textarea:focus-visible,select:focus-visible{box-shadow:0 0 0 3px ${C.pri1};}
+  ::-webkit-scrollbar{width:6px;height:6px;}
   ::-webkit-scrollbar-track{background:transparent;}
-  ::-webkit-scrollbar-thumb{background:${C.bg4};border-radius:2px;}
+  ::-webkit-scrollbar-thumb{background:${C.bo2};border-radius:3px;}
   ::placeholder{color:${C.t3};}
   input[type=number]::-webkit-inner-spin-button{opacity:.4;}
-  @keyframes fadeUp{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:translateY(0)}}
+
+  @keyframes fadeUp{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
   @keyframes fadeIn{from{opacity:0}to{opacity:1}}
-  @keyframes slideUp{from{opacity:0;transform:translateY(100%)}to{opacity:1;transform:translateY(0)}}
+  @keyframes slideUp{from{opacity:.4;transform:translateY(100%)}to{opacity:1;transform:translateY(0)}}
   @keyframes spin{to{transform:rotate(360deg)}}
   @keyframes scanLine{0%,100%{top:8%}50%{top:88%}}
   @keyframes pulse{0%,100%{opacity:.5;transform:scale(1)}50%{opacity:1;transform:scale(1.2)}}
-  @keyframes glow{0%,100%{box-shadow:0 0 8px ${C.g}55}50%{box-shadow:0 0 20px ${C.g}99}}
-  .press{transition:transform .1s;}.press:active{transform:scale(.96);}
-  .hrow:hover{background:${C.bg4}!important;}.hrow{transition:background .1s;}
-  .mn{font-family:${F.mono};font-variant-numeric:tabular-nums;}
-  .atab{padding:10px 14px;background:transparent;border:none;border-bottom:2px solid transparent;
-    color:${C.t2};font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap;letter-spacing:.2px;transition:.15s;font-family:${F.sans};}
-  .atab.on{border-bottom-color:${C.g};color:${C.g};background:${C.g2};}
+  @keyframes glow{0%,100%{opacity:.55}50%{opacity:1}}
+  @keyframes ripple{from{transform:scale(0);opacity:.35}to{transform:scale(4);opacity:0}}
+  @keyframes cardIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
+  @media (prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important;}}
+
+  .press{transition:transform .1s,background .15s,opacity .15s;}.press:active{transform:scale(.97);}
+  .hrow{transition:background .1s;}.hrow:hover{background:${C.bg3}!important;}
+  .mn{font-variant-numeric:tabular-nums;letter-spacing:-.01em;}
+
+  /* ── Tab desktop ── */
+  .atab{display:inline-flex;align-items:center;gap:7px;padding:13px 14px;background:transparent;border:none;border-bottom:2px solid transparent;
+    color:${C.t2};font-size:13px;font-weight:600;white-space:nowrap;transition:color .15s,background .15s;font-family:${F.sans};}
+  .atab.on{border-bottom-color:${C.pri};color:${C.pri};font-weight:700;}
   .atab:hover:not(.on){color:${C.t0};background:${C.bg3};}
-  @media(max-width:640px){.hide-mobile{display:none!important;}.atab{padding:8px 10px;font-size:11px;}}
+
+  @media(max-width:640px){.hide-mobile{display:none!important;}
+    input:not([type=checkbox]):not([type=radio]),select,textarea{font-size:16px!important;}
+    .stat-grid-4,.stat-grid-3{grid-template-columns:repeat(2,1fr)!important;}}
   @media(min-width:641px){.hide-desktop{display:none!important;}
     .stat-grid-4{grid-template-columns:repeat(4,1fr)!important;}
     .stat-grid-3{grid-template-columns:repeat(3,1fr)!important;}}
-  @media(max-width:640px){.stat-grid-4{grid-template-columns:repeat(2,1fr)!important;}
-    .stat-grid-3{grid-template-columns:repeat(2,1fr)!important;}}
   .mobile-card-list{display:flex;flex-direction:column;gap:10px;}
-  .admin-content{flex:1;overflow-y:auto;padding:10px;padding-bottom:calc(76px + var(--safe-b));min-height:0;}
-  @media(min-width:641px){.admin-content{padding-bottom:calc(16px + var(--safe-b));}}
+  .admin-content{flex:1;overflow-y:auto;padding:12px;padding-bottom:calc(88px + var(--safe-b));min-height:0;}
+  @media(min-width:641px){.admin-content{padding:20px;padding-bottom:calc(24px + var(--safe-b));}}
 
-  /* ── Bottom Nav ── */
-  .bnav{position:fixed;bottom:0;left:0;right:0;
-    background:${C.bg0=="rgba(2,8,23,1)"||C.bg0==="#020817"?"rgba(6,14,30,0.92)":"rgba(240,244,248,0.92)"};
-    backdrop-filter:blur(24px);-webkit-backdrop-filter:blur(24px);
-    border-top:1px solid ${C.bo0};display:flex;z-index:300;
-    padding-bottom:var(--safe-b);height:calc(60px + var(--safe-b));align-items:stretch;}
+  /* ── Navigasi bawah ── */
+  .bnav{position:fixed;bottom:0;left:0;right:0;background:${C.bg2};border-top:1px solid ${C.bo0};
+    display:flex;z-index:300;padding:6px 6px calc(6px + var(--safe-b));gap:2px;align-items:stretch;}
   @media(min-width:641px){.bnav{display:none;}}
-  .bnavbtn{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;
-    gap:2px;border:none;background:transparent;cursor:pointer;padding:6px 2px 4px;
-    -webkit-tap-highlight-color:transparent;min-width:0;position:relative;transition:transform .12s;}
-  .bnavbtn:active{transform:scale(.88);}
-  .bnavbtn .bnav-icon{font-size:22px;line-height:1;transition:transform .2s,filter .2s;}
-  .bnavbtn.active .bnav-icon{transform:scale(1.15) translateY(-1px);}
-  .bnavbtn .bnav-label{font-size:9px;font-weight:700;letter-spacing:.2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:60px;transition:color .2s;}
-  .bnav-dot{position:absolute;bottom:calc(var(--safe-b) + 3px);width:18px;height:2.5px;border-radius:2px;
-    background:linear-gradient(90deg,${C.g},${C.b});transition:opacity .2s,width .2s;}
+  .bnavbtn{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;border:none;background:transparent;
+    padding:2px 0;min-width:0;color:${C.t2};transition:color .15s;}
+  .bnavbtn .bnav-icon{width:58px;height:30px;border-radius:15px;display:grid;place-items:center;transition:background .18s;}
+  .bnavbtn.active{color:${C.pri};}
+  .bnavbtn.active .bnav-icon{background:${C.pri1};}
+  .bnavbtn .bnav-label{font-size:11.5px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:72px;}
+  .bnavbtn.active .bnav-label{font-weight:700;}
+  .bnav-dot{display:none;}
 
-  /* ── Drawer ── */
-  .drawer-overlay{position:fixed;inset:0;background:rgba(2,8,24,.75);z-index:400;animation:fadeIn .18s ease;backdrop-filter:blur(4px);}
-  .drawer{position:fixed;bottom:0;left:0;right:0;background:${C.bg2};border-radius:24px 24px 0 0;
-    z-index:401;padding:0 0 calc(20px + var(--safe-b));animation:slideUp .28s cubic-bezier(.32,1.2,.6,1);
-    border:1px solid ${C.bo1};border-bottom:none;
-    box-shadow:0 -20px 60px rgba(0,0,0,.5);}
+  /* ── Sheet & drawer ── */
+  .drawer-overlay,.sheet-wrap{position:fixed;inset:0;background:rgba(12,16,46,.55);z-index:400;animation:fadeIn .16s ease;}
+  .sheet-wrap{display:flex;align-items:flex-end;justify-content:center;z-index:450;}
+  .drawer,.sheet{background:${C.bg2};border-radius:22px 22px 0 0;animation:slideUp .24s cubic-bezier(.2,.9,.3,1);box-shadow:${C.sh2};}
+  .drawer{position:fixed;bottom:0;left:0;right:0;z-index:401;padding:0 0 calc(18px + var(--safe-b));}
+  .sheet{width:100%;max-width:440px;max-height:88vh;overflow-y:auto;padding:8px 16px calc(18px + var(--safe-b));}
+  .grabber{width:38px;height:4px;border-radius:2px;background:${C.bo2};margin:6px auto 12px;}
+  @media(min-width:641px){.sheet-wrap{align-items:center;}.sheet{border-radius:20px;}}
+  .srow{display:flex;align-items:center;gap:12px;width:100%;padding:12px 10px;border:none;background:transparent;border-radius:12px;
+    text-align:left;color:${C.t0};font-size:14.5px;font-weight:600;min-height:48px;}
+  .srow:hover{background:${C.bg3};}
+  .srow .sic{width:34px;height:34px;border-radius:10px;display:grid;place-items:center;flex-shrink:0;background:${C.bg3};color:${C.t1};}
+  .hbtn{position:relative;width:40px;height:40px;border-radius:12px;border:none;background:transparent;color:${C.t1};display:grid;place-items:center;}
+  .hbtn:hover{background:${C.bg3};}
 
-  /* ── Mobile Cards ── */
-  .mcard{background:${C.bg2};border-radius:16px;border:1px solid ${C.bo0};
-    padding:14px 15px;transition:transform .12s,background .1s,box-shadow .15s;}
-  .mcard:active{transform:scale(.982);background:${C.bg3};}
-  .mcard-glass{background:${C.bg0=="rgba(2,8,23,1)"||C.bg0==="#020817"?"rgba(10,22,40,.85)":"rgba(255,255,255,.85)"};
-    border-radius:16px;border:1px solid ${C.bo1};padding:14px 15px;
-    backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);}
-
-  /* ── Filter Chips ── */
-  .chip{display:inline-flex;align-items:center;gap:5px;padding:8px 14px;border-radius:50px;
-    font-size:12px;font-weight:700;cursor:pointer;border:1.5px solid ${C.bo0};
-    background:transparent;color:${C.t2};font-family:inherit;
-    transition:all .15s;-webkit-tap-highlight-color:transparent;}
-  .chip:active{transform:scale(.94);}
-  .chip.on{background:linear-gradient(135deg,${C.g}22,${C.b}22);border-color:${C.g};color:${C.g};}
-
-  /* ── Stat Cards ── */
-  .stat-mobile{border-radius:18px;padding:16px;position:relative;overflow:hidden;
-    display:flex;flex-direction:column;gap:6px;
-    border:1px solid ${C.bo0};background:${C.bg2};}
-  .stat-mobile::before{content:"";position:absolute;inset:0;background:var(--stat-glow);opacity:.06;pointer-events:none;}
-  .stat-mobile .stat-val{font-size:20px;font-weight:800;font-variant-numeric:tabular-nums;font-family:'JetBrains Mono',monospace;line-height:1;}
-  .stat-mobile .stat-lbl{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:${C.t2};}
-  .stat-mobile .stat-ico{position:absolute;right:14px;top:14px;font-size:28px;opacity:.18;}
-
-  /* ── Ripple ── */
-  @keyframes ripple{from{transform:scale(0);opacity:.5}to{transform:scale(4);opacity:0}}
+  /* ── Kartu & chip ── */
+  .mcard{background:${C.bg2};border-radius:16px;border:1px solid ${C.bo0};padding:14px 15px;box-shadow:${C.sh};transition:transform .12s,background .1s;}
+  .mcard:active{transform:scale(.985);background:${C.bg3};}
+  .mcard-glass{background:${C.bg2};border-radius:16px;border:1px solid ${C.bo1};padding:14px 15px;}
+  .chip{display:inline-flex;align-items:center;gap:6px;padding:9px 15px;border-radius:50px;font-size:13px;font-weight:600;
+    border:1.5px solid ${C.bo1};background:transparent;color:${C.t1};font-family:inherit;transition:all .15s;min-height:38px;}
+  .chip:active{transform:scale(.96);}
+  .chip.on{background:${C.pri1};border-color:${C.pri};color:${C.pri};font-weight:700;}
+  .stat-mobile{border-radius:16px;padding:14px;position:relative;overflow:hidden;display:flex;flex-direction:column;gap:6px;
+    border:1px solid ${C.bo0};background:${C.bg2};box-shadow:${C.sh};}
+  .stat-mobile .stat-val{font-size:20px;font-weight:800;font-variant-numeric:tabular-nums;line-height:1;}
+  .stat-mobile .stat-lbl{font-size:12px;font-weight:600;color:${C.t2};}
+  .stat-mobile .stat-ico{position:absolute;right:12px;top:12px;width:34px;height:34px;border-radius:10px;display:grid;place-items:center;}
   .ripple-wrap{position:relative;overflow:hidden;}
-  .ripple-wrap .ripple{position:absolute;border-radius:50%;background:currentColor;
-    width:40px;height:40px;margin-top:-20px;margin-left:-20px;
-    animation:ripple .5s ease-out forwards;pointer-events:none;}
+  .ripple-wrap .ripple{position:absolute;border-radius:50%;background:currentColor;width:40px;height:40px;margin-top:-20px;margin-left:-20px;animation:ripple .5s ease-out forwards;pointer-events:none;}
+  .mfield{display:flex;flex-direction:column;gap:4px;}
+  .mfield-label{font-size:12px;font-weight:600;color:${C.t2};}
+  .card-in{animation:cardIn .2s ease both;}
+  .card-in:nth-child(2){animation-delay:.03s}.card-in:nth-child(3){animation-delay:.06s}.card-in:nth-child(4){animation-delay:.09s}
 
-  /* ── General ── */
-  .mfield{display:flex;flex-direction:column;gap:3px;}
-  .mfield-label{font-size:9.5px;font-weight:700;color:${C.t2};text-transform:uppercase;letter-spacing:.5px;}
-  @keyframes cardIn{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
-  .card-in{animation:cardIn .22s ease forwards;}
-  .card-in:nth-child(1){animation-delay:.03s}
-  .card-in:nth-child(2){animation-delay:.06s}
-  .card-in:nth-child(3){animation-delay:.09s}
-  .card-in:nth-child(4){animation-delay:.12s}
-  .card-in:nth-child(5){animation-delay:.15s}
+  /* ── Layar masuk & pilih bisnis ── */
+  .login-shell{flex:1;display:flex;flex-direction:column;width:100%;max-width:460px;margin:0 auto;min-height:100dvh;}
+  .login-hero{background:var(--ik1);color:#fff;padding:calc(34px + var(--safe-t)) 24px 28px;}
+  .ikat-band{height:30px;flex-shrink:0;border-top:2px solid var(--ik3);border-bottom:2px solid var(--ik3);
+    background:var(--ik1) url("data:image/svg+xml,${IKAT_TILE}") repeat-x center/auto 26px;}
+  .login-body{flex:1;padding:24px 20px calc(24px + var(--safe-b));display:flex;flex-direction:column;gap:16px;}
+  @media(min-width:641px){
+    .login-shell{min-height:auto;margin:6vh auto;border-radius:24px;overflow:hidden;box-shadow:${C.sh2};background:${C.bg2};flex:none;}
+  }
 `;
 let CSS = makeCSS();
+
+// ─────────────────────────────────────────────────────────────
+//  IKON (emoji lama → ikon garis Lucide, supaya tampilan konsisten)
+// ─────────────────────────────────────────────────────────────
+const ICO = {
+  "✓":Check,"✅":CheckCircle2,"✕":X,"✗":X,"❌":X,"⚠":AlertTriangle,"⚠️":AlertTriangle,"⛔":Ban,
+  "📦":Package,"🧑":User,"👤":User,"👩":User,"👑":Crown,"📋":ClipboardList,"💰":Wallet,"⏰":Clock,"🕐":Clock,
+  "🔍":Search,"✏️":Pencil,"➕":Plus,"📷":ScanLine,"🎯":Target,"🏬":Store,"🧾":Receipt,"📅":CalendarDays,"📆":CalendarDays,
+  "💳":CreditCard,"🔑":KeyRound,"🗑":Trash2,"🗑️":Trash2,"💼":Briefcase,"🏭":Factory,"☀️":Sun,"🌙":Moon,"🔥":Flame,
+  "💡":Lightbulb,"🛒":ShoppingCart,"🔒":Lock,"📊":BarChart3,"👥":Users,"🔗":Link2,"🏷":Tag,"📈":TrendingUp,
+  "👕":Shirt,"✨":Sparkles,"🏠":Home,"🖨️":Printer,"🔄":RefreshCw,"📁":Folder,"📂":Folder,"📝":FileText,
+  "👁":Eye,"🏢":Building2,"🆕":Sparkles,"↩":Undo2,
+};
+const DOT = {"🔴":"r","🟡":"a","🟢":"g"};
+function Ico({e,size=16,color,style,strokeWidth=2}) {
+  if(DOT[e]) return <span aria-hidden="true" style={{display:"inline-block",width:Math.round(size*.55),height:Math.round(size*.55),borderRadius:"50%",background:C[DOT[e]],verticalAlign:"middle",flexShrink:0,...style}}/>;
+  const I=ICO[e];
+  if(!I) return <span style={{fontSize:size,lineHeight:1,...style}}>{e}</span>;
+  return <I size={size} strokeWidth={strokeWidth} color={color} aria-hidden="true" style={{flexShrink:0,verticalAlign:"-0.18em",...style}}/>;
+}
+const lumOf=h=>{const m=/^#?([0-9a-f]{6})$/i.exec(h||"");if(!m)return 0;const n=parseInt(m[1],16);
+  const f=v=>{v/=255;return v<=.03928?v/12.92:Math.pow((v+.055)/1.055,2.4);};
+  return .2126*f((n>>16)&255)+.7152*f((n>>8)&255)+.0722*f(n&255);};
+const onColor=h=>lumOf(h)>.34?"#10143A":"#FFFFFF";
+
+// Logo: monogram JE di atas indigo dengan garis tenun kecil di bawahnya
+function BrandMark({size=32,onDark}) {
+  return <div aria-hidden="true" style={{width:size,height:size,borderRadius:Math.round(size*.3),flexShrink:0,position:"relative",overflow:"hidden",
+    background:onDark?"var(--ik2)":"var(--ik1)",color:onDark?"var(--ik1)":"#fff",display:"grid",placeItems:"center",
+    fontWeight:800,fontSize:Math.round(size*.4),letterSpacing:"-.03em",paddingBottom:Math.round(size*.1)}}>
+    JE
+    <span style={{position:"absolute",left:0,right:0,bottom:0,height:Math.max(3,Math.round(size*.13)),
+      background:"repeating-linear-gradient(90deg,var(--ik3) 0 4px,"+(onDark?"var(--ik1)":"var(--ik2)")+" 4px 8px)"}}/>
+  </div>;
+}
 
 // ─────────────────────────────────────────────────────────────
 //  PRIMITIVE UI
 // ─────────────────────────────────────────────────────────────
 function Toast({n}) {
   if(!n) return null;
-  const m={ok:[C.g1,C.g,"✓"],err:[C.r1,C.r,"✕"],warn:[C.a1,C.a,"⚠"],info:[C.cy1,C.cy,"ℹ"]};
-  const [bg,cl,ic]=m[n.type]||m.ok;
-  return <div style={{position:"fixed",top:"calc(16px + env(safe-area-inset-top, 0px))",left:"50%",transform:"translateX(-50%)",zIndex:9999,
-    padding:"11px 18px",borderRadius:12,maxWidth:"min(92vw,380px)",width:"max-content",
-    background:bg,border:`1px solid ${cl}44`,color:cl,fontSize:13,fontWeight:600,
-    boxShadow:"0 12px 40px rgba(0,0,0,.8)",animation:"fadeUp .2s ease",
-    display:"flex",alignItems:"center",gap:8,backdropFilter:"blur(20px)"}}>
-    <span>{ic}</span>{n.msg}
+  const m={ok:[C.g,Check],err:[C.r,X],warn:[C.a,AlertTriangle],info:[C.b,Info]};
+  const [cl,Ic]=m[n.type]||m.ok;
+  const msg=String(n.msg??"").replace(/^[✓✕✗⚠✅❌⛔ℹ️\s]+/u,"");
+  return <div role="status" aria-live="polite" style={{position:"fixed",top:"calc(12px + env(safe-area-inset-top, 0px))",left:"50%",transform:"translateX(-50%)",zIndex:9999,
+    padding:"9px 16px 9px 9px",borderRadius:14,maxWidth:"min(92vw,420px)",width:"max-content",
+    background:C.bg2,border:`1px solid ${C.bo1}`,color:C.t0,fontSize:13.5,fontWeight:600,lineHeight:1.35,
+    boxShadow:C.sh2,animation:"fadeUp .2s ease",display:"flex",alignItems:"center",gap:10}}>
+    <span style={{width:28,height:28,borderRadius:9,flexShrink:0,background:cl+"22",color:cl,display:"grid",placeItems:"center"}}>
+      <Ic size={16} strokeWidth={2.4}/></span>{msg}
   </div>;
 }
-function Btn({onClick,children,color=C.g,outline,ghost,danger,disabled,full,size="md",style:s={}}) {
-  const sz={sm:{p:"7px 13px",f:11},md:{p:"10px 18px",f:13},lg:{p:"14px 22px",f:14}}[size];
-  const bg=disabled?"#1a2e45":danger?C.r:outline||ghost?"transparent":color;
-  const cl=disabled?C.t2:danger?"#fff":outline?C.t1:ghost?C.t2:color==="#fff"?"#000":"#000";
-  const bd=disabled?"#1a2e45":danger?C.r:outline?C.b1:ghost?"transparent":color;
+function Btn({onClick,children,color,outline,ghost,danger,disabled,full,size="md",style:s={}}) {
+  const base=danger?C.r:(color||C.pri);
+  const sz={sm:{h:36,p:"0 13px",f:13},md:{h:44,p:"0 18px",f:14.5},lg:{h:52,p:"0 22px",f:15.5}}[size]||{h:44,p:"0 18px",f:14.5};
+  let bg=base,cl=onColor(base),bd=base;
+  if(outline&&!danger){bg="transparent";cl=C.t0;bd=C.bo2;}
+  else if(ghost){bg="transparent";cl=C.t1;bd="transparent";}
+  if(disabled){bg=outline||ghost?"transparent":C.bg4;cl=C.t3;bd=outline?C.bo0:"transparent";}
   return <button onClick={onClick} disabled={disabled} className="press"
-    style={{padding:sz.p,background:bg,border:`1.5px solid ${bd}`,borderRadius:10,
-      color:cl,fontWeight:700,fontSize:sz.f,transition:"opacity .15s",
-      width:full?"100%":undefined,letterSpacing:.2,...s}}>{children}</button>;
+    style={{minHeight:sz.h,padding:sz.p,background:bg,border:`1.5px solid ${bd}`,borderRadius:12,color:cl,fontWeight:700,fontSize:sz.f,
+      display:"inline-flex",alignItems:"center",justifyContent:"center",gap:7,width:full?"100%":undefined,...s}}>{children}</button>;
 }
 function Inp({value,onChange,type="text",placeholder,disabled,mono,onKeyDown,fref,icon,suffix,label,style:s={}}) {
   return <div style={{position:"relative"}}>
-    {label&&<div style={{fontSize:10,fontWeight:700,color:C.t2,textTransform:"uppercase",letterSpacing:1,marginBottom:5}}>{label}</div>}
+    {label&&<div style={{fontSize:12.5,fontWeight:600,color:C.t1,marginBottom:6}}>{label}</div>}
     <div style={{position:"relative",display:"flex",alignItems:"center"}}>
-      {icon&&<span style={{position:"absolute",left:12,zIndex:1,fontSize:15,pointerEvents:"none",color:C.t2}}>{icon}</span>}
+      {icon&&<span style={{position:"absolute",left:14,zIndex:1,pointerEvents:"none",color:C.t2,display:"flex"}}>
+        {typeof icon==="string"?<Ico e={icon} size={17}/>:icon}</span>}
       <input ref={fref} type={type} value={value} onChange={onChange} onKeyDown={onKeyDown}
         placeholder={placeholder} disabled={disabled}
-        style={{width:"100%",padding:`12px ${suffix?"40px":"13px"} 12px ${icon?"40px":"13px"}`,
-          background:C.bg3,border:`1.5px solid ${C.bo0}`,borderRadius:10,
-          color:disabled?C.t2:C.t0,fontSize:14,fontFamily:mono?F.mono:F.sans,transition:"border-color .15s",...s}}
-        onFocus={e=>{if(!disabled)e.target.style.borderColor=C.g+"88";}}
-        onBlur={e=>e.target.style.borderColor=C.bo0}/>
-      {suffix&&<span style={{position:"absolute",right:12,color:C.t2,fontSize:12,pointerEvents:"none",fontFamily:F.mono}}>{suffix}</span>}
+        style={{width:"100%",minHeight:46,padding:`12px ${suffix?"42px":"14px"} 12px ${icon?"42px":"14px"}`,
+          background:C.bg3,border:`1.5px solid ${C.bo1}`,borderRadius:12,
+          color:disabled?C.t2:C.t0,fontSize:15,fontFamily:F.sans,fontVariantNumeric:"tabular-nums",transition:"border-color .15s",...s}}
+        onFocus={e=>{if(!disabled)e.target.style.borderColor=C.pri;}}
+        onBlur={e=>e.target.style.borderColor=C.bo1}/>
+      {suffix&&<span style={{position:"absolute",right:14,color:C.t2,fontSize:13,fontWeight:600,pointerEvents:"none"}}>{suffix}</span>}
     </div>
   </div>;
 }
 function Card({children,style:s={},onClick,accent,noPad}) {
-  return <div onClick={onClick} style={{background:C.bg2,borderRadius:14,
-    border:`1px solid ${accent?accent+"33":C.bo0}`,padding:noPad?0:"14px 16px",
-    boxShadow:"0 4px 20px rgba(0,0,0,.45)",cursor:onClick?"pointer":undefined,...s}}>
+  return <div onClick={onClick} style={{background:C.bg2,borderRadius:16,
+    border:`1px solid ${accent?accent+"55":C.bo0}`,padding:noPad?0:"16px",
+    boxShadow:C.sh,cursor:onClick?"pointer":undefined,...s}}>
     {children}</div>;
 }
 function Divider({my=10}) { return <div style={{height:1,background:C.bo0,margin:`${my}px 0`}}/>; }
 function RoleTag({role}) {
   const m={kasir:[C.cy1,C.cy,"Kasir"],stok:[C.a1,C.a,"Stok"],admin:[C.vi1,C.vi,"Admin"]};
   const [bg,cl,l]=m[role]||m.kasir;
-  return <span style={{padding:"2px 8px",borderRadius:20,fontSize:9.5,fontWeight:700,
-    letterSpacing:.5,background:bg,color:cl,textTransform:"uppercase"}}>{l}</span>;
+  return <span style={{padding:"3px 10px",borderRadius:20,fontSize:11.5,fontWeight:700,background:bg,color:cl}}>{l}</span>;
 }
 function BizChip({biz,sm}) {
   if(!biz||!BIZ[biz]) return null;
-  const b=BIZ[biz],isJ=biz==="JS_CLOTHING";
-  return <span style={{display:"inline-flex",alignItems:"center",gap:4,
-    padding:sm?"1px 7px":"3px 9px",borderRadius:20,fontSize:sm?10:11,fontWeight:600,
-    background:isJ?C.b1:C.p1,color:isJ?C.b:C.p,border:`1px solid ${(isJ?C.b:C.p)}22`}}>
-    {b.icon} {b.name}</span>;
+  const b=BIZ[biz],isJ=biz==="JS_CLOTHING",cl=isJ?C.b:C.p;
+  return <span style={{display:"inline-flex",alignItems:"center",gap:5,
+    padding:sm?"2px 8px":"4px 11px",borderRadius:20,fontSize:sm?11:12,fontWeight:700,
+    background:isJ?C.b1:C.p1,color:cl}}>
+    <Ico e=<Ico e={b.icon}/> size={sm?12:14}/> {b.name}</span>;
 }
 function StockBadge({s}) {
-  if(s===0) return <span className="mn" style={{color:C.r,fontWeight:700,fontSize:12}}>0 ✕</span>;
-  if(s<10)  return <span className="mn" style={{color:C.a,fontWeight:700,fontSize:12}}>{s} !</span>;
-  return <span className="mn" style={{fontSize:12,color:C.t0}}>{s}</span>;
+  if(s===0) return <span style={{padding:"2px 9px",borderRadius:20,background:C.r1,color:C.r,fontWeight:700,fontSize:12}}>Habis</span>;
+  if(s<10)  return <span className="mn" style={{padding:"2px 9px",borderRadius:20,background:C.a1,color:C.a,fontWeight:700,fontSize:12}}>{s}</span>;
+  return <span className="mn" style={{fontSize:13,fontWeight:600,color:C.t0}}>{s}</span>;
 }
-function OnlineDot({online}) {
-  return <div style={{display:"flex",alignItems:"center",gap:5,fontSize:11,fontWeight:600,color:online?C.g:C.a}}>
-    <span style={{width:6,height:6,borderRadius:"50%",background:online?C.g:C.a,flexShrink:0,
-      animation:online?"glow 2s ease infinite":undefined}}/>
+function OnlineDot({online,onDark}) {
+  const cl=online?(onDark?"#7CE8BD":C.g):(onDark?"#FFC864":C.a);
+  return <div style={{display:"flex",alignItems:"center",gap:6,fontSize:12,fontWeight:600,color:cl}}>
+    <span style={{width:7,height:7,borderRadius:"50%",background:cl,flexShrink:0}}/>
     {online?"Online":"Offline"}</div>;
 }
-function Stat({icon,label,value,color=C.g,sub,style:s={}}) {
-  return <Card style={{padding:"10px 14px",...s}}>
-    <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:4}}>
-      <span style={{fontSize:16}}>{icon}</span>
-      <div className="mn" style={{fontSize:18,fontWeight:700,color,lineHeight:1}}>{value}</div>
+function Stat({icon,label,value,color=C.pri,sub,style:s={}}) {
+  return <Card style={{padding:"12px 14px",...s}}>
+    <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:10}}>
+      <span style={{width:32,height:32,borderRadius:10,background:color+"1F",color,display:"grid",placeItems:"center",flexShrink:0}}>
+        <Ico e={icon} size={17}/></span>
+      <div style={{fontSize:12.5,fontWeight:600,color:C.t2,lineHeight:1.25}}>{label}</div>
     </div>
-    <div style={{fontSize:11,color:C.t2}}>{label}</div>
-    {sub&&<div style={{fontSize:10,color:C.t3,marginTop:1}}>{sub}</div>}
+    <div className="mn" style={{fontSize:20,fontWeight:800,color:C.t0,lineHeight:1.1,letterSpacing:"-.02em"}}>{value}</div>
+    {sub&&<div style={{fontSize:11.5,color:C.t2,marginTop:4}}>{sub}</div>}
   </Card>;
 }
 function THead({cols}) {
-  return <thead><tr style={{background:C.bg0,position:"sticky",top:0,zIndex:2}}>
-    {cols.map((c,i)=><th key={i} style={{padding:"11px 14px",textAlign:"left",color:C.t3,
-      fontWeight:700,fontSize:10,textTransform:"uppercase",letterSpacing:1,
-      whiteSpace:"nowrap",borderBottom:`1px solid ${C.bo0}`,background:C.bg0}}>{c}</th>)}
+  return <thead><tr style={{position:"sticky",top:0,zIndex:2}}>
+    {cols.map((c,i)=><th key={i} style={{padding:"11px 14px",textAlign:"left",color:C.t2,
+      fontWeight:700,fontSize:12,whiteSpace:"nowrap",borderBottom:`1px solid ${C.bo1}`,background:C.bg3}}>{c}</th>)}
   </tr></thead>;
 }
 function TableWrap({children,maxH="58vh"}) {
   return <div style={{overflowX:"auto",overflowY:"auto",maxHeight:maxH,WebkitOverflowScrolling:"touch",position:"relative"}}>
     {children}</div>;
 }
-function ProgressBar({value,max,color=C.g,label}) {
+function ProgressBar({value,max,color=C.pri,label}) {
   const pct = max>0 ? Math.min((value/max)*100,100) : 0;
   return <div>
-    {label&&<div style={{display:"flex",justifyContent:"space-between",fontSize:11,marginBottom:4}}>
-      <span style={{color:C.t2}}>{label}</span>
-      <span className="mn" style={{color,fontWeight:700}}>{pct.toFixed(0)}%</span>
+    {label&&<div style={{display:"flex",justifyContent:"space-between",fontSize:12.5,marginBottom:6}}>
+      <span style={{color:C.t2,fontWeight:600}}>{label}</span>
+      <span className="mn" style={{color:C.t0,fontWeight:700}}>{pct.toFixed(0)}%</span>
     </div>}
-    <div style={{height:6,background:C.bg4,borderRadius:3,overflow:"hidden"}}>
-      <div style={{height:"100%",width:`${pct}%`,background:color,borderRadius:3,transition:"width .5s ease"}}/>
+    <div style={{height:8,background:C.bg4,borderRadius:4,overflow:"hidden"}}>
+      <div style={{height:"100%",width:`${pct}%`,background:color,borderRadius:4,transition:"width .5s ease"}}/>
     </div>
   </div>;
+}
+function SheetRow({icon,label,sub,onClick,danger,tone}) {
+  const cl=danger?C.r:tone||C.t1;
+  return <button className="srow press" onClick={onClick} style={{color:danger?C.r:C.t0}}>
+    <span className="sic" style={{background:danger?C.r1:tone?tone+"1F":undefined,color:cl}}>{icon}</span>
+    <span style={{flex:1,minWidth:0}}>
+      <span style={{display:"block"}}>{label}</span>
+      {sub&&<span style={{display:"block",fontSize:12.5,fontWeight:500,color:C.t2,marginTop:1}}>{sub}</span>}
+    </span>
+    {!danger&&<ChevronRight size={17} color={C.t3} aria-hidden="true"/>}
+  </button>;
+}
+
+function Avatar({name,size=32,style}) {
+  const ch=(name||"?").trim().charAt(0).toUpperCase();
+  return <span aria-hidden="true" style={{width:size,height:size,borderRadius:"50%",background:C.pri1,color:C.pri,fontWeight:800,
+    fontSize:Math.round(size*.42),display:"inline-grid",placeItems:"center",flexShrink:0,verticalAlign:"middle",...style}}>{ch}</span>;
 }
 
 
@@ -341,95 +417,115 @@ function UpdateBanner({onUpdate}) {
   const [visible,setVisible] = React.useState(true);
   if(!visible) return null;
   return (
-    <div style={{
-      position:"fixed",bottom:80,left:"50%",transform:"translateX(-50%)",
-      zIndex:9000,maxWidth:"calc(100vw - 32px)",width:"max-content",
-      background:"linear-gradient(135deg,#0f1e36,#152440)",
-      border:`1px solid ${DARK_C.g}44`,borderRadius:16,
-      padding:"12px 16px",boxShadow:"0 8px 32px rgba(0,0,0,.7)",
-      display:"flex",alignItems:"center",gap:12,
-      animation:"fadeUp .3s ease",fontFamily:"system-ui,sans-serif"
-    }}>
-      <span style={{fontSize:20}}>🆕</span>
+    <div role="alert" style={{position:"fixed",bottom:"calc(84px + env(safe-area-inset-bottom, 0px))",left:"50%",transform:"translateX(-50%)",
+      zIndex:9000,width:"calc(100vw - 24px)",maxWidth:420,background:C.bg2,border:`1px solid ${C.bo1}`,borderRadius:16,
+      padding:"12px 12px 12px 14px",boxShadow:C.sh2,display:"flex",alignItems:"center",gap:12,animation:"fadeUp .3s ease"}}>
+      <span style={{width:36,height:36,borderRadius:11,background:C.pri1,color:C.pri,display:"grid",placeItems:"center",flexShrink:0}}>
+        <RefreshCw size={18}/></span>
       <div style={{flex:1,minWidth:0}}>
-        <div style={{fontSize:13,fontWeight:700,color:DARK_C.t0,marginBottom:1}}>Update tersedia!</div>
-        <div style={{fontSize:11,color:DARK_C.t2}}>Versi baru sudah siap dipasang</div>
+        <div style={{fontSize:14,fontWeight:700,color:C.t0}}>Versi baru tersedia</div>
+        <div style={{fontSize:12.5,color:C.t2}}>Perbarui untuk memakai fitur terbaru.</div>
       </div>
-      <div style={{display:"flex",gap:6,flexShrink:0}}>
-        <button onClick={onUpdate}
-          style={{padding:"8px 16px",background:"linear-gradient(90deg,#00e5a0,#38bdf8)",
-            border:"none",borderRadius:10,color:"#020817",fontSize:12,fontWeight:800,
-            cursor:"pointer",fontFamily:"inherit",whiteSpace:"nowrap"}}>
-          ↻ Update
-        </button>
-        <button onClick={()=>setVisible(false)}
-          style={{padding:"8px 12px",background:"transparent",
-            border:`1px solid ${DARK_C.bo0}`,borderRadius:10,color:DARK_C.t2,
-            fontSize:12,cursor:"pointer",fontFamily:"inherit"}}>
-          Nanti
-        </button>
-      </div>
+      <button onClick={()=>setVisible(false)} className="press" style={{minHeight:40,padding:"0 10px",background:"transparent",border:"none",color:C.t2,fontSize:13,fontWeight:600}}>Nanti</button>
+      <button onClick={onUpdate} className="press" style={{minHeight:40,padding:"0 16px",background:C.pri,border:"none",borderRadius:11,color:C.on,fontSize:13.5,fontWeight:700}}>Perbarui</button>
     </div>
   );
 }
 
 // ─────────────────────────────────────────────────────────────
-//  HEADER
+//  HEADER  — di HP hanya: logo, bisnis, bel peringatan, avatar.
+//  Tombol lain (tema, muat ulang, pulang, keluar) ada di sheet akun.
 // ─────────────────────────────────────────────────────────────
 function Header({title,biz,user,onLogout,onSwitchBiz,onAbsenPulang,hasCheckedIn,online,onToggleTheme,isDark,lowStockCount=0,onLowStockClick,expireCount=0,expiredCount=0,onExpireClick}) {
   const b=BIZ[biz];
-  return <header style={{background:`${C.bg2}ee`,backdropFilter:"blur(20px)",WebkitBackdropFilter:"blur(20px)",
-    borderBottom:`1px solid ${C.bo0}`,padding:"0 12px",height:52,
-    display:"flex",alignItems:"center",justifyContent:"space-between",
-    position:"sticky",top:0,zIndex:200,flexShrink:0,gap:8,paddingTop:"env(safe-area-inset-top, 0px)"}}>
-    <div style={{display:"flex",alignItems:"center",gap:8,minWidth:0}}>
-      <div style={{width:28,height:28,borderRadius:8,flexShrink:0,
-        background:"linear-gradient(135deg,#00e5a0,#38bdf8)",
-        display:"flex",alignItems:"center",justifyContent:"center",fontSize:14}}>🏬</div>
-      <div style={{minWidth:0}}>
-        <div className="mn" style={{fontSize:11,fontWeight:700,letterSpacing:2,
-          background:"linear-gradient(90deg,#00e5a0,#38bdf8)",
-          WebkitBackgroundClip:"text",WebkitTextFillColor:"transparent",lineHeight:1.2}}>JE GRUP</div>
-        <div style={{fontSize:10,color:C.t2,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",maxWidth:130}}>
-          {b?`${b.icon} ${b.name}`:title}</div>
+  const [sheet,setSheet]=React.useState(null);
+  const alertN=lowStockCount+expireCount+expiredCount;
+  const bc=b?(biz==="JS_CLOTHING"?C.b:C.p):C.pri;
+  const canSwitch=!!onSwitchBiz&&user?.access?.length>1;
+  const close=()=>setSheet(null);
+  const run=fn=>()=>{close();fn&&fn();};
+  const initial=(user?.name||"?").trim().charAt(0).toUpperCase();
+
+  return <>
+    <header style={{background:C.bg2,borderBottom:`1px solid ${C.bo0}`,padding:"0 10px 0 14px",
+      minHeight:"calc(58px + env(safe-area-inset-top, 0px))",paddingTop:"env(safe-area-inset-top, 0px)",
+      display:"flex",alignItems:"center",justifyContent:"space-between",position:"sticky",top:0,zIndex:200,flexShrink:0,gap:8}}>
+      <div style={{display:"flex",alignItems:"center",gap:10,minWidth:0}}>
+        <BrandMark size={34}/>
+        {b ? (canSwitch
+          ? <button onClick={onSwitchBiz} className="press" aria-label={`Bisnis aktif ${b.name}. Ganti bisnis`}
+              style={{display:"flex",alignItems:"center",gap:8,minHeight:40,padding:"0 10px 0 4px",background:"transparent",border:"none",borderRadius:10,minWidth:0}}>
+              <span style={{minWidth:0,textAlign:"left"}}>
+                <span style={{display:"block",fontSize:15,fontWeight:800,color:C.t0,lineHeight:1.15,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{b.name}</span>
+                <span style={{display:"block",fontSize:11.5,fontWeight:600,color:bc,lineHeight:1.2}}>{b.desc}</span>
+              </span>
+              <ArrowLeftRight size={15} color={C.t3} aria-hidden="true"/>
+            </button>
+          : <div style={{minWidth:0}}>
+              <div style={{fontSize:15,fontWeight:800,color:C.t0,lineHeight:1.15,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{b.name}</div>
+              <div style={{fontSize:11.5,fontWeight:600,color:bc,lineHeight:1.2}}>{b.desc}</div>
+            </div>)
+          : <div style={{minWidth:0}}>
+              <div style={{fontSize:15,fontWeight:800,color:C.t0,lineHeight:1.15}}>{title||"Kasir JE Grup"}</div>
+              <div style={{fontSize:11.5,fontWeight:600,color:C.t2,lineHeight:1.2}}>JS Clothing · JB Store</div>
+            </div>}
       </div>
-    </div>
-    <div style={{display:"flex",alignItems:"center",gap:5,flexShrink:0}}>
-      <div className="hide-mobile"><OnlineDot online={online}/></div>
-      {expiredCount>0&&<button onClick={onExpireClick} className="press"
-        style={{padding:"3px 8px",borderRadius:20,background:C.r1,
-        border:`1px solid ${C.r}33`,color:C.r,fontSize:10,fontWeight:700,cursor:"pointer"}}>
-        ⛔ {expiredCount} kadaluarsa</button>}
-      {expireCount>0&&<button onClick={onExpireClick} className="press"
-        style={{padding:"3px 8px",borderRadius:20,background:`${C.a}18`,
-        border:`1px solid ${C.a}44`,color:C.a,fontSize:10,fontWeight:700,cursor:"pointer"}}>
-        ⏰ {expireCount} mau expire</button>}
-      {lowStockCount>0&&<button onClick={onLowStockClick} className="press"
-        style={{padding:"3px 8px",borderRadius:20,background:C.a1,
-        border:`1px solid ${C.a}33`,color:C.a,fontSize:10,fontWeight:700,cursor:"pointer"}}>⚠ {lowStockCount} menipis</button>}
-      {onSwitchBiz&&user?.access?.length>1&&(
-        <button onClick={onSwitchBiz} className="press" style={{padding:"5px 9px",background:C.bg3,
-          border:`1px solid ${C.bo1}`,borderRadius:8,color:C.t1,fontSize:11,fontWeight:600}}>⇄</button>)}
-      {onAbsenPulang&&hasCheckedIn&&(
-        <button onClick={onAbsenPulang} className="press" style={{padding:"5px 9px",background:C.a1,
-          border:`1px solid ${C.a}33`,borderRadius:8,color:C.a,fontSize:11,fontWeight:600}}>🏠 Pulang</button>)}
-      <div style={{display:"flex",alignItems:"center",gap:5,padding:"4px 9px",
-        borderRadius:20,background:C.bg3,border:`1px solid ${C.bo0}`}}>
-        <span style={{fontSize:13}}>{user?.avatar}</span>
-        <span style={{fontSize:11,fontWeight:600,maxWidth:70,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{user?.name?.split(" ")[0]}</span>
-        <div className="hide-mobile"><RoleTag role={user?.role}/></div>
+      <div style={{display:"flex",alignItems:"center",gap:2,flexShrink:0}}>
+        <div className="hide-mobile" style={{marginRight:8}}><OnlineDot online={online}/></div>
+        {!online&&<span className="hide-desktop" title="Offline" style={{display:"grid",placeItems:"center",width:32,color:C.a}}><WifiOff size={18} aria-label="Offline"/></span>}
+        <button className="hbtn press" onClick={()=>setSheet("alerts")} aria-label={alertN>0?`${alertN} peringatan`:"Peringatan"}>
+          <Bell size={21} strokeWidth={1.9}/>
+          {alertN>0&&<span className="mn" style={{position:"absolute",top:0,right:0,minWidth:19,height:19,padding:"0 4px",borderRadius:10,boxSizing:"border-box",
+            background:expiredCount>0?C.r:C.a,color:C.on,fontSize:11,fontWeight:800,display:"grid",placeItems:"center",
+            border:`2px solid ${C.bg2}`}}>{alertN>99?"99+":alertN}</span>}
+        </button>
+        <button onClick={()=>setSheet("account")} className="press" aria-label={`Akun ${user?.name||""}`}
+          style={{width:38,height:38,marginLeft:4,borderRadius:"50%",background:C.pri1,border:`1.5px solid ${C.pri}55`,color:C.pri,fontWeight:800,fontSize:15,display:"grid",placeItems:"center"}}>
+          {initial}</button>
       </div>
-      {onToggleTheme&&<button onClick={onToggleTheme} className="press"
-        style={{padding:"5px 9px",background:C.bg3,border:`1px solid ${C.bo1}`,borderRadius:8,color:C.t2,fontSize:13,lineHeight:1}}>
-        {isDark?"☀️":"🌙"}</button>}
-      <button onClick={()=>window.location.reload()} className="press" title="Refresh"
-        style={{padding:"5px 9px",background:C.bg3,border:`1px solid ${C.bo1}`,
-          borderRadius:8,color:C.t2,fontSize:13,lineHeight:1}}>↻</button>
-      <button onClick={onLogout} className="press" style={{padding:"5px 9px",background:C.bg3,
-        border:`1px solid ${C.bo1}`,borderRadius:8,color:C.t2,fontSize:11,fontWeight:600}}>Keluar</button>
-    </div>
-  </header>;
+    </header>
+
+    {sheet&&<div className="sheet-wrap" onClick={close}>
+      <div className="sheet" role="dialog" aria-modal="true" onClick={e=>e.stopPropagation()}>
+        <div className="grabber"/>
+        {sheet==="alerts"&&<>
+          <div style={{fontSize:17,fontWeight:800,padding:"0 6px 8px"}}>Peringatan</div>
+          {alertN===0
+            ? <div style={{display:"flex",flexDirection:"column",alignItems:"center",gap:8,padding:"28px 12px 20px",textAlign:"center"}}>
+                <span style={{width:48,height:48,borderRadius:16,background:C.g1,color:C.g,display:"grid",placeItems:"center"}}><Check size={24} strokeWidth={2.4}/></span>
+                <div style={{fontSize:15,fontWeight:700}}>Semua aman</div>
+                <div style={{fontSize:13,color:C.t2,maxWidth:260}}>Tidak ada stok menipis atau produk mendekati kadaluarsa.</div>
+              </div>
+            : <div style={{display:"flex",flexDirection:"column",gap:2}}>
+                {expiredCount>0&&<SheetRow tone={C.r} icon={<Ban size={18}/>} label={`${expiredCount} produk kadaluarsa`} sub="Tarik dari rak dan catat" onClick={run(onExpireClick)}/>}
+                {expireCount>0&&<SheetRow tone={C.a} icon={<Clock size={18}/>} label={`${expireCount} produk hampir kadaluarsa`} sub="Jual lebih dulu" onClick={run(onExpireClick)}/>}
+                {lowStockCount>0&&<SheetRow tone={C.a} icon={<Package size={18}/>} label={`${lowStockCount} produk stok menipis`} sub="Stok di bawah 10" onClick={run(onLowStockClick)}/>}
+              </div>}
+        </>}
+        {sheet==="account"&&<>
+          <div style={{display:"flex",alignItems:"center",gap:14,padding:"4px 6px 14px"}}>
+            <span style={{width:52,height:52,borderRadius:"50%",background:C.pri1,border:`1.5px solid ${C.pri}55`,color:C.pri,fontWeight:800,fontSize:21,display:"grid",placeItems:"center",flexShrink:0}}>{initial}</span>
+            <div style={{minWidth:0,flex:1}}>
+              <div style={{fontSize:16.5,fontWeight:800,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{user?.name}</div>
+              <div style={{display:"flex",alignItems:"center",gap:10,marginTop:4,flexWrap:"wrap"}}>
+                <RoleTag role={user?.role}/><OnlineDot online={online}/>
+              </div>
+            </div>
+          </div>
+          <Divider my={4}/>
+          <div style={{display:"flex",flexDirection:"column",gap:2,paddingTop:6}}>
+            {onAbsenPulang&&hasCheckedIn&&<SheetRow tone={C.a} icon={<Home size={18}/>} label="Absen pulang" sub="Catat jam pulang hari ini" onClick={run(onAbsenPulang)}/>}
+            {canSwitch&&<SheetRow icon={<ArrowLeftRight size={18}/>} label="Ganti bisnis" sub={b?`Sekarang: ${b.name}`:undefined} onClick={run(onSwitchBiz)}/>}
+            {onToggleTheme&&<SheetRow icon={isDark?<Sun size={18}/>:<Moon size={18}/>} label={isDark?"Mode terang":"Mode gelap"} onClick={()=>{onToggleTheme();}}/>}
+            <SheetRow icon={<RefreshCw size={18}/>} label="Muat ulang aplikasi" onClick={()=>window.location.reload()}/>
+            <SheetRow danger icon={<LogOut size={18}/>} label="Keluar" onClick={run(onLogout)}/>
+          </div>
+        </>}
+      </div>
+    </div>}
+  </>;
 }
+
 
 // ─────────────────────────────────────────────────────────────
 //  FACE SCAN
@@ -505,18 +601,18 @@ function FaceScan({user,mode="verify",onSuccess,onCancel}) {
     if(mode==="register"){onSuccess(desc);return;}
     if(!user.faceDescriptor){setPhase("success");setMsg("Wajah belum terdaftar. Masuk langsung.");setTimeout(()=>{cleanup();onSuccess(null);},1500);return;}
     const dist=euclidean(desc,user.faceDescriptor);
-    if(dist<0.52){setPhase("success");setMsg(`✓ Selamat datang, ${user.name}!`);setTimeout(()=>{cleanup();onSuccess(desc);},1500);}
+    if(dist<0.52){setPhase("success");setMsg(`Selamat datang, ${user.name}!`);setTimeout(()=>{cleanup();onSuccess(desc);},1500);}
     else{setPhase("fail");setMsg("Wajah tidak dikenali. Coba lagi.");}
   };
   const sc={scanning:C.b,verifying:C.a,success:C.g,fail:C.r,error:C.r,no_camera:C.r}[phase]||C.t2;
   const sl={init:"Mempersiapkan...",loading:msg,scanning:"Mendeteksi wajah...",verifying:"Memverifikasi...",
-    success:"✓ Berhasil",fail:"✗ Tidak dikenali",error:"Error",no_camera:"Kamera tidak tersedia"}[phase];
+    success:"Berhasil",fail:"Tidak dikenali",error:"Error",no_camera:"Kamera tidak tersedia"}[phase];
   return <div style={{position:"fixed",inset:0,zIndex:1000,background:`${C.bg0}f0`,
     display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",padding:16,animation:"fadeIn .2s ease"}}>
     <div style={{width:"100%",maxWidth:420,animation:"fadeUp .3s ease"}}>
       <div style={{display:"flex",justifyContent:"center",marginBottom:16}}>
         <div style={{display:"inline-flex",alignItems:"center",gap:10,padding:"8px 16px",borderRadius:24,background:C.bg2,border:`1px solid ${C.bo1}`}}>
-          <span style={{fontSize:18}}>{user.avatar}</span>
+          <Avatar name={user.name} size={32}/>
           <div><div style={{fontSize:13,fontWeight:700}}>{user.name}</div><div style={{marginTop:2}}><RoleTag role={user.role}/></div></div>
         </div>
       </div>
@@ -529,16 +625,16 @@ function FaceScan({user,mode="verify",onSuccess,onCancel}) {
           <div style={{position:"absolute",left:"8%",right:"8%",height:2,
             background:`linear-gradient(90deg,transparent,${C.g},transparent)`,
             animation:"scanLine 2.5s ease-in-out infinite",boxShadow:`0 0 10px ${C.g}`}}/></div>}
-        {(phase==="init"||phase==="loading")&&<div style={{position:"absolute",inset:0,background:"rgba(2,8,24,.9)",
+        {(phase==="init"||phase==="loading")&&<div style={{position:"absolute",inset:0,background:"rgba(12,16,46,.55)",
           display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:12}}>
           <div style={{width:32,height:32,border:`2.5px solid ${C.bg4}`,borderTopColor:C.g,borderRadius:"50%",animation:"spin 1s linear infinite"}}/>
           <p style={{fontSize:12,color:C.t1,textAlign:"center",padding:"0 20px"}}>{msg}</p></div>}
-        {phase==="verifying"&&<div style={{position:"absolute",inset:0,background:"rgba(2,8,24,.75)",
+        {phase==="verifying"&&<div style={{position:"absolute",inset:0,background:"rgba(12,16,46,.55)",
           display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:10}}>
           <div style={{width:40,height:40,border:`2.5px solid ${C.a}44`,borderTopColor:C.a,borderRadius:"50%",animation:"spin .7s linear infinite"}}/>
           <p style={{fontSize:13,color:C.a,fontWeight:700}}>Memverifikasi...</p></div>}
-        {phase==="success"&&<div style={{position:"absolute",inset:0,background:`${C.g}08`,display:"flex",alignItems:"center",justifyContent:"center"}}><span style={{fontSize:52}}>✅</span></div>}
-        {(phase==="fail"||phase==="error"||phase==="no_camera")&&<div style={{position:"absolute",inset:0,background:`${C.r}06`,display:"flex",alignItems:"center",justifyContent:"center"}}><span style={{fontSize:52}}>❌</span></div>}
+        {phase==="success"&&<div style={{position:"absolute",inset:0,background:`${C.g}08`,display:"flex",alignItems:"center",justifyContent:"center"}}><Ico e="✅" size={72} color={C.g} strokeWidth={1.5}/></div>}
+        {(phase==="fail"||phase==="error"||phase==="no_camera")&&<div style={{position:"absolute",inset:0,background:`${C.r}06`,display:"flex",alignItems:"center",justifyContent:"center"}}><Ico e="❌" size={72} color={C.r} strokeWidth={1.5}/></div>}
       </div>
       {phase==="scanning"&&<div style={{height:3,background:C.bg4,borderRadius:2,marginBottom:10,overflow:"hidden"}}>
         <div style={{height:"100%",width:`${Math.min(stable/4*100,100)}%`,background:`linear-gradient(90deg,${C.b},${C.g})`,borderRadius:2,transition:"width .4s ease"}}/></div>}
@@ -583,17 +679,17 @@ function FirebaseSetup({onDone}) {
       <div style={{textAlign:"center",marginBottom:24}}>
         <div style={{display:"inline-flex",width:68,height:68,borderRadius:22,marginBottom:14,
           background:`linear-gradient(135deg,${C.g}20,${C.b}18)`,border:`1.5px solid ${C.g}30`,
-          alignItems:"center",justifyContent:"center",fontSize:32}}>🏬</div>
+          alignItems:"center",justifyContent:"center",fontSize:32}}><Ico e="🏬"/></div>
         <h1 className="mn" style={{fontSize:22,fontWeight:700,letterSpacing:3,
-          background:`linear-gradient(90deg,${C.g},${C.b})`,WebkitBackgroundClip:"text",WebkitTextFillColor:"transparent",marginBottom:10}}>KASIR JE GRUP</h1>
+          background:`${C.pri}`,WebkitBackgroundClip:"text",WebkitTextFillColor:"transparent",marginBottom:10}}>KASIR JE GRUP</h1>
         <div style={{display:"flex",justifyContent:"center",gap:7,flexWrap:"wrap"}}>
           {Object.values(BIZ).map(b=><span key={b.id} style={{fontSize:11,padding:"3px 11px",borderRadius:20,fontWeight:600,
-            background:b.id==="JS_CLOTHING"?C.b1:C.p1,color:b.id==="JS_CLOTHING"?C.b:C.p,border:`1px solid ${(b.id==="JS_CLOTHING"?C.b:C.p)}22`}}>{b.icon} {b.name}</span>)}
+            background:b.id==="JS_CLOTHING"?C.b1:C.p1,color:b.id==="JS_CLOTHING"?C.b:C.p,border:`1px solid ${(b.id==="JS_CLOTHING"?C.b:C.p)}22`}}><Ico e={b.icon}/> {b.name}</span>)}
         </div>
       </div>
       <Card style={{padding:step===1?"22px":"18px 22px"}}>
         {step===1 ? <>
-          <h2 style={{fontSize:14,fontWeight:800,marginBottom:4,color:C.g}}>🔥 Hubungkan Firebase</h2>
+          <h2 style={{fontSize:14,fontWeight:800,marginBottom:4,color:C.g}}><Ico e="🔥"/> Hubungkan Firebase</h2>
           <p style={{fontSize:12.5,color:C.t2,marginBottom:18,lineHeight:1.7}}>Database cloud untuk sinkronisasi real-time antar perangkat.</p>
           {[{n:1,t:"Buat Firebase Project",d:"console.firebase.google.com → Add project → kasir-je-grup"},
             {n:2,t:"Daftarkan Web App",d:"Klik ikon </> → nickname: Kasir → Register app"},
@@ -605,7 +701,7 @@ function FirebaseSetup({onDone}) {
             <div><div style={{fontSize:12.5,fontWeight:600}}>{s.t}</div><div style={{fontSize:11.5,color:C.t2,marginTop:2,lineHeight:1.6}}>{s.d}</div></div>
           </div>)}
           <div style={{marginTop:14,padding:"10px 12px",background:C.g2,borderRadius:8,border:`1px solid ${C.g}22`,fontSize:11.5,color:C.g,marginBottom:16}}>
-            💡 Gratis selamanya — Spark plan</div>
+            <Ico e="💡"/> Gratis selamanya — Spark plan</div>
           <div style={{display:"flex",gap:8}}>
             <Btn onClick={()=>setStep(2)} full>Masukkan Config →</Btn>
             <Btn onClick={()=>window.open("https://console.firebase.google.com","_blank")} outline>Buka ↗</Btn>
@@ -619,14 +715,14 @@ function FirebaseSetup({onDone}) {
             {[{k:"apiKey",l:"API Key *"},{k:"authDomain",l:"Auth Domain"},{k:"projectId",l:"Project ID *"},
               {k:"storageBucket",l:"Storage Bucket"},{k:"messagingSenderId",l:"Sender ID"},{k:"appId",l:"App ID"}].map(f=>(
               <div key={f.k}>
-                <div style={{fontSize:9.5,fontWeight:700,color:C.t2,textTransform:"uppercase",letterSpacing:1,marginBottom:4}}>{f.l}</div>
+                <div style={{fontSize:12,fontWeight:700,color:C.t2,textTransform:"none",letterSpacing:0,marginBottom:4}}>{f.l}</div>
                 <input value={form[f.k]} onChange={e=>setForm(x=>({...x,[f.k]:e.target.value}))} style={IS}
-                  onFocus={e=>e.target.style.borderColor=C.g+"88"} onBlur={e=>e.target.style.borderColor=C.bo0}/>
+                  onFocus={e=>e.target.style.borderColor=C.pri+"88"} onBlur={e=>e.target.style.borderColor=C.bo0}/>
               </div>))}
           </div>
-          {err&&<div style={{marginTop:10,padding:"10px 13px",background:C.r1,borderRadius:8,border:`1px solid ${C.r}33`,fontSize:12,color:C.r}}>⚠ {err}</div>}
+          {err&&<div style={{marginTop:10,padding:"10px 13px",background:C.r1,borderRadius:8,border:`1px solid ${C.r}33`,fontSize:12,color:C.r}}><Ico e="⚠"/> {err}</div>}
           <div style={{marginTop:16}}>
-            <Btn onClick={connect} disabled={loading} full size="lg">{loading?"⏳ Menghubungkan...":"🔥 Hubungkan Firebase"}</Btn>
+            <Btn onClick={connect} disabled={loading} full size="lg">{loading?"Menghubungkan…":"Hubungkan Firebase"}</Btn>
           </div>
         </>}
       </Card>
@@ -671,14 +767,14 @@ function Invoice({receipt,biz,onClose,onNew}) {
       </body></html>`);
     w.document.close();setTimeout(()=>{w.print();},400);
   };
-  return <div style={{position:"fixed",inset:0,background:"rgba(2,8,24,.9)",zIndex:600,
+  return <div style={{position:"fixed",inset:0,background:"rgba(12,16,46,.55)",zIndex:600,
     display:"flex",alignItems:"flex-end",justifyContent:"center",fontFamily:F.sans}} onClick={onClose}>
     <div style={{width:"100%",maxWidth:420,background:C.bg2,borderRadius:"22px 22px 0 0",
       border:`1px solid ${C.bo1}`,borderBottom:"none",animation:"slideUp .3s ease",
       maxHeight:"92vh",overflowY:"auto",paddingBottom:24}} onClick={e=>e.stopPropagation()}>
       <div style={{width:36,height:4,background:C.b1,borderRadius:2,margin:"16px auto 0"}}/>
       <div style={{textAlign:"center",padding:"14px 20px 10px"}}>
-        <div style={{fontSize:22,marginBottom:4}}>🧾</div>
+        <div style={{fontSize:22,marginBottom:4}}><Ico e="🧾" size={22}/></div>
         <div style={{fontSize:13,fontWeight:800,letterSpacing:2,color:C.g}}>INVOICE</div>
         <div className="mn" style={{fontSize:10,color:C.t2,marginTop:2}}>{receipt.id}</div>
         <div style={{marginTop:6,display:"flex",justifyContent:"center"}}><BizChip biz={biz}/></div>
@@ -692,7 +788,7 @@ function Invoice({receipt,biz,onClose,onNew}) {
             </div>))}
         </div>
         <div style={{padding:"10px 14px"}}>
-          <div style={{fontSize:9.5,fontWeight:700,color:C.t3,textTransform:"uppercase",letterSpacing:1,marginBottom:8}}>Daftar Barang</div>
+          <div style={{fontSize:12,fontWeight:700,color:C.t3,textTransform:"none",letterSpacing:0,marginBottom:8}}>Daftar Barang</div>
           {receipt.items.map((item,i)=>(
             <div key={i} style={{display:"flex",alignItems:"flex-start",gap:8,marginBottom:8,paddingBottom:8,borderBottom:`1px solid ${C.bo0}`}}>
               <div style={{flex:1,minWidth:0}}>
@@ -715,9 +811,9 @@ function Invoice({receipt,biz,onClose,onNew}) {
       <div style={{textAlign:"center",padding:"10px 20px 0",fontSize:11,color:C.t3}}>Terima kasih telah berbelanja di {b?.name}!</div>
       <div style={{display:"flex",gap:8,padding:"14px 16px 0"}}>
         <button onClick={printInvoice} className="press"
-          style={{flex:1,padding:"13px",background:`linear-gradient(90deg,${C.g},${C.b})`,
-            border:"none",borderRadius:11,color:C.bg1,fontSize:13,fontWeight:800,fontFamily:"inherit"}}>
-          🖨️ Cetak Invoice</button>
+          style={{flex:1,padding:"13px",background:`${C.pri}`,
+            border:"none",borderRadius:11,color:C.on,fontSize:13,fontWeight:800,fontFamily:"inherit"}}>
+          <Ico e="🖨️"/> Cetak Invoice</button>
         <button onClick={onNew} className="press"
           style={{flex:1,padding:"13px",background:C.bg3,border:`1px solid ${C.bo1}`,
             borderRadius:11,color:C.t0,fontSize:13,fontWeight:700,fontFamily:"inherit"}}>
@@ -737,7 +833,7 @@ function Invoice({receipt,biz,onClose,onNew}) {
 function StockCheckModal({prods,biz,onClose}) {
   const [q,setQ]=useState("");
   const list=prods.filter(p=>!q||p.name.toLowerCase().includes(q.toLowerCase())||p.barcode.includes(q));
-  return <div style={{position:"fixed",inset:0,background:"rgba(2,8,24,.88)",zIndex:550,
+  return <div style={{position:"fixed",inset:0,background:"rgba(12,16,46,.55)",zIndex:550,
     display:"flex",alignItems:"flex-end",justifyContent:"center",fontFamily:F.sans}} onClick={onClose}>
     <div style={{width:"100%",maxWidth:480,background:C.bg2,borderRadius:"22px 22px 0 0",
       border:`1px solid ${C.bo1}`,borderBottom:"none",animation:"slideUp .3s ease",
@@ -745,11 +841,11 @@ function StockCheckModal({prods,biz,onClose}) {
       <div style={{width:36,height:4,background:C.b1,borderRadius:2,margin:"14px auto 0"}}/>
       <div style={{padding:"10px 16px 12px",borderBottom:`1px solid ${C.bo0}`,flexShrink:0}}>
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
-          <div style={{fontSize:14,fontWeight:800}}>📦 Cek Stok Barang</div>
+          <div style={{fontSize:14,fontWeight:800}}><Ico e="📦"/> Cek Stok Barang</div>
           <BizChip biz={biz}/>
         </div>
         <div style={{position:"relative"}}>
-          <span style={{position:"absolute",left:11,top:"50%",transform:"translateY(-50%)",color:C.t2,fontSize:14,pointerEvents:"none"}}>🔍</span>
+          <span style={{position:"absolute",left:11,top:"50%",transform:"translateY(-50%)",color:C.t2,fontSize:14,pointerEvents:"none"}}><Ico e="🔍"/></span>
           <input value={q} onChange={e=>setQ(e.target.value)} autoFocus placeholder="Cari nama atau barcode..."
             style={{width:"100%",padding:"10px 12px 10px 36px",background:C.bg3,border:`1.5px solid ${C.bo1}`,borderRadius:10,color:C.t0,fontSize:13}}/>
         </div>
@@ -882,7 +978,7 @@ function SimplePieChart({data}) {
 // ─────────────────────────────────────────────────────────────
 function LowStockPopup({prods,onClose}) {
   const list = prods.filter(p=>p.stock<10).sort((a,b)=>a.stock-b.stock);
-  return <div style={{position:"fixed",inset:0,background:"rgba(2,8,24,.85)",zIndex:800,
+  return <div style={{position:"fixed",inset:0,background:"rgba(12,16,46,.55)",zIndex:800,
     display:"flex",alignItems:"flex-end",justifyContent:"center",fontFamily:F.sans}}
     onClick={onClose}>
     <div style={{width:"100%",maxWidth:460,background:C.bg2,borderRadius:"22px 22px 0 0",
@@ -893,7 +989,7 @@ function LowStockPopup({prods,onClose}) {
       <div style={{padding:"10px 16px 12px",borderBottom:`1px solid ${C.bo0}`,flexShrink:0}}>
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
           <div>
-            <div style={{fontSize:14,fontWeight:800,color:C.r}}>⚠ Stok Menipis</div>
+            <div style={{fontSize:14,fontWeight:800,color:C.r}}><Ico e="⚠"/> Stok Menipis</div>
             <div style={{fontSize:11,color:C.t2,marginTop:2}}>{list.length} produk perlu ditambah stok</div>
           </div>
           <button onClick={onClose} style={{background:"transparent",border:"none",color:C.t2,fontSize:20,cursor:"pointer",lineHeight:1}}>×</button>
@@ -901,7 +997,7 @@ function LowStockPopup({prods,onClose}) {
       </div>
       <div style={{overflowY:"auto",flex:1}}>
         {list.length===0
-          ?<div style={{padding:"32px",textAlign:"center",color:C.t3,fontSize:13}}>Semua stok aman ✅</div>
+          ?<div style={{padding:"32px",textAlign:"center",color:C.t3,fontSize:13}}>Semua stok aman</div>
           :list.map((p,i)=>(
           <div key={p.id} style={{display:"flex",alignItems:"center",gap:12,padding:"12px 16px",
             borderTop:i>0?`1px solid ${C.bo0}`:undefined}}>
@@ -953,7 +1049,7 @@ function AddonPrompt({prompt, onAdd, onSkip}) {
     onAdd(chosen);
   };
   return (
-    <div style={{position:"fixed",inset:0,background:"rgba(2,8,24,.88)",zIndex:700,
+    <div style={{position:"fixed",inset:0,background:"rgba(12,16,46,.55)",zIndex:700,
       display:"flex",alignItems:"flex-end",justifyContent:"center",fontFamily:F.sans}}
       onClick={onSkip}>
       <div style={{width:"100%",maxWidth:460,background:C.bg2,borderRadius:"22px 22px 0 0",
@@ -963,7 +1059,7 @@ function AddonPrompt({prompt, onAdd, onSkip}) {
         {/* Header */}
         <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:14}}>
           <div style={{width:40,height:40,borderRadius:12,background:C.g1,border:`1px solid ${C.g}33`,
-            display:"flex",alignItems:"center",justifyContent:"center",fontSize:20,flexShrink:0}}>➕</div>
+            display:"flex",alignItems:"center",justifyContent:"center",fontSize:20,flexShrink:0}}><Ico e="➕"/></div>
           <div>
             <div style={{fontSize:14,fontWeight:800}}>Tambah Add-on?</div>
             <div style={{fontSize:12,color:C.t2,marginTop:1}}>
@@ -984,7 +1080,7 @@ function AddonPrompt({prompt, onAdd, onSkip}) {
                 <div style={{width:24,height:24,borderRadius:6,flexShrink:0,
                   background:sel?C.g:"transparent",border:`2px solid ${sel?C.g:C.bo1}`,
                   display:"flex",alignItems:"center",justifyContent:"center",transition:"all .15s"}}>
-                  {sel&&<span style={{color:"#000",fontSize:13,fontWeight:700}}>✓</span>}
+                  {sel&&<span style={{color:C.on,fontSize:13,fontWeight:700}}><Ico e="✓"/></span>}
                 </div>
                 <div style={{flex:1,minWidth:0}}>
                   <div style={{fontWeight:600,fontSize:13,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{a.name}</div>
@@ -1012,11 +1108,11 @@ function AddonPrompt({prompt, onAdd, onSkip}) {
         <div style={{display:"flex",gap:8}}>
           <button onClick={handleConfirm} className="press"
             style={{flex:2,padding:"13px",
-              background:selected.size>0?`linear-gradient(90deg,${C.g},${C.b})`:C.bg3,
+              background:selected.size>0?`${C.pri}`:C.bg3,
               border:`1.5px solid ${selected.size>0?C.g:C.bo0}`,
               borderRadius:12,color:selected.size>0?"#000":C.t2,
               fontSize:13,fontWeight:800,fontFamily:F.sans,cursor:"pointer"}}>
-            {selected.size>0?`✓ Tambah ${selected.size} Add-on`:"✓ Lanjut Tanpa Add-on"}
+            {selected.size>0?`Tambah ${selected.size} add-on`:"Lanjut tanpa add-on"}
           </button>
           <button onClick={onSkip} className="press"
             style={{flex:1,padding:"13px",background:"transparent",
@@ -1038,7 +1134,7 @@ function ExpirePopup({nearExpiry, expiredProds, onClose}) {
     const d=Math.ceil((new Date(dateStr)-new Date())/(1000*60*60*24));
     return d;
   };
-  return <div style={{position:"fixed",inset:0,background:"rgba(2,8,24,.88)",zIndex:800,
+  return <div style={{position:"fixed",inset:0,background:"rgba(12,16,46,.55)",zIndex:800,
     display:"flex",alignItems:"flex-end",justifyContent:"center",fontFamily:F.sans}}
     onClick={onClose}>
     <div style={{width:"100%",maxWidth:480,background:C.bg2,borderRadius:"22px 22px 0 0",
@@ -1048,7 +1144,7 @@ function ExpirePopup({nearExpiry, expiredProds, onClose}) {
       <div style={{padding:"10px 16px 12px",borderBottom:`1px solid ${C.bo0}`,flexShrink:0}}>
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
           <div>
-            <div style={{fontSize:14,fontWeight:800}}>⏰ Peringatan Expire</div>
+            <div style={{fontSize:14,fontWeight:800}}><Ico e="⏰"/> Peringatan Expire</div>
             <div style={{fontSize:11,color:C.t2,marginTop:2}}>
               {expiredProds.length>0&&<span style={{color:C.r,fontWeight:700}}>{expiredProds.length} sudah kadaluarsa · </span>}
               {nearExpiry.length} mendekati expire (≤6 bulan)
@@ -1059,7 +1155,7 @@ function ExpirePopup({nearExpiry, expiredProds, onClose}) {
       </div>
       <div style={{overflowY:"auto",flex:1}}>
         {all.length===0
-          ?<div style={{padding:"32px",textAlign:"center",color:C.t3,fontSize:13}}>Semua produk aman ✅</div>
+          ?<div style={{padding:"32px",textAlign:"center",color:C.t3,fontSize:13}}>Semua produk aman</div>
           :all.map((p,i)=>{
             const days=daysDiff(p.expireDate);
             const expired=days<0;
@@ -1073,7 +1169,7 @@ function ExpirePopup({nearExpiry, expiredProds, onClose}) {
               <div style={{width:42,height:42,borderRadius:11,flexShrink:0,display:"flex",
                 flexDirection:"column",alignItems:"center",justifyContent:"center",
                 background:bg,border:`1px solid ${color}33`,padding:"2px"}}>
-                <span style={{fontSize:expired?16:14}}>{expired?"⛔":urgent?"🔴":warn?"🟡":"🟢"}</span>
+                <span style={{fontSize:expired?16:14}}><Ico e={expired?"⛔":urgent?"🔴":warn?"🟡":"🟢"} size={16}/></span>
               </div>
               <div style={{flex:1,minWidth:0}}>
                 <div style={{fontWeight:600,fontSize:13,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{p.name}</div>
@@ -1131,7 +1227,7 @@ class ErrorBoundary extends Component {
       return <div style={{fontFamily:"system-ui",background:"#020817",color:"#e8f4ff",
         height:"100vh",display:"flex",flexDirection:"column",alignItems:"center",
         justifyContent:"center",gap:16,padding:24,textAlign:"center"}}>
-        <div style={{fontSize:40}}>⚠️</div>
+        <div style={{fontSize:40}}><Ico e="⚠️" size={40}/></div>
         <h2 style={{fontSize:18,fontWeight:700}}>Terjadi Error</h2>
         <p style={{fontSize:13,color:"#4a6480",maxWidth:400,lineHeight:1.6}}>
           {String(this.state.error?.message||this.state.error)}
@@ -1140,7 +1236,7 @@ class ErrorBoundary extends Component {
           <button onClick={()=>window.location.reload()}
             style={{padding:"10px 20px",background:"#00e5a0",border:"none",borderRadius:9,
               color:"#020817",fontWeight:700,fontSize:13,cursor:"pointer"}}>
-            🔄 Reload
+            <Ico e="🔄"/> Reload
           </button>
           <button onClick={()=>{localStorage.clear();window.location.reload();}}
             style={{padding:"10px 20px",background:"transparent",border:"1px solid #4a6480",
@@ -1168,7 +1264,7 @@ function KasirStokPanel({prods, biz, onClose, onAdjust, onAddToCart}) {
     p.barcode.includes(search));
   const bc = biz==="JS_CLOTHING" ? C.b : C.p;
   return (
-    <div style={{position:"fixed",inset:0,background:"rgba(2,8,24,.88)",zIndex:600,
+    <div style={{position:"fixed",inset:0,background:"rgba(12,16,46,.55)",zIndex:600,
       display:"flex",alignItems:"flex-end",justifyContent:"center",fontFamily:F.sans}}
       onClick={onClose}>
       <div style={{width:"100%",maxWidth:520,background:C.bg2,borderRadius:"22px 22px 0 0",
@@ -1178,7 +1274,7 @@ function KasirStokPanel({prods, biz, onClose, onAdjust, onAddToCart}) {
         <div style={{padding:"10px 16px 12px",borderBottom:`1px solid ${C.bo0}`,flexShrink:0}}>
           <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
             <div>
-              <div style={{fontSize:14,fontWeight:800}}>📦 Stok Produk</div>
+              <div style={{fontSize:14,fontWeight:800}}><Ico e="📦"/> Stok Produk</div>
               <div style={{fontSize:11,color:C.t2,marginTop:1}}>{list.length} produk · tap + untuk tambah ke keranjang</div>
             </div>
             <button onClick={onClose} style={{background:"transparent",border:"none",color:C.t2,fontSize:22,cursor:"pointer",lineHeight:1}}>×</button>
@@ -1228,7 +1324,7 @@ function KasirStokPanel({prods, biz, onClose, onAdjust, onAddToCart}) {
                   background:p.stock===0?C.bg4:`linear-gradient(90deg,${bc},${bc}cc)`,
                   border:"none",color:p.stock===0?C.t3:"#fff",
                   cursor:p.stock===0?"not-allowed":"pointer",flexShrink:0}}>
-                🛒
+                <Ico e="🛒"/>
               </button>
             </div>
           ))}
@@ -1344,10 +1440,10 @@ function RingkasanTab({ opnameItems, selectedOpname, opnames, user, toast, fbClo
       <div style={{fontSize:11,color:C.t2,marginBottom:4}}>Total SKU diperiksa: <b style={{color:C.t0}}>{total}</b></div>
     </div>
     {!isClosed && <div style={{display:"flex",gap:8,marginBottom:16}}>
-      <button onClick={handleClose} style={{flex:1,padding:"11px",background:C.a1,border:`1px solid ${C.a}44`,borderRadius:10,color:C.a,fontSize:12,fontWeight:700,cursor:"pointer"}}>🔒 Tutup Sesi</button>
-      <button onClick={handleApply} style={{flex:1,padding:"11px",background:C.g1,border:`1px solid ${C.g}44`,borderRadius:10,color:C.g,fontSize:12,fontWeight:700,cursor:"pointer"}}>✅ Apply Adjustment</button>
+      <button onClick={handleClose} style={{flex:1,padding:"11px",background:C.a1,border:`1px solid ${C.a}44`,borderRadius:10,color:C.a,fontSize:12,fontWeight:700,cursor:"pointer"}}><Ico e="🔒"/> Tutup Sesi</button>
+      <button onClick={handleApply} style={{flex:1,padding:"11px",background:C.g1,border:`1px solid ${C.g}44`,borderRadius:10,color:C.g,fontSize:12,fontWeight:700,cursor:"pointer"}}><Ico e="✅"/> Apply Adjustment</button>
     </div>}
-    {session?.status === "applied" && <div style={{padding:"10px 14px",background:`${C.g}15`,borderRadius:10,border:`1px solid ${C.g}33`,fontSize:12,color:C.g,fontWeight:600}}>✓ Adjustment sudah diapply</div>}
+    {session?.status === "applied" && <div style={{padding:"10px 14px",background:`${C.g}15`,borderRadius:10,border:`1px solid ${C.g}33`,fontSize:12,color:C.g,fontWeight:600}}><Ico e="✓"/> Adjustment sudah diapply</div>}
   </div>;
 }
 function KartuStockTab({ slogs, prods, biz, BIZ, C, F, rp, loadSheetJS, downloadXLSX, selectedOpname, opnameItems, opnames, toast }) {
@@ -1545,7 +1641,7 @@ function ImportOpnameModal({ show, onClose, onImport, C, F, loadSheetJS, prods, 
 
   if (!show) return null;
 
-  return <div style={{position:"fixed",inset:0,background:"rgba(2,8,24,.85)",zIndex:500,display:"flex",alignItems:"flex-end",justifyContent:"center",fontFamily:F.sans}}
+  return <div style={{position:"fixed",inset:0,background:"rgba(12,16,46,.55)",zIndex:500,display:"flex",alignItems:"flex-end",justifyContent:"center",fontFamily:F.sans}}
     onClick={onClose}>
     <div style={{width:"100%",maxWidth:520,background:C.bg2,borderRadius:"22px 22px 0 0",border:`1px solid ${C.bo1}`,borderBottom:"none",animation:"slideUp .25s ease",maxHeight:"88vh",display:"flex",flexDirection:"column"}} onClick={e=>e.stopPropagation()}>
       <div style={{width:36,height:4,background:C.bo1,borderRadius:2,margin:"14px auto 0"}}/>
@@ -1558,7 +1654,7 @@ function ImportOpnameModal({ show, onClose, onImport, C, F, loadSheetJS, prods, 
       </div>
       <div style={{overflowY:"auto",flex:1,padding:"14px 18px"}}>
         <label className="press" style={{display:"flex",flexDirection:"column",alignItems:"center",gap:8,padding:"28px 20px",border:`2px dashed ${C.bo1}`,borderRadius:12,background:C.bg3,cursor:"pointer",marginBottom:12}}>
-          <span style={{fontSize:26}}>📁</span>
+          <span style={{fontSize:26}}><Ico e="📁" size={26}/></span>
           <span style={{fontSize:13,fontWeight:600,color:C.t1}}>{rows.length > 0 ? "File terpilih" : "Tap untuk pilih file .xlsx"}</span>
           <span style={{fontSize:10,color:C.t3}}>{rows.length > 0 ? `${rows.length} baris terbaca` : "File export dari aplikasi ini"}</span>
           <input type="file" accept=".xlsx,.xls" style={{display:"none"}} onChange={e=>{handleFile(e.target.files[0]);e.target.value="";}}/>
@@ -1585,8 +1681,8 @@ function ImportOpnameModal({ show, onClose, onImport, C, F, loadSheetJS, prods, 
                     <td style={{padding:"6px 8px"}}><span className="mn">{r.phys}</span></td>
                     <td style={{padding:"6px 8px"}}>
                       {r.product
-                        ? <span style={{color:C.g,fontWeight:700}}>✅ Ditemukan</span>
-                        : <span style={{color:C.a,fontWeight:700}}>⚠️ Tidak ditemukan</span>}
+                        ? <span style={{color:C.g,fontWeight:700}}><Ico e="✅"/> Ditemukan</span>
+                        : <span style={{color:C.a,fontWeight:700}}><Ico e="⚠️"/> Tidak ditemukan</span>}
                     </td>
                   </tr>
                 ))}
@@ -1607,7 +1703,7 @@ function ImportOpnameModal({ show, onClose, onImport, C, F, loadSheetJS, prods, 
           }));
           await onImport(matched);
         }} className="press"
-          style={{flex:1,padding:"11px",background:`linear-gradient(90deg,${C.g},${C.b})`,border:"none",borderRadius:10,color:"#fff",fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>
+          style={{flex:1,padding:"11px",background:`${C.pri}`,border:"none",borderRadius:10,color:"#fff",fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>
           Import {rows.filter(r=>r.product).length} Produk
         </button>
       </div>}
@@ -1658,17 +1754,17 @@ function OpnamePanel({
   const statusLabels = { open: "OPEN", closed: "CLOSED", applied: "APPLIED" };
 
   return <div style={{maxWidth:800,margin:"0 auto",display:"flex",flexDirection:"column",gap:10}}>
-    {showCreateOpname && <div style={{position:"fixed",inset:0,background:"rgba(2,8,24,.85)",zIndex:500,display:"flex",alignItems:"flex-end",justifyContent:"center"}}
+    {showCreateOpname && <div style={{position:"fixed",inset:0,background:"rgba(12,16,46,.55)",zIndex:500,display:"flex",alignItems:"flex-end",justifyContent:"center"}}
       onClick={()=>setShowCreateOpname(false)}>
       <div style={{width:"100%",maxWidth:420,background:C.bg2,borderRadius:"22px 22px 0 0",padding:"18px 20px 32px",
         border:`1px solid ${C.bo1}`,borderBottom:"none",animation:"slideUp .25s ease"}} onClick={e=>e.stopPropagation()}>
         <div style={{width:36,height:4,background:C.b1,borderRadius:2,margin:"0 auto 16px"}}/>
-        <h3 style={{fontSize:14,fontWeight:800,marginBottom:14,color:C.a}}>📋 Buat Sesi Opname Baru</h3>
+        <h3 style={{fontSize:14,fontWeight:800,marginBottom:14,color:C.a}}><Ico e="📋"/> Buat Sesi Opname Baru</h3>
         <div style={{display:"flex",flexDirection:"column",gap:10}}>
           <div style={{fontSize:11,color:C.t2}}>PIC: <b style={{color:C.t0}}>{user.name}</b></div>
           <select value={opnameForm.business} onChange={e=>setOpnameForm(f=>({...f,business:e.target.value}))}
             style={{padding:"11px 13px",background:C.bg3,border:`1.5px solid ${C.bo0}`,borderRadius:10,color:C.t0,fontSize:12}}>
-            {Object.values(BIZ).map(b=><option key={b.id} value={b.id}>{b.icon} {b.name}</option>)}
+            {Object.values(BIZ).map(b=><option key={b.id} value={b.id}><Ico e={b.icon}/> {b.name}</option>)}
           </select>
           <input type="date" value={opnameForm.date} onChange={e=>setOpnameForm(f=>({...f,date:e.target.value}))}
             style={{padding:"11px 13px",background:C.bg3,border:`1.5px solid ${C.bo0}`,borderRadius:10,color:C.t0,fontSize:12}}/>
@@ -1738,7 +1834,7 @@ function OpnamePanel({
         selectedOpname={selectedOpname} opnameItems={opnameItems} opnames={opnames} toast={toast}/>}
     </div> : <div>
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14}}>
-        <h2 style={{fontSize:15,fontWeight:800}}>📋 Opname Sessions</h2>
+        <h2 style={{fontSize:15,fontWeight:800}}><Ico e="📋"/> Opname Sessions</h2>
         <button onClick={()=>setShowCreateOpname(true)}
           style={{padding:"9px 16px",background:C.g1,border:`1px solid ${C.g}44`,borderRadius:10,color:C.g,fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>+ Buat Sesi Baru</button>
       </div>
@@ -1748,16 +1844,16 @@ function OpnamePanel({
         return <Card key={s.id} style={{marginBottom:8}} onClick={()=>setSelectedOpname(s.id)}>
           <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
             <div>
-              <div style={{fontWeight:600,fontSize:13,marginBottom:3}}>{BIZ[s.business]?.icon} {BIZ[s.business]?.name || s.business}</div>
-              <div style={{fontSize:11,color:C.t2}}>📅 {s.date} · 👤 {s.pic}</div>
-              {s.notes && <div style={{fontSize:10,color:C.t3,marginTop:2}}>📝 {s.notes}</div>}
+              <div style={{fontWeight:600,fontSize:13,marginBottom:3}}><Ico e={BIZ[s.business]?.icon}/> {BIZ[s.business]?.name || s.business}</div>
+              <div style={{fontSize:11,color:C.t2}}><Ico e="📅"/> {s.date} · {s.pic}</div>
+              {s.notes && <div style={{fontSize:10,color:C.t3,marginTop:2}}><Ico e="📝"/> {s.notes}</div>}
             </div>
             <div style={{display:"flex",alignItems:"center",gap:6}}>
               <span style={{padding:"2px 8px",borderRadius:4,fontSize:9,fontWeight:700,textTransform:"uppercase",
                 color:statusColors[st]||C.t2,background:`${(statusColors[st]||C.t2)}22`}}>
                 {statusLabels[st]||st.toUpperCase()}</span>
               {st === "open" && <button onClick={e=>{e.stopPropagation();handleDelete(s.id);}}
-                style={{background:"transparent",border:"none",color:C.r,fontSize:14,cursor:"pointer",padding:2}}>🗑️</button>}
+                style={{background:"transparent",border:"none",color:C.r,fontSize:14,cursor:"pointer",padding:2}}><Ico e="🗑️"/></button>}
             </div>
           </div>
         </Card>;
@@ -1807,12 +1903,14 @@ function AppInner() {
   const [fbSetup,setFbSetup]=useState(false);
   const [fbLoad,setFbLoad]=useState(true);
   // ─── Theme ───
-  const [isDark,setIsDark]=useState(()=>localStorage.getItem("je_theme")!=="light");
+  const [isDark,setIsDark]=useState(()=>localStorage.getItem("je_theme")==="dark");
+  const [showPw,setShowPw]=useState(false);
   const [updateReady,setUpdateReady]=useState(false);
   const toggleTheme=()=>{
     const next=!isDark;
     Object.assign(C,next?DARK_C:LIGHT_C);
     CSS=makeCSS();
+    syncThemeColor();
     localStorage.setItem("je_theme",next?"dark":"light");
     setIsDark(next);
   };
@@ -2600,7 +2698,7 @@ function AppInner() {
     <div style={{width:40,height:40,border:`2.5px solid ${C.bg4}`,borderTopColor:C.g,borderRadius:"50%",animation:"spin 1s linear infinite"}}/>
     <div style={{textAlign:"center"}}>
       <div className="mn" style={{fontSize:15,fontWeight:700,letterSpacing:2,
-        background:`linear-gradient(90deg,${C.g},${C.b})`,WebkitBackgroundClip:"text",WebkitTextFillColor:"transparent",marginBottom:4}}>
+        background:`${C.pri}`,WebkitBackgroundClip:"text",WebkitTextFillColor:"transparent",marginBottom:4}}>
         KASIR JE GRUP</div>
       <p style={{fontSize:12,color:C.t2}}>Menghubungkan database...</p>
     </div>
@@ -2621,80 +2719,94 @@ function AppInner() {
   // ─────────────────────────────────────────────────────────────
   //  LOGIN
   // ─────────────────────────────────────────────────────────────
-  if(screen==="login") return <div style={{fontFamily:F.sans,background:C.bg1,color:C.t0,minHeight:"100vh",
-    display:"flex",alignItems:"center",justifyContent:"center",padding:16}}>
+  if(screen==="login") return <div style={{fontFamily:F.sans,background:C.bg1,color:C.t0,minHeight:"100dvh",display:"flex",flexDirection:"column"}}>
     {UpdateBannerEl}
     <style>{CSS}</style><Toast n={notif}/>
-    <div style={{position:"fixed",inset:0,pointerEvents:"none",overflow:"hidden"}}>
-      <div style={{position:"absolute",top:"-15%",right:"-10%",width:"50%",paddingBottom:"50%",borderRadius:"50%",background:`radial-gradient(circle,${C.g}07,transparent 70%)`}}/>
-      <div style={{position:"absolute",bottom:"-10%",left:"-5%",width:"45%",paddingBottom:"45%",borderRadius:"50%",background:`radial-gradient(circle,${C.b}05,transparent 70%)`}}/>
-    </div>
-    <div style={{position:"relative",width:"100%",maxWidth:380,animation:"fadeUp .4s ease"}}>
-      <div style={{textAlign:"center",marginBottom:24}}>
-        <div style={{display:"inline-flex",width:68,height:68,borderRadius:22,background:`linear-gradient(135deg,${C.g}20,${C.b}18)`,border:`1.5px solid ${C.g}30`,alignItems:"center",justifyContent:"center",fontSize:32,marginBottom:14}}>🏬</div>
-        <h1 className="mn" style={{fontSize:22,fontWeight:700,letterSpacing:3,background:`linear-gradient(90deg,${C.g} 0%,${C.b} 55%,${C.p} 100%)`,WebkitBackgroundClip:"text",WebkitTextFillColor:"transparent",marginBottom:12}}>KASIR JE GRUP</h1>
-        <div style={{display:"flex",justifyContent:"center",gap:7,flexWrap:"wrap",marginBottom:8}}>
-          {Object.values(BIZ).map(b=><span key={b.id} style={{fontSize:11,padding:"3px 11px",borderRadius:20,fontWeight:600,background:b.id==="JS_CLOTHING"?C.b1:C.p1,color:b.id==="JS_CLOTHING"?C.b:C.p,border:`1px solid ${(b.id==="JS_CLOTHING"?C.b:C.p)}22`}}>{b.icon} {b.name}</span>)}
+    <main className="login-shell">
+      <section className="login-hero">
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:28}}>
+          <BrandMark size={44} onDark/>
+          <OnlineDot online={online} onDark/>
         </div>
-        <OnlineDot online={online}/>
-      </div>
-      <Card style={{padding:"24px 20px"}}>
-        <h2 style={{fontSize:15,fontWeight:800,marginBottom:4}}>Masuk ke Sistem</h2>
-        <p style={{fontSize:12,color:C.t2,marginBottom:18,lineHeight:1.6}}>Pegawai kasir/stok diverifikasi wajah & absen otomatis.</p>
-        <div style={{marginBottom:12}}><Inp value={lf.u} onChange={e=>setLf(x=>({...x,u:e.target.value}))} onKeyDown={e=>e.key==="Enter"&&doLogin()} placeholder="Username" icon="👤" label="Username" mono/></div>
-        <div style={{marginBottom:14}}><Inp value={lf.p} onChange={e=>setLf(x=>({...x,p:e.target.value}))} type="password" onKeyDown={e=>e.key==="Enter"&&doLogin()} placeholder="••••••••" icon="🔒" label="Password"/></div>
-        <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:16}}>
-          <div onClick={()=>setRememberMe(x=>!x)} style={{width:40,height:22,borderRadius:11,cursor:"pointer",background:rememberMe?C.g:C.bg4,border:`1.5px solid ${rememberMe?C.g:C.bo1}`,position:"relative",transition:"background .2s",flexShrink:0}}>
-            <div style={{position:"absolute",top:2,left:rememberMe?20:2,width:14,height:14,borderRadius:"50%",background:rememberMe?"#000":C.t2,transition:"left .2s"}}/>
-          </div>
-          <label onClick={()=>setRememberMe(x=>!x)} style={{fontSize:12.5,color:C.t1,cursor:"pointer",userSelect:"none"}}>Ingat login saya</label>
+        <h1 style={{fontSize:30,fontWeight:800,letterSpacing:"-.03em",lineHeight:1.1,marginBottom:10}}>Kasir JE Grup</h1>
+        <p style={{fontSize:14.5,lineHeight:1.5,color:"rgba(255,255,255,.78)",maxWidth:320,textWrap:"balance"}}>Penjualan dan stok untuk JS Clothing dan JB Store.</p>
+      </section>
+      <div className="ikat-band" aria-hidden="true"/>
+      <section className="login-body">
+        <div>
+          <h2 style={{fontSize:21,fontWeight:800,letterSpacing:"-.02em"}}>Masuk</h2>
+          <p style={{fontSize:13.5,color:C.t2,marginTop:4,lineHeight:1.5}}>Gunakan akun yang diberikan admin.</p>
         </div>
-        {lerr&&<div style={{padding:"9px 12px",background:C.r1,borderRadius:8,border:`1px solid ${C.r}33`,fontSize:12,color:C.r,marginBottom:14,display:"flex",gap:6}}>⚠ {lerr}</div>}
-        <button onClick={doLogin} className="press" style={{width:"100%",padding:"14px",background:`linear-gradient(90deg,${C.g},${C.b})`,border:"none",borderRadius:12,color:C.bg1,fontSize:14,fontWeight:800,boxShadow:`0 4px 20px ${C.g}30`}}>MASUK SEKARANG →</button>
-        <Divider my={16}/>
-        <div style={{padding:"10px 12px",background:C.bg3,borderRadius:8,border:`1px solid ${C.bo0}`,fontSize:11.5,color:C.t2,lineHeight:1.9}}>
-          <span style={{color:C.vi,fontWeight:700}}>👑 Admin</span> — masuk langsung tanpa scan wajah<br/>
-          <span style={{color:C.cy,fontWeight:700}}>🧑 Kasir/Stok</span> — verifikasi wajah + absen otomatis
+        <Inp value={lf.u} onChange={e=>setLf(x=>({...x,u:e.target.value}))} onKeyDown={e=>e.key==="Enter"&&doLogin()} placeholder="mis. kasir.js" icon={<User size={17}/>} label="Username"/>
+        <div style={{position:"relative"}}>
+          <Inp value={lf.p} onChange={e=>setLf(x=>({...x,p:e.target.value}))} type={showPw?"text":"password"} onKeyDown={e=>e.key==="Enter"&&doLogin()} placeholder="Password" icon={<Lock size={17}/>} label="Password" style={{paddingRight:48}}/>
+          <button type="button" onClick={()=>setShowPw(x=>!x)} aria-label={showPw?"Sembunyikan password":"Tampilkan password"} className="press"
+            style={{position:"absolute",right:4,bottom:3,width:44,height:44,border:"none",background:"transparent",color:C.t2,display:"grid",placeItems:"center",borderRadius:12}}>
+            {showPw?<EyeOff size={19}/>:<Eye size={19}/>}</button>
         </div>
-      </Card>
-      <div style={{display:"flex",justifyContent:"center",gap:12,marginTop:10}}>
-        <button onClick={()=>{clearConfig();setFbReady(false);setFbSetup(true);}} style={{background:"transparent",border:"none",color:C.t3,cursor:"pointer",fontSize:11,textDecoration:"underline"}}>Ganti Firebase</button>
-        <button onClick={toggleTheme} className="press" style={{background:C.bg2,border:`1px solid ${C.bo1}`,borderRadius:20,padding:"4px 14px",color:C.t1,fontSize:12,fontWeight:600}}>{isDark?"☀️ Terang":"🌙 Gelap"}</button>
-      </div>
-    </div>
+        <button type="button" role="switch" aria-checked={rememberMe} onClick={()=>setRememberMe(x=>!x)}
+          style={{display:"flex",alignItems:"center",gap:12,background:"transparent",border:"none",padding:"2px 0",minHeight:40,color:C.t1,fontSize:14,fontWeight:600,textAlign:"left"}}>
+          <span style={{width:44,height:26,borderRadius:13,background:rememberMe?C.pri:C.bg4,position:"relative",transition:"background .2s",flexShrink:0}}>
+            <span style={{position:"absolute",top:3,left:rememberMe?21:3,width:20,height:20,borderRadius:"50%",background:rememberMe?C.on:C.t2,transition:"left .2s"}}/>
+          </span>
+          Ingat saya di perangkat ini
+        </button>
+        {lerr&&<div role="alert" style={{padding:"11px 13px",background:C.r1,borderRadius:12,fontSize:13.5,fontWeight:600,color:C.r,display:"flex",gap:9,alignItems:"flex-start",lineHeight:1.4}}>
+          <AlertTriangle size={17} style={{flexShrink:0,marginTop:1}}/>{lerr}</div>}
+        <Btn onClick={doLogin} full size="lg">Masuk</Btn>
+        <div style={{display:"flex",flexDirection:"column",gap:10,padding:"14px",background:C.bg3,borderRadius:14,fontSize:13,color:C.t1,lineHeight:1.45}}>
+          <div style={{display:"flex",gap:10}}><Crown size={17} color={C.vi} style={{flexShrink:0,marginTop:1}}/><span><b style={{color:C.t0}}>Admin</b> langsung masuk tanpa scan wajah.</span></div>
+          <div style={{display:"flex",gap:10}}><ScanLine size={17} color={C.cy} style={{flexShrink:0,marginTop:1}}/><span><b style={{color:C.t0}}>Kasir dan stok</b> diverifikasi wajah, lalu absen tercatat otomatis.</span></div>
+        </div>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginTop:"auto",paddingTop:4}}>
+          {!hasEnvConfig&&<button onClick={()=>{clearConfig();setFbReady(false);setFbSetup(true);}} className="press" style={{background:"transparent",border:"none",color:C.t2,fontSize:13,fontWeight:600,minHeight:40,padding:"0 4px",textDecoration:"underline",textUnderlineOffset:3}}>Ganti Firebase</button>}
+          <button onClick={toggleTheme} className="press" style={{display:"inline-flex",alignItems:"center",gap:7,minHeight:40,padding:"0 14px",background:"transparent",border:`1.5px solid ${C.bo1}`,borderRadius:20,color:C.t1,fontSize:13,fontWeight:600}}>
+            {isDark?<Sun size={16}/>:<Moon size={16}/>}{isDark?"Mode terang":"Mode gelap"}</button>
+        </div>
+      </section>
+    </main>
   </div>;
 
   // ─────────────────────────────────────────────────────────────
   //  BIZ SELECT
   // ─────────────────────────────────────────────────────────────
-  if(screen==="bizselect") return <div style={{fontFamily:F.sans,background:C.bg1,color:C.t0,minHeight:"100vh",display:"flex",alignItems:"center",justifyContent:"center",padding:16}}>
+  if(screen==="bizselect") return <div style={{fontFamily:F.sans,background:C.bg1,color:C.t0,minHeight:"100dvh",display:"flex",flexDirection:"column"}}>
     <style>{CSS}</style><Toast n={notif}/>
-    <div style={{width:"100%",maxWidth:400,animation:"fadeUp .35s ease"}}>
-      <div style={{textAlign:"center",marginBottom:22}}>
-        <div style={{fontSize:36,marginBottom:8}}>{user?.avatar}</div>
-        <p style={{fontSize:17,fontWeight:800}}>{user?.name}</p>
-        <p style={{fontSize:12.5,color:C.t2,marginTop:4}}>Pilih bisnis untuk hari ini</p>
-      </div>
-      <div style={{display:"flex",flexDirection:"column",gap:10}}>
-        {user?.access?.map(bizId=>{
-          const b=BIZ[bizId],isJ=bizId==="JS_CLOTHING";
-          return <button key={bizId} className="press"
-            onClick={async()=>{setBiz(bizId);await doCheckIn(user,bizId);setScreen(user.role==="kasir"?"kasir":"stok");}}
-            style={{padding:"18px",background:C.bg2,border:`1.5px solid ${C.bo0}`,borderRadius:16,cursor:"pointer",textAlign:"left",display:"flex",alignItems:"center",gap:14}}>
-            <div style={{width:52,height:52,borderRadius:14,flexShrink:0,background:isJ?C.b1:C.p1,border:`2px solid ${b.color}33`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:24}}>{b.icon}</div>
-            <div style={{flex:1}}>
-              <div style={{fontSize:15,fontWeight:800,color:b.color}}>{b.name}</div>
-              <div style={{fontSize:12,color:C.t2,marginTop:2}}>{b.desc}</div>
-            </div>
-            <div style={{textAlign:"right"}}>
-              <div className="mn" style={{fontSize:20,fontWeight:700,color:b.color}}>{bizProds(bizId).length}</div>
-              <div style={{fontSize:10,color:C.t3}}>produk</div>
-            </div>
-          </button>;
-        })}
-      </div>
-      <button onClick={doLogout} style={{width:"100%",marginTop:12,padding:"11px",background:"transparent",border:`1px solid ${C.bo0}`,borderRadius:10,color:C.t2,cursor:"pointer",fontSize:12,fontFamily:F.sans}}>← Kembali</button>
-    </div>
+    <main className="login-shell">
+      <section className="login-hero" style={{paddingBottom:24}}>
+        <div style={{display:"flex",alignItems:"center",gap:14}}>
+          <span style={{width:52,height:52,borderRadius:"50%",background:"rgba(255,255,255,.14)",border:"1.5px solid rgba(255,255,255,.3)",display:"grid",placeItems:"center",fontWeight:800,fontSize:21,flexShrink:0}}>{(user?.name||"?").trim().charAt(0).toUpperCase()}</span>
+          <div style={{minWidth:0}}>
+            <p style={{fontSize:13,color:"rgba(255,255,255,.72)"}}>Selamat bekerja,</p>
+            <h1 style={{fontSize:21,fontWeight:800,letterSpacing:"-.02em",lineHeight:1.2,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{user?.name}</h1>
+          </div>
+        </div>
+      </section>
+      <div className="ikat-band" aria-hidden="true"/>
+      <section className="login-body">
+        <div>
+          <h2 style={{fontSize:19,fontWeight:800,letterSpacing:"-.02em"}}>Pilih bisnis hari ini</h2>
+          <p style={{fontSize:13.5,color:C.t2,marginTop:4}}>Absen masuk dicatat untuk bisnis yang kamu pilih.</p>
+        </div>
+        <div style={{display:"flex",flexDirection:"column",gap:12}}>
+          {user?.access?.map(bizId=>{
+            const b=BIZ[bizId],isJ=bizId==="JS_CLOTHING",bcl=isJ?C.b:C.p;
+            return <button key={bizId} className="press"
+              onClick={async()=>{setBiz(bizId);await doCheckIn(user,bizId);setScreen(user.role==="kasir"?"kasir":"stok");}}
+              style={{padding:"16px",background:C.bg2,border:`1.5px solid ${C.bo1}`,borderRadius:18,textAlign:"left",display:"flex",alignItems:"center",gap:14,boxShadow:C.sh,minHeight:84}}>
+              <span style={{width:52,height:52,borderRadius:15,flexShrink:0,background:isJ?C.b1:C.p1,color:bcl,display:"grid",placeItems:"center"}}><Ico e=<Ico e={b.icon}/> size={26} strokeWidth={1.8}/></span>
+              <span style={{flex:1,minWidth:0}}>
+                <span style={{display:"block",fontSize:17,fontWeight:800,color:C.t0}}>{b.name}</span>
+                <span style={{display:"block",fontSize:13,color:C.t2,marginTop:2}}>{b.desc} · <span className="mn">{bizProds(bizId).length}</span> produk</span>
+              </span>
+              <ChevronRight size={20} color={C.t3} aria-hidden="true"/>
+            </button>;
+          })}
+        </div>
+        <button onClick={doLogout} className="press" style={{display:"inline-flex",alignItems:"center",justifyContent:"center",gap:8,minHeight:46,marginTop:"auto",background:"transparent",border:`1.5px solid ${C.bo1}`,borderRadius:12,color:C.t1,fontSize:14,fontWeight:600}}>
+          <ArrowLeft size={17}/>Kembali ke halaman masuk</button>
+      </section>
+    </main>
   </div>;
 
   // ─────────────────────────────────────────────────────────────
@@ -2740,22 +2852,22 @@ function AppInner() {
       {showExpirePopup&&<ExpirePopup nearExpiry={nearExpiry} expiredProds={expiredProds} onClose={()=>setShowExpirePopup(false)}/>}
 
       {/* Checkout modal */}
-      {showCheckout&&<div style={{position:"fixed",inset:0,background:"rgba(2,8,24,.88)",zIndex:500,display:"flex",alignItems:"flex-end",justifyContent:"center"}} onClick={()=>setShowCheckout(false)}>
+      {showCheckout&&<div style={{position:"fixed",inset:0,background:"rgba(12,16,46,.55)",zIndex:500,display:"flex",alignItems:"flex-end",justifyContent:"center"}} onClick={()=>setShowCheckout(false)}>
         <div style={{width:"100%",maxWidth:420,background:C.bg2,borderRadius:"22px 22px 0 0",border:`1px solid ${C.bo1}`,borderBottom:"none",animation:"slideUp .25s ease",padding:"16px 18px 32px"}} onClick={e=>e.stopPropagation()}>
           <div style={{width:36,height:4,background:C.b1,borderRadius:2,margin:"0 auto 16px"}}/>
-          <h3 style={{fontSize:15,fontWeight:800,marginBottom:14}}>💳 Konfirmasi Pembayaran</h3>
+          <h3 style={{fontSize:15,fontWeight:800,marginBottom:14}}><Ico e="💳"/> Konfirmasi Pembayaran</h3>
           {/* Nama Pembeli */}
           <div style={{marginBottom:12}}>
-            <div style={{fontSize:10,fontWeight:700,color:C.t2,textTransform:"uppercase",letterSpacing:1,marginBottom:6}}>Nama Pembeli (Opsional)</div>
+            <div style={{fontSize:12,fontWeight:700,color:C.t2,textTransform:"none",letterSpacing:0,marginBottom:6}}>Nama Pembeli (Opsional)</div>
             <div style={{position:"relative"}}>
-              <span style={{position:"absolute",left:12,top:"50%",transform:"translateY(-50%)",fontSize:14,pointerEvents:"none",color:C.t2}}>🧑</span>
+              <span style={{position:"absolute",left:12,top:"50%",transform:"translateY(-50%)",fontSize:14,pointerEvents:"none",color:C.t2}}><Ico e="🧑"/></span>
               <input value={namaPembeli} onChange={e=>setNamaPembeli(e.target.value)}
                 placeholder="Kosongkan = Umum / Tunai"
                 style={{width:"100%",padding:"11px 13px 11px 36px",background:C.bg3,
-                  border:`1.5px solid ${namaPembeli?C.g+"88":C.bo0}`,borderRadius:10,
+                  border:`1.5px solid ${namaPembeli?C.pri+"88":C.bo0}`,borderRadius:10,
                   color:C.t0,fontSize:13,fontFamily:F.sans,boxSizing:"border-box",transition:"border-color .15s"}}
-                onFocus={e=>e.target.style.borderColor=C.g+"88"}
-                onBlur={e=>e.target.style.borderColor=namaPembeli?C.g+"88":C.bo0}/>
+                onFocus={e=>e.target.style.borderColor=C.pri+"88"}
+                onBlur={e=>e.target.style.borderColor=namaPembeli?C.pri+"88":C.bo0}/>
             </div>
           </div>
           {/* Subtotal */}
@@ -2765,7 +2877,7 @@ function AppInner() {
           </div>
           {/* Discount */}
           <div style={{padding:"10px 12px",background:C.bg3,borderRadius:10,border:`1px solid ${C.bo0}`,marginBottom:10}}>
-            <div style={{fontSize:10,fontWeight:700,color:C.t2,textTransform:"uppercase",letterSpacing:1,marginBottom:8}}>Diskon (Opsional)</div>
+            <div style={{fontSize:12,fontWeight:700,color:C.t2,textTransform:"none",letterSpacing:0,marginBottom:8}}>Diskon (Opsional)</div>
             <div style={{display:"flex",gap:6}}>
               <div style={{display:"flex",borderRadius:8,overflow:"hidden",border:`1px solid ${C.bo0}`,flexShrink:0}}>
                 {[["pct","%"],["rp","Rp"]].map(([t,l])=>(
@@ -2781,7 +2893,7 @@ function AppInner() {
           </div>
           {/* Payment method */}
           <div style={{marginBottom:14}}>
-            <div style={{fontSize:10,fontWeight:700,color:C.t2,textTransform:"uppercase",letterSpacing:1,marginBottom:8}}>Metode Pembayaran</div>
+            <div style={{fontSize:12,fontWeight:700,color:C.t2,textTransform:"none",letterSpacing:0,marginBottom:8}}>Metode Pembayaran</div>
             <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
               {PAYMENT_METHODS.map(m=>(
                 <button key={m} onClick={()=>setPayMethod(m)}
@@ -2800,8 +2912,8 @@ function AppInner() {
           </div>
           <div style={{display:"flex",gap:8}}>
             <button onClick={doCheckout} className="press"
-              style={{flex:2,padding:"14px",background:`linear-gradient(90deg,${C.g},${C.b})`,border:"none",borderRadius:12,color:C.bg1,fontSize:14,fontWeight:800,fontFamily:F.sans}}>
-              ✓ Bayar {rp(total)}</button>
+              style={{flex:2,padding:"14px",background:`${C.pri}`,border:"none",borderRadius:12,color:C.on,fontSize:14,fontWeight:800,fontFamily:F.sans}}>
+              <Ico e="✓"/> Bayar {rp(total)}</button>
             <button onClick={()=>setShowCheckout(false)}
               style={{flex:1,padding:"14px",background:"transparent",border:`1px solid ${C.bo0}`,borderRadius:12,color:C.t2,fontSize:13,fontFamily:F.sans}}>Batal</button>
           </div>
@@ -2815,15 +2927,15 @@ function AppInner() {
           <div style={{padding:"10px 12px",background:C.bg2,borderBottom:`1px solid ${C.bo0}`,flexShrink:0,zIndex:100}}>
             <div style={{display:"flex",gap:8}}>
               <div style={{flex:1,position:"relative"}}>
-                <span style={{position:"absolute",left:12,top:"50%",transform:"translateY(-50%)",fontSize:15,pointerEvents:"none",color:C.t2}}>📷</span>
+                <span style={{position:"absolute",left:12,top:"50%",transform:"translateY(-50%)",fontSize:15,pointerEvents:"none",color:C.t2}}><Ico e="📷"/></span>
                 <input ref={scanRef} value={scanIn} onChange={e=>setScanIn(e.target.value)}
                   onKeyDown={e=>e.key==="Enter"&&kasirScan(scanIn)}
-                  placeholder="Scan barcode / ketik barcode atau nama produk..."
+                  placeholder="Scan atau cari produk"
                   style={{width:"100%",padding:"12px 12px 12px 40px",background:C.bg3,border:`2px solid ${bc}44`,borderRadius:12,color:C.t0,fontSize:14,fontFamily:F.mono}}/>
                 
                 {/* Autocomplete Suggestions Kasir */}
                 {scanIn.trim().length > 1 && (
-                  <div style={{position:"absolute",top:"100%",left:0,right:0,zIndex:100,background:C.bg2,border:`1px solid ${C.bo1}`,borderRadius:12,marginTop:6,boxShadow:"0 10px 30px rgba(0,0,0,0.6)",overflow:"hidden",animation:"fadeUp 0.2s ease"}}>
+                  <div style={{position:"absolute",top:"100%",left:0,right:0,zIndex:100,background:C.bg2,border:`1px solid ${C.bo1}`,borderRadius:12,marginTop:6,boxShadow:C.sh2,overflow:"hidden",animation:"fadeUp 0.2s ease"}}>
                     {bizProds().filter(p => p.name.toLowerCase().includes(scanIn.trim().toLowerCase()) || p.barcode.includes(scanIn.trim())).slice(0, 5).map((p, i) => (
                       <div key={p.id} onClick={() => kasirScan(p.barcode)} className="hrow"
                         style={{padding:"10px 14px",cursor:"pointer",borderTop:i>0?`1px solid ${C.bo0}`:undefined,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
@@ -2841,15 +2953,15 @@ function AppInner() {
                 )}
               </div>
               <button onClick={()=>kasirScan(scanIn)} className="press"
-                style={{padding:"12px 16px",background:bc,border:"none",borderRadius:12,color:"#fff",fontWeight:800,fontSize:14,flexShrink:0}}>+</button>
+                style={{padding:"12px 16px",background:bc,border:"none",borderRadius:12,color:C.on,fontWeight:800,fontSize:14,flexShrink:0}}>+</button>
               <button onClick={()=>setShowKasirStok(true)} className="press" title="Lihat & Kelola Stok"
-                style={{padding:"12px 14px",background:C.bg3,border:`1.5px solid ${C.bo1}`,borderRadius:12,color:C.t1,fontSize:14,flexShrink:0}}>📦</button>
+                style={{padding:"12px 14px",background:C.bg3,border:`1.5px solid ${C.bo1}`,borderRadius:12,color:C.t1,fontSize:14,flexShrink:0}}><Ico e="📦"/></button>
             </div>
           </div>
           {/* Cart */}
           <div style={{flex:1,overflowY:"auto",padding:10,display:"flex",flexDirection:"column",gap:7,minHeight:0}}>
             {cart.length===0 ? <div style={{display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",flex:1,gap:10,padding:"32px 16px"}}>
-              <div style={{fontSize:48,opacity:.08}}>🛒</div>
+              <div style={{fontSize:48,opacity:.08}}><Ico e="🛒" size={48}/></div>
               <p style={{fontSize:13,fontWeight:600,color:C.t2}}>Keranjang kosong</p>
               <p style={{fontSize:11.5,color:C.t3}}>Scan barcode {BIZ[biz]?.name} untuk mulai</p>
             </div> : cart.map(item=><div key={item.barcode} style={{background:C.bg2,borderRadius:12,border:`1px solid ${C.bo0}`,padding:"10px 12px",display:"flex",alignItems:"center",gap:8,animation:"fadeUp .15s ease"}}>
@@ -2859,12 +2971,12 @@ function AppInner() {
               </div>
               <div style={{display:"flex",alignItems:"center",gap:4,flexShrink:0}}>
                 <button onClick={()=>setCart(p=>{const it=p.find(c=>c.barcode===item.barcode);return it.qty<=1?p.filter(c=>c.barcode!==item.barcode):p.map(c=>c.barcode===item.barcode?{...c,qty:c.qty-1}:c);})}
-                  className="press" style={{width:30,height:30,background:C.bg4,border:`1px solid ${C.bo1}`,borderRadius:8,color:C.t0,fontSize:16,display:"flex",alignItems:"center",justifyContent:"center"}}>−</button>
+                  className="press" style={{width:38,height:38,background:C.bg3,border:`1px solid ${C.bo1}`,borderRadius:10,color:C.t0,fontSize:16,display:"flex",alignItems:"center",justifyContent:"center"}}>−</button>
                 <span className="mn" style={{minWidth:24,textAlign:"center",fontWeight:700,fontSize:14}}>{item.qty}</span>
                 <button onClick={()=>setCart(p=>p.map(c=>c.barcode===item.barcode&&c.qty<c.stock?{...c,qty:c.qty+1}:c))}
-                  className="press" style={{width:30,height:30,background:C.bg4,border:`1px solid ${C.bo1}`,borderRadius:8,color:C.t0,fontSize:16,display:"flex",alignItems:"center",justifyContent:"center"}}>+</button>
+                  className="press" style={{width:38,height:38,background:C.bg3,border:`1px solid ${C.bo1}`,borderRadius:10,color:C.t0,fontSize:16,display:"flex",alignItems:"center",justifyContent:"center"}}>+</button>
               </div>
-              <div className="mn" style={{fontWeight:700,color:C.a,fontSize:13,minWidth:80,textAlign:"right",flexShrink:0}}>{rp(item.price*item.qty)}</div>
+              <div className="mn" style={{fontWeight:700,color:C.t0,fontSize:14,minWidth:84,textAlign:"right",flexShrink:0}}>{rp(item.price*item.qty)}</div>
               <button onClick={()=>setCart(p=>p.filter(c=>c.barcode!==item.barcode))}
                 style={{background:"transparent",border:"none",color:C.t3,fontSize:18,padding:"0 2px",flexShrink:0}}>×</button>
             </div>)}
@@ -2873,7 +2985,7 @@ function AppInner() {
         {/* Side panel tablet */}
         <div className="hide-mobile" style={{width:220,background:C.bg2,borderLeft:`1px solid ${C.bo0}`,display:"flex",flexDirection:"column",padding:12,flexShrink:0}}>
           <div style={{padding:"8px 10px",borderRadius:10,marginBottom:12,textAlign:"center",background:biz==="JS_CLOTHING"?C.b1:C.p1,border:`1px solid ${bc}22`}}>
-            <span style={{fontSize:12,color:bc,fontWeight:700}}>{BIZ[biz]?.icon} {BIZ[biz]?.name}</span>
+            <span style={{fontSize:12,color:bc,fontWeight:700}}><Ico e={BIZ[biz]?.icon}/> {BIZ[biz]?.name}</span>
           </div>
           <div style={{flex:1}}>
             {[{l:"Produk",v:cart.length},{l:"Total Item",v:cart.reduce((s,c)=>s+c.qty,0)}].map(r=>(
@@ -2886,21 +2998,21 @@ function AppInner() {
             </div>}
             <div style={{display:"flex",justifyContent:"space-between",alignItems:"baseline",marginBottom:5}}>
               <span style={{fontSize:13,color:C.t1}}>Total</span>
-              <span className="mn" style={{fontSize:20,fontWeight:700,color:C.g}}>{rp(total)}</span>
+              <span className="mn" style={{fontSize:22,fontWeight:800,color:C.t0}}>{rp(total)}</span>
             </div>
           </div>
           <div style={{display:"flex",flexDirection:"column",gap:7,marginTop:12}}>
             <button onClick={()=>{if(cart.length)setShowCheckout(true);}} disabled={!cart.length} className="press"
-              style={{padding:"14px",background:cart.length?`linear-gradient(90deg,${C.g},${C.b})`:C.bg3,
-                border:"none",borderRadius:11,color:cart.length?C.bg1:C.t2,fontSize:13,fontWeight:800,cursor:cart.length?"pointer":"not-allowed"}}>
-              💳 BAYAR</button>
+              style={{padding:"14px",background:cart.length?`${C.pri}`:C.bg3,
+                border:"none",borderRadius:11,color:cart.length?C.on:C.t2,fontSize:13,fontWeight:800,cursor:cart.length?"pointer":"not-allowed"}}>
+              <Ico e="💳"/> Bayar</button>
             <button onClick={()=>setCart([])} style={{padding:"7px",background:"transparent",border:`1px solid ${C.bo0}`,borderRadius:8,color:C.t3,fontSize:11,fontFamily:F.sans}}>Bersihkan</button>
           </div>
           <Divider my={8}/>
           <button onClick={()=>setShowKasirStok(true)} className="press"
             style={{width:"100%",padding:"8px",background:C.bg3,border:`1px solid ${C.bo1}`,borderRadius:9,color:C.t1,fontSize:11,fontWeight:700,marginBottom:8,fontFamily:F.sans}}>
-            📦 Stok & Kelola ({bizProds().length})</button>
-          <div style={{fontSize:10,color:C.t3,textTransform:"uppercase",letterSpacing:1,marginBottom:6,fontWeight:700}}>Terbaru</div>
+            <Ico e="📦"/> Stok & Kelola ({bizProds().length})</button>
+          <div style={{fontSize:12,color:C.t3,textTransform:"none",letterSpacing:0,marginBottom:6,fontWeight:700}}>Terbaru</div>
           {trxs.filter(t=>t.business===biz).slice(0,5).map(t=><div key={t.id}
             style={{display:"flex",justifyContent:"space-between",marginBottom:4,fontSize:11}}>
             <span className="mn" style={{color:C.t2}}>{t.id?.slice(-8)}</span>
@@ -2913,17 +3025,17 @@ function AppInner() {
         padding:"10px 12px",paddingBottom:`calc(10px + var(--safe-b))`,flexShrink:0,display:"flex",alignItems:"center",gap:8}}>
         <button onClick={()=>setShowKasirStok(true)} className="press"
           title="Lihat & Kelola Stok"
-          style={{padding:"11px 12px",background:C.bg3,border:`1.5px solid ${C.bo1}`,borderRadius:11,color:C.t1,fontSize:16,flexShrink:0}}>📦</button>
+          style={{padding:"11px 12px",background:C.bg3,border:`1.5px solid ${C.bo1}`,borderRadius:11,color:C.t1,fontSize:16,flexShrink:0}}><Ico e="📦"/></button>
         <div style={{flex:1}}>
           <div style={{fontSize:10,color:C.t2,fontWeight:600}}>Total</div>
-          <div className="mn" style={{fontSize:20,fontWeight:700,color:C.g,lineHeight:1.2}}>{rp(total)}</div>
+          <div className="mn" style={{fontSize:22,fontWeight:800,color:C.t0,lineHeight:1.2}}>{rp(total)}</div>
           {cart.length>0&&<div className="mn" style={{fontSize:9.5,color:C.t3}}>{cart.reduce((s,c)=>s+c.qty,0)} item</div>}
         </div>
         <button onClick={()=>{if(cart.length)setShowCheckout(true);}} disabled={!cart.length} className="press"
-          style={{padding:"13px 24px",background:cart.length?`linear-gradient(90deg,${C.g},${C.b})`:C.bg3,
-            border:"none",borderRadius:13,color:cart.length?C.bg1:C.t2,fontSize:14,fontWeight:800,
-            flexShrink:0,boxShadow:cart.length?`0 4px 20px ${C.g}30`:undefined}}>
-          💳 BAYAR</button>
+          style={{padding:"13px 24px",background:cart.length?`${C.pri}`:C.bg3,
+            border:"none",borderRadius:13,color:cart.length?C.on:C.t2,fontSize:14,fontWeight:800,
+            flexShrink:0,boxShadow:undefined}}>
+          <Ico e="💳"/> Bayar</button>
       </div>
     </div>;
   }
@@ -2969,20 +3081,20 @@ function AppInner() {
         {/* Scan / Cari Barcode */}
         <Card noPad style={{overflow:"hidden"}}>
           <div style={{padding:"10px 13px",borderBottom:`1px solid ${C.bo0}`,display:"flex",alignItems:"center",gap:8}}>
-            <span style={{flex:1,fontSize:10,fontWeight:700,color:C.t2,textTransform:"uppercase",letterSpacing:1}}>📷 Scan Barcode</span>
+            <span style={{flex:1,fontSize:12,fontWeight:700,color:C.t2,textTransform:"none",letterSpacing:0}}><Ico e="📷"/> Scan Barcode</span>
             <BizChip biz={biz}/>
           </div>
           <div style={{padding:"10px 12px",display:"flex",gap:8}}>
             <div style={{flex:1,position:"relative"}}>
-              <span style={{position:"absolute",left:12,top:"50%",transform:"translateY(-50%)",fontSize:15,pointerEvents:"none",color:C.t2}}>📷</span>
+              <span style={{position:"absolute",left:12,top:"50%",transform:"translateY(-50%)",fontSize:15,pointerEvents:"none",color:C.t2}}><Ico e="📷"/></span>
               <input ref={stokScanRef} value={stokScan} onChange={e=>setStokScan(e.target.value)}
                 onKeyDown={e=>e.key==="Enter"&&stokScanFn(stokScan)}
-                placeholder="Scan barcode / ketik barcode atau nama produk..."
+                placeholder="Scan atau cari produk"
                 style={{width:"100%",padding:"12px 12px 12px 40px",background:C.bg3,border:`2px solid ${bc}44`,borderRadius:12,color:C.t0,fontSize:14,fontFamily:F.mono}}/>
 
               {/* Autocomplete Suggestions Stok */}
               {stokScan.trim().length > 1 && (
-                <div style={{position:"absolute",top:"100%",left:0,right:0,zIndex:100,background:C.bg2,border:`1px solid ${C.bo1}`,borderRadius:12,marginTop:6,boxShadow:"0 10px 30px rgba(0,0,0,0.6)",overflow:"hidden",animation:"fadeUp 0.2s ease"}}>
+                <div style={{position:"absolute",top:"100%",left:0,right:0,zIndex:100,background:C.bg2,border:`1px solid ${C.bo1}`,borderRadius:12,marginTop:6,boxShadow:C.sh2,overflow:"hidden",animation:"fadeUp 0.2s ease"}}>
                   {bizProds().filter(p => p.name.toLowerCase().includes(stokScan.trim().toLowerCase()) || p.barcode.includes(stokScan.trim())).slice(0, 5).map((p, i) => (
                     <div key={p.id} onClick={() => stokScanFn(p.barcode)} className="hrow"
                       style={{padding:"10px 14px",cursor:"pointer",borderTop:i>0?`1px solid ${C.bo0}`:undefined,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
@@ -3000,7 +3112,7 @@ function AppInner() {
               )}
             </div>
             <button onClick={()=>stokScanFn(stokScan)} className="press"
-              style={{padding:"12px 16px",background:bc,border:"none",borderRadius:12,color:"#fff",fontWeight:800,fontSize:13,flexShrink:0}}>Scan</button>
+              style={{padding:"12px 16px",background:bc,border:"none",borderRadius:12,color:C.on,fontWeight:800,fontSize:13,flexShrink:0}}>Scan</button>
           </div>
         </Card>
 
@@ -3020,7 +3132,7 @@ function AppInner() {
               </div>
               <Inp label="Stok Awal" type="number" value={newPForm.stock} onChange={e => setNewPForm(x => ({ ...x, stock: e.target.value }))} />
               <div style={{ display: "flex", gap: 8, marginTop: 5 }}>
-                <Btn onClick={saveNewProduct} full color={C.vi}>✓ Simpan & Daftarkan</Btn>
+                <Btn onClick={saveNewProduct} full color={C.vi}><Ico e="✓"/> Simpan & Daftarkan</Btn>
                 <Btn onClick={() => setIsNewProduct(false)} outline>Batal</Btn>
               </div>
             </div>
@@ -3045,14 +3157,14 @@ function AppInner() {
             </div>
             <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:12}}>
               <div>
-                <div style={{fontSize:9.5,fontWeight:700,color:C.t2,textTransform:"uppercase",letterSpacing:.5,marginBottom:5}}>Jumlah Masuk *</div>
+                <div style={{fontSize:12,fontWeight:700,color:C.t2,textTransform:"none",letterSpacing:0,marginBottom:5}}>Jumlah Masuk *</div>
                 <input ref={stokQRef} type="number" min="1" value={stokQ}
                   onChange={e=>setStokQ(e.target.value)} onKeyDown={e=>e.key==="Enter"&&doAddStock()}
                   placeholder="0" style={{width:"100%",padding:"12px",background:C.bg3,border:`1.5px solid ${C.bo0}`,borderRadius:10,color:C.t0,fontSize:24,fontFamily:F.mono,textAlign:"center",fontWeight:700}}
-                  onFocus={e=>e.target.style.borderColor=C.g+"88"} onBlur={e=>e.target.style.borderColor=C.bo0}/>
+                  onFocus={e=>e.target.style.borderColor=C.pri+"88"} onBlur={e=>e.target.style.borderColor=C.bo0}/>
               </div>
               <div>
-                <div style={{fontSize:9.5,fontWeight:700,color:C.t2,textTransform:"uppercase",letterSpacing:.5,marginBottom:5}}>Update Harga Jual</div>
+                <div style={{fontSize:12,fontWeight:700,color:C.t2,textTransform:"none",letterSpacing:0,marginBottom:5}}>Update Harga Jual</div>
                 <div style={{position:"relative"}}>
                   <span style={{position:"absolute",left:10,top:"50%",transform:"translateY(-50%)",fontSize:10,color:C.t2,pointerEvents:"none",fontFamily:F.mono}}>Rp</span>
                   <input type="number" value={stokPrice} onChange={e=>setStokPrice(e.target.value)} placeholder={String(stokTarget.price)}
@@ -3074,13 +3186,13 @@ function AppInner() {
 
         <button onClick={()=>setShowOpnamePanel(true)} className="press"
           style={{padding:"11px 16px",background:C.vi1,border:`1px solid ${C.vi}44`,borderRadius:12,color:C.vi,fontSize:13,fontWeight:700,width:"100%",textAlign:"center",cursor:"pointer",fontFamily:"inherit"}}>
-          📋 Buka Opname
+          <Ico e="📋"/> Buka Opname
         </button>
 
         {/* Daftar Produk dengan Quick Adjust */}
         <Card noPad style={{overflow:"hidden"}}>
           <div style={{padding:"10px 13px",borderBottom:`1px solid ${C.bo0}`,display:"flex",alignItems:"center",gap:8,flexWrap:"wrap"}}>
-            <span style={{fontSize:10,fontWeight:700,color:C.t2,textTransform:"uppercase",letterSpacing:1}}>📦 Daftar Produk ({filtered.length})</span>
+            <span style={{fontSize:12,fontWeight:700,color:C.t2,textTransform:"none",letterSpacing:0}}><Ico e="📦"/> Daftar Produk ({filtered.length})</span>
             <span style={{flex:1}}/>
             <input value={stokSearch} onChange={e=>setStokSearch(e.target.value)} placeholder="Cari nama / barcode..."
               style={{padding:"7px 11px",background:C.bg3,border:`1px solid ${C.bo0}`,borderRadius:8,color:C.t0,fontSize:12,width:160,fontFamily:F.sans}}/>
@@ -3139,7 +3251,7 @@ function AppInner() {
                       <span className="mn" style={{fontSize:15,fontWeight:800,
                         color:p.stock===0?C.r:p.stock<10?C.a:C.t0}}>{p.stock}</span>
                       {p.stock<10&&<span style={{fontSize:10,color:p.stock===0?C.r:C.a,marginLeft:4}}>
-                        {p.stock===0?"HABIS":"⚠"}</span>}
+                        {p.stock===0?"Habis":"Menipis"}</span>}
                     </div>
                   </td>
                   <td style={{padding:"11px 13px"}}>
@@ -3176,7 +3288,7 @@ function AppInner() {
         {/* Log Stok Masuk */}
         <Card noPad style={{overflow:"hidden"}}>
           <div style={{padding:"10px 13px",borderBottom:`1px solid ${C.bo0}`}}>
-            <span style={{fontSize:10,fontWeight:700,color:C.t2,textTransform:"uppercase",letterSpacing:1}}>Log Penerimaan Stok</span>
+            <span style={{fontSize:12,fontWeight:700,color:C.t2,textTransform:"none",letterSpacing:0}}>Log Penerimaan Stok</span>
           </div>
           {slogs.filter(l=>l.business===biz&&l.type==="masuk").length===0
             ?<div style={{padding:"24px",textAlign:"center",color:C.t3,fontSize:12}}>Belum ada log penerimaan</div>
@@ -3204,24 +3316,23 @@ function AppInner() {
   if(screen==="admin") {
     const IS={width:"100%",padding:"11px 13px",background:C.bg3,border:`1.5px solid ${C.bo0}`,borderRadius:10,color:C.t0,fontSize:13,fontFamily:F.mono,transition:"border-color .15s"};
     const TABS=[
-      {id:"dashboard",l:"📊 Dashboard"},{id:"users",l:"👥 Pengguna"},{id:"products",l:"📦 Produk"},
-      {id:"laporan",l:"💰 Laporan"},{id:"absensi",l:"🕐 Absensi"},{id:"stoklog",l:"📋 Log Stok"},
-      {id:"returns",l:"↩ Retur"},{id:"actlog",l:"🔍 Aktivitas"},{id:"sheets",l:"🔗 Sheets"},{id:"opname",l:"📋 Opname"},
+      {id:"dashboard",l:"Dashboard",ic:LayoutDashboard},{id:"users",l:"Pengguna",ic:Users},{id:"products",l:"Produk",ic:Package},
+      {id:"laporan",l:"Laporan",ic:Wallet},{id:"absensi",l:"Absensi",ic:Clock},{id:"stoklog",l:"Log Stok",ic:ClipboardList},
+      {id:"returns",l:"Retur",ic:Undo2},{id:"actlog",l:"Aktivitas",ic:Activity},{id:"sheets",l:"Sheets",ic:Link2},{id:"opname",l:"Opname",ic:ClipboardCheck},
     ];
-    // Bottom nav tabs (mobile)
     const BNAV_TABS=[
-      {id:"dashboard",ic:"📊",label:"Dashboard"},
-      {id:"products",ic:"📦",label:"Produk"},
-      {id:"laporan",ic:"💰",label:"Laporan"},
-      {id:"absensi",ic:"🕐",label:"Absensi"},
+      {id:"dashboard",ic:LayoutDashboard,label:"Dashboard"},
+      {id:"products",ic:Package,label:"Produk"},
+      {id:"laporan",ic:Wallet,label:"Laporan"},
+      {id:"absensi",ic:Clock,label:"Absensi"},
     ];
     const MORE_TABS=[
-      {id:"users",ic:"👥",label:"Pengguna"},
-      {id:"stoklog",ic:"📋",label:"Log Stok"},
-      {id:"returns",ic:"↩",label:"Retur"},
-      {id:"actlog",ic:"🔍",label:"Aktivitas"},
-      {id:"sheets",ic:"🔗",label:"Sheets"},
-      {id:"opname",ic:"📋",label:"Opname"},
+      {id:"users",ic:Users,label:"Pengguna"},
+      {id:"stoklog",ic:ClipboardList,label:"Log Stok"},
+      {id:"returns",ic:Undo2,label:"Retur"},
+      {id:"actlog",ic:Activity,label:"Aktivitas"},
+      {id:"sheets",ic:Link2,label:"Sheets"},
+      {id:"opname",ic:ClipboardCheck,label:"Opname"},
     ];
     const isMoreTab=MORE_TABS.some(t=>t.id===adminTab);
     const adminPs=prods.filter(p=>p.business===adminBiz&&(!searchQ||p.name.toLowerCase().includes(searchQ.toLowerCase())||p.barcode.includes(searchQ)));
@@ -3232,26 +3343,26 @@ function AppInner() {
       <Header title="Admin Panel" user={user} online={online} onLogout={doLogout} lowStockCount={lowStockCount} onToggleTheme={toggleTheme} isDark={isDark} onLowStockClick={()=>setShowLowStock(true)} expireCount={nearExpiry.length} expiredCount={expiredProds.length} onExpireClick={()=>setShowExpirePopup(true)}/>
 
       {/* Change password modal */}
-      {cpwdModal&&<div style={{position:"fixed",inset:0,background:"rgba(2,8,24,.85)",zIndex:500,display:"flex",alignItems:"flex-end",justifyContent:"center"}} onClick={()=>setCpwdModal(null)}>
+      {cpwdModal&&<div style={{position:"fixed",inset:0,background:"rgba(12,16,46,.55)",zIndex:500,display:"flex",alignItems:"flex-end",justifyContent:"center"}} onClick={()=>setCpwdModal(null)}>
         <div style={{width:"100%",maxWidth:420,background:C.bg2,borderRadius:"22px 22px 0 0",padding:"18px 20px 32px",border:`1px solid ${C.bo1}`,borderBottom:"none",animation:"slideUp .25s ease"}} onClick={e=>e.stopPropagation()}>
           <div style={{width:36,height:4,background:C.b1,borderRadius:2,margin:"0 auto 16px"}}/>
-          <h3 style={{fontSize:14,fontWeight:800,marginBottom:14,color:C.a}}>🔑 Ganti Password</h3>
+          <h3 style={{fontSize:14,fontWeight:800,marginBottom:14,color:C.a}}><Ico e="🔑"/> Ganti Password</h3>
           <p style={{fontSize:12,color:C.t2,marginBottom:14}}>Untuk: <b style={{color:C.t0}}>{users.find(u=>u.id===cpwdModal)?.name}</b></p>
           <div style={{display:"flex",flexDirection:"column",gap:10}}>
             {user.role!=="admin"&&<div>
-              <div style={{fontSize:9.5,fontWeight:700,color:C.t2,textTransform:"uppercase",letterSpacing:.5,marginBottom:4}}>Password Lama</div>
+              <div style={{fontSize:12,fontWeight:700,color:C.t2,textTransform:"none",letterSpacing:0,marginBottom:4}}>Password Lama</div>
               <input type="password" value={cpwdForm.old} onChange={e=>setCpwdForm(x=>({...x,old:e.target.value}))} style={IS}
-                onFocus={e=>e.target.style.borderColor=C.g+"88"} onBlur={e=>e.target.style.borderColor=C.bo0}/>
+                onFocus={e=>e.target.style.borderColor=C.pri+"88"} onBlur={e=>e.target.style.borderColor=C.bo0}/>
             </div>}
             <div>
-              <div style={{fontSize:9.5,fontWeight:700,color:C.t2,textTransform:"uppercase",letterSpacing:.5,marginBottom:4}}>Password Baru *</div>
+              <div style={{fontSize:12,fontWeight:700,color:C.t2,textTransform:"none",letterSpacing:0,marginBottom:4}}>Password Baru *</div>
               <input type="password" value={cpwdForm.n1} onChange={e=>setCpwdForm(x=>({...x,n1:e.target.value}))} style={IS}
-                onFocus={e=>e.target.style.borderColor=C.g+"88"} onBlur={e=>e.target.style.borderColor=C.bo0}/>
+                onFocus={e=>e.target.style.borderColor=C.pri+"88"} onBlur={e=>e.target.style.borderColor=C.bo0}/>
             </div>
             <div>
-              <div style={{fontSize:9.5,fontWeight:700,color:C.t2,textTransform:"uppercase",letterSpacing:.5,marginBottom:4}}>Konfirmasi Password *</div>
+              <div style={{fontSize:12,fontWeight:700,color:C.t2,textTransform:"none",letterSpacing:0,marginBottom:4}}>Konfirmasi Password *</div>
               <input type="password" value={cpwdForm.n2} onChange={e=>setCpwdForm(x=>({...x,n2:e.target.value}))} style={IS}
-                onFocus={e=>e.target.style.borderColor=C.g+"88"} onBlur={e=>e.target.style.borderColor=C.bo0}/>
+                onFocus={e=>e.target.style.borderColor=C.pri+"88"} onBlur={e=>e.target.style.borderColor=C.bo0}/>
             </div>
           </div>
           <div style={{display:"flex",gap:8,marginTop:16}}>
@@ -3262,46 +3373,46 @@ function AppInner() {
       </div>}
 
       {/* User modal */}
-      {uModal&&<div style={{position:"fixed",inset:0,background:"rgba(2,8,24,.85)",zIndex:500,display:"flex",alignItems:"flex-end",justifyContent:"center"}} onClick={()=>setUModal(false)}>
+      {uModal&&<div style={{position:"fixed",inset:0,background:"rgba(12,16,46,.55)",zIndex:500,display:"flex",alignItems:"flex-end",justifyContent:"center"}} onClick={()=>setUModal(false)}>
         <div style={{width:"100%",maxWidth:500,background:C.bg2,borderRadius:"22px 22px 0 0",padding:"18px 20px 32px",border:`1px solid ${C.bo1}`,borderBottom:"none",animation:"slideUp .25s ease",maxHeight:"90vh",overflowY:"auto"}} onClick={e=>e.stopPropagation()}>
           <div style={{width:36,height:4,background:C.b1,borderRadius:2,margin:"0 auto 16px"}}/>
-          <h3 style={{fontSize:14,fontWeight:800,marginBottom:16,color:C.g}}>{editUid===null?"➕ Tambah Pengguna":"✏️ Edit Pengguna"}</h3>
+          <h3 style={{fontSize:14,fontWeight:800,marginBottom:16,color:C.g}}>{editUid===null?<><Ico e="➕"/> Tambah Pengguna</>:<><Ico e="✏️"/> Edit Pengguna</>}</h3>
           <div style={{display:"flex",flexDirection:"column",gap:10}}>
             <div>
-              <div style={{fontSize:9.5,fontWeight:700,color:C.t2,textTransform:"uppercase",letterSpacing:.5,marginBottom:4}}>Nama Lengkap *</div>
-              <input value={uForm.name||""} onChange={e=>setUForm(x=>({...x,name:e.target.value}))} style={IS} onFocus={e=>e.target.style.borderColor=C.g+"88"} onBlur={e=>e.target.style.borderColor=C.bo0}/>
+              <div style={{fontSize:12,fontWeight:700,color:C.t2,textTransform:"none",letterSpacing:0,marginBottom:4}}>Nama Lengkap *</div>
+              <input value={uForm.name||""} onChange={e=>setUForm(x=>({...x,name:e.target.value}))} style={IS} onFocus={e=>e.target.style.borderColor=C.pri+"88"} onBlur={e=>e.target.style.borderColor=C.bo0}/>
             </div>
             <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
               <div>
-                <div style={{fontSize:9.5,fontWeight:700,color:C.t2,textTransform:"uppercase",letterSpacing:.5,marginBottom:4}}>Username *</div>
-                <input value={uForm.username||""} onChange={e=>setUForm(x=>({...x,username:e.target.value}))} disabled={editUid!==null} style={{...IS,color:editUid!==null?C.t2:C.t0}} onFocus={e=>editUid===null&&(e.target.style.borderColor=C.g+"88")} onBlur={e=>e.target.style.borderColor=C.bo0}/>
+                <div style={{fontSize:12,fontWeight:700,color:C.t2,textTransform:"none",letterSpacing:0,marginBottom:4}}>Username *</div>
+                <input value={uForm.username||""} onChange={e=>setUForm(x=>({...x,username:e.target.value}))} disabled={editUid!==null} style={{...IS,color:editUid!==null?C.t2:C.t0}} onFocus={e=>editUid===null&&(e.target.style.borderColor=C.pri+"88")} onBlur={e=>e.target.style.borderColor=C.bo0}/>
               </div>
               <div>
-                <div style={{fontSize:9.5,fontWeight:700,color:C.t2,textTransform:"uppercase",letterSpacing:.5,marginBottom:4}}>Password *</div>
-                <input type="password" value={uForm.password||""} onChange={e=>setUForm(x=>({...x,password:e.target.value}))} style={IS} onFocus={e=>e.target.style.borderColor=C.g+"88"} onBlur={e=>e.target.style.borderColor=C.bo0}/>
+                <div style={{fontSize:12,fontWeight:700,color:C.t2,textTransform:"none",letterSpacing:0,marginBottom:4}}>Password *</div>
+                <input type="password" value={uForm.password||""} onChange={e=>setUForm(x=>({...x,password:e.target.value}))} style={IS} onFocus={e=>e.target.style.borderColor=C.pri+"88"} onBlur={e=>e.target.style.borderColor=C.bo0}/>
               </div>
               <div>
-                <div style={{fontSize:9.5,fontWeight:700,color:C.t2,textTransform:"uppercase",letterSpacing:.5,marginBottom:4}}>Avatar Emoji</div>
-                <input value={uForm.avatar||""} onChange={e=>setUForm(x=>({...x,avatar:e.target.value}))} style={IS} onFocus={e=>e.target.style.borderColor=C.g+"88"} onBlur={e=>e.target.style.borderColor=C.bo0}/>
+                <div style={{fontSize:12,fontWeight:700,color:C.t2,textTransform:"none",letterSpacing:0,marginBottom:4}}>Avatar Emoji</div>
+                <input value={uForm.avatar||""} onChange={e=>setUForm(x=>({...x,avatar:e.target.value}))} style={IS} onFocus={e=>e.target.style.borderColor=C.pri+"88"} onBlur={e=>e.target.style.borderColor=C.bo0}/>
               </div>
               <div>
-                <div style={{fontSize:9.5,fontWeight:700,color:C.t2,textTransform:"uppercase",letterSpacing:.5,marginBottom:4}}>Role</div>
+                <div style={{fontSize:12,fontWeight:700,color:C.t2,textTransform:"none",letterSpacing:0,marginBottom:4}}>Role</div>
                 <select value={uForm.role||"kasir"} onChange={e=>setUForm(x=>({...x,role:e.target.value}))} style={{...IS,fontFamily:F.sans}}>
                   <option value="kasir">Kasir</option><option value="stok">Stok</option><option value="admin">Admin</option>
                 </select>
               </div>
             </div>
             <div>
-              <div style={{fontSize:9.5,fontWeight:700,color:C.t2,textTransform:"uppercase",letterSpacing:.5,marginBottom:8}}>Akses Bisnis *</div>
+              <div style={{fontSize:12,fontWeight:700,color:C.t2,textTransform:"none",letterSpacing:0,marginBottom:8}}>Akses Bisnis *</div>
               <div style={{display:"flex",gap:8}}>
                 {Object.values(BIZ).map(b2=>{const chk=uForm.access?.includes(b2.id),isJ=b2.id==="JS_CLOTHING";
                   return <button key={b2.id} onClick={()=>setUForm(x=>({...x,access:chk?x.access.filter(a=>a!==b2.id):[...(x.access||[]),b2.id]}))}
                     style={{flex:1,padding:"10px",borderRadius:10,cursor:"pointer",fontWeight:700,fontSize:12,background:chk?(isJ?C.b1:C.p1):"transparent",border:`2px solid ${chk?(isJ?C.b:C.p):C.bo0}`,color:chk?(isJ?C.b:C.p):C.t2,fontFamily:F.sans}}>
-                    {b2.icon} {b2.name}</button>;})}
+                    <Ico e={b2.icon}/> {b2.name}</button>;})}
               </div>
             </div>
             <div style={{display:"flex",alignItems:"center",gap:8}}>
-              <input type="checkbox" id="uac" checked={!!uForm.active} onChange={e=>setUForm(x=>({...x,active:e.target.checked}))} style={{width:16,height:16,accentColor:C.g}}/>
+              <input type="checkbox" id="uac" checked={!!uForm.active} onChange={e=>setUForm(x=>({...x,active:e.target.checked}))} style={{width:16,height:16,accentColor:C.pri}}/>
               <label htmlFor="uac" style={{fontSize:12.5,cursor:"pointer"}}>Akun Aktif</label>
             </div>
           </div>
@@ -3315,7 +3426,7 @@ function AppInner() {
       {/* Desktop tab bar — hidden on mobile */}
       <div className="hide-mobile" style={{background:C.bg2,borderBottom:`1px solid ${C.bo0}`,display:"flex",overflowX:"auto",flexShrink:0,gap:0,padding:"0 4px"}}>
         {TABS.map(t=><button key={t.id} onClick={()=>{setAdminTab(t.id);setSearchQ("");setPModal(false);setShowMoreDrawer(false);setEditPid(null);setInlineAddMode(false);}}
-          className={`atab${adminTab===t.id?" on":""}`}>{t.l}</button>)}
+          className={`atab${adminTab===t.id?" on":""}`}><t.ic size={16} strokeWidth={2}/>{t.l}</button>)}
       </div>
 
       {/* More drawer (mobile) */}
@@ -3323,19 +3434,18 @@ function AppInner() {
         <div className="drawer" onClick={e=>e.stopPropagation()}>
           <div style={{width:40,height:4,background:C.bo2,borderRadius:2,margin:"14px auto 0"}}/>
           <div style={{padding:"10px 20px 2px",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-            <span style={{fontSize:12,fontWeight:800,color:C.t1,letterSpacing:.5,textTransform:"uppercase"}}>Menu Lainnya</span>
-            <button onClick={()=>setShowMoreDrawer(false)} style={{background:"transparent",border:"none",color:C.t2,fontSize:18,cursor:"pointer",padding:"2px 6px",lineHeight:1}}>✕</button>
+            <span style={{fontSize:12,fontWeight:800,color:C.t1,letterSpacing:0,textTransform:"none"}}>Menu Lainnya</span>
+            <button onClick={()=>setShowMoreDrawer(false)} style={{background:"transparent",border:"none",color:C.t2,fontSize:18,cursor:"pointer",padding:"2px 6px",lineHeight:1}}><Ico e="✕"/></button>
           </div>
-          <div style={{display:"grid",gridTemplateColumns:"repeat(5,1fr)",gap:6,padding:"10px 14px 4px"}}>
+          <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:10,padding:"12px 16px 6px"}}>
             {MORE_TABS.map(t=>{const isAct=adminTab===t.id;
               return <button key={t.id} onClick={()=>{setAdminTab(t.id);setSearchQ("");setPModal(false);setShowMoreDrawer(false);setEditPid(null);setInlineAddMode(false);}} className="press ripple-wrap"
-                style={{padding:"12px 6px 10px",background:isAct?`linear-gradient(145deg,${C.g}22,${C.b}15)`:C.bg3,
-                  border:`1.5px solid ${isAct?C.g:C.bo0}`,borderRadius:16,
+                style={{padding:"16px 6px 12px",background:isAct?C.pri1:C.bg3,border:`1.5px solid ${isAct?C.pri:C.bo0}`,borderRadius:16,
                   display:"flex",flexDirection:"column",alignItems:"center",gap:5,cursor:"pointer",position:"relative",
                   transition:"all .15s"}}>
-                <span style={{fontSize:22,lineHeight:1}}>{t.ic}</span>
-                <span style={{fontSize:9.5,fontWeight:700,color:isAct?C.g:C.t2,textAlign:"center",lineHeight:1.3,letterSpacing:.2}}>{t.label}</span>
-                {isAct&&<div style={{position:"absolute",bottom:4,width:16,height:2,borderRadius:1,background:`linear-gradient(90deg,${C.g},${C.b})`}}/>}
+                <t.ic size={24} strokeWidth={1.8} color={isAct?C.pri:C.t1}/>
+                <span style={{fontSize:12.5,fontWeight:700,color:isAct?C.pri:C.t1,textAlign:"center",lineHeight:1.3}}>{t.label}</span>
+                
               </button>;})}          </div>
         </div>
       </div>}
@@ -3364,10 +3474,10 @@ function AppInner() {
               {[
                 {ic:"💰",lbl:"Pendapatan Hari Ini",val:rp(todayRev),color:C.g,glow:C.g},
                 {ic:"🧾",lbl:"Transaksi Hari Ini",val:todayTrx.length,color:C.cy,glow:C.cy},
-                {ic:"📦",lbl:"Total Produk",val:prods.length,sub:lowStockCount>0?`⚠ ${lowStockCount} menipis`:null,color:C.b,glow:C.b},
+                {ic:"📦",lbl:"Total Produk",val:prods.length,sub:lowStockCount>0?`${lowStockCount} menipis`:null,color:C.b,glow:C.b},
                 {ic:"🕐",lbl:"Hadir Hari Ini",val:hadir,color:C.a,glow:C.a},
               ].map((s,i)=><div key={i} className="stat-mobile card-in" style={{"--stat-glow":s.glow}}>
-                <span className="stat-ico">{s.ic}</span>
+                <span className="stat-ico" style={{background:(s.color||C.pri)+"1F",color:s.color||C.pri}}><Ico e={s.ic} size={18}/></span>
                 <span className="stat-lbl">{s.lbl}</span>
                 <span className="stat-val" style={{color:s.color}}>{s.val}</span>
                 {s.sub&&<span style={{fontSize:10,color:C.r,fontWeight:600,marginTop:1}}>{s.sub}</span>}
@@ -3376,13 +3486,13 @@ function AppInner() {
           })()}
           {/* Targets */}
           {targets.filter(t=>t.period===currMonth).length>0&&<Card>
-            <div style={{fontSize:10,fontWeight:700,color:C.t2,textTransform:"uppercase",letterSpacing:1,marginBottom:12}}>🎯 Target Penjualan Bulan Ini</div>
+            <div style={{fontSize:12,fontWeight:700,color:C.t2,textTransform:"none",letterSpacing:0,marginBottom:12}}><Ico e="🎯"/> Target Penjualan Bulan Ini</div>
             {Object.values(BIZ).map(b2=>{
               const tgt=targets.find(t=>t.business===b2.id&&t.period===currMonth);if(!tgt) return null;
               const rev=monthRevByBiz[b2.id]||0;const isJ=b2.id==="JS_CLOTHING";
               return <div key={b2.id} style={{marginBottom:12}}>
                 <div style={{display:"flex",justifyContent:"space-between",fontSize:12,marginBottom:6}}>
-                  <span style={{fontWeight:600}}>{b2.icon} {b2.name}</span>
+                  <span style={{fontWeight:600}}><Ico e={b2.icon}/> {b2.name}</span>
                   <span className="mn" style={{color:isJ?C.b:C.p}}>{rp(rev)} / {rp(tgt.amount)}</span>
                 </div>
                 <ProgressBar value={rev} max={tgt.amount} color={isJ?C.b:C.p}/>
@@ -3390,7 +3500,7 @@ function AppInner() {
           </Card>}
           {/* Stok menipis */}
           {lowStockCount>0&&<Card accent={C.r}>
-            <div style={{fontSize:10,fontWeight:700,color:C.r,textTransform:"uppercase",letterSpacing:1,marginBottom:10}}>⚠ Stok Menipis ({lowStockCount})</div>
+            <div style={{fontSize:12,fontWeight:700,color:C.r,textTransform:"none",letterSpacing:0,marginBottom:10}}><Ico e="⚠"/> Stok Menipis ({lowStockCount})</div>
             {prods.filter(p=>p.stock<10).map(p=><div key={p.id} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"6px 0",borderTop:`1px solid ${C.bo0}`,fontSize:12.5}}>
               <span style={{fontWeight:600}}>{p.name}</span>
               <div style={{display:"flex",gap:8,alignItems:"center"}}><BizChip biz={p.business} sm/><StockBadge s={p.stock}/></div>
@@ -3398,41 +3508,41 @@ function AppInner() {
           </Card>}
           {/* Today attendance */}
           <Card>
-            <div style={{fontSize:10,fontWeight:700,color:C.t2,textTransform:"uppercase",letterSpacing:1,marginBottom:10}}>🕐 Kehadiran Hari Ini</div>
+            <div style={{fontSize:12,fontWeight:700,color:C.t2,textTransform:"none",letterSpacing:0,marginBottom:10}}><Ico e="🕐"/> Kehadiran Hari Ini</div>
             {attend.filter(a=>a.date===todayDate()).length===0
               ?<p style={{fontSize:12,color:C.t3}}>Belum ada pegawai yang absen hari ini</p>
               :attend.filter(a=>a.date===todayDate()).map(a=><div key={a.id} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"7px 0",borderTop:`1px solid ${C.bo0}`,fontSize:12.5}}>
                 <div style={{display:"flex",alignItems:"center",gap:8}}>
-                  <span>{users.find(u=>u.id===a.userId)?.avatar||"🧑"}</span>
+                  <Avatar name={a.name} size={26}/>
                   <div><div style={{fontWeight:600}}>{a.name}</div><div style={{fontSize:10,color:C.t2}}>{a.checkIn}</div></div>
                 </div>
                 <div style={{display:"flex",gap:6,alignItems:"center"}}>
                   <BizChip biz={a.business} sm/>
-                  {a.checkOut?<span style={{fontSize:10,color:C.g,fontWeight:600}}>✓ Pulang</span>:<span style={{fontSize:10,color:C.a,fontWeight:600}}>● Hadir</span>}
+                  {a.checkOut?<span style={{fontSize:10,color:C.g,fontWeight:600}}><Ico e="✓"/> Pulang</span>:<span style={{fontSize:10,color:C.a,fontWeight:600}}>● Hadir</span>}
                 </div>
               </div>)}
           </Card>
           {/* Target management */}
           <Card>
             <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}}>
-              <div style={{fontSize:10,fontWeight:700,color:C.t2,textTransform:"uppercase",letterSpacing:1}}>🎯 Kelola Target</div>
+              <div style={{fontSize:12,fontWeight:700,color:C.t2,textTransform:"none",letterSpacing:0}}><Ico e="🎯"/> Kelola Target</div>
               <button onClick={()=>setTargetModal(true)} className="press" style={{padding:"5px 12px",background:C.g1,border:`1px solid ${C.g}33`,borderRadius:7,color:C.g,fontSize:11,fontWeight:700,fontFamily:F.sans}}>+ Set Target</button>
             </div>
             {targetModal&&<div style={{background:C.bg3,borderRadius:10,padding:"12px 14px",marginBottom:12,border:`1px solid ${C.bo0}`}}>
               <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:8,marginBottom:10}}>
                 <div>
-                  <div style={{fontSize:9.5,fontWeight:700,color:C.t2,marginBottom:4,textTransform:"uppercase",letterSpacing:.5}}>Bisnis</div>
+                  <div style={{fontSize:12,fontWeight:700,color:C.t2,marginBottom:4,textTransform:"none",letterSpacing:0}}>Bisnis</div>
                   <select value={targetForm.business} onChange={e=>setTargetForm(x=>({...x,business:e.target.value}))} style={{width:"100%",padding:"10px",background:C.bg2,border:`1.5px solid ${C.bo0}`,borderRadius:8,color:C.t0,fontSize:12,fontFamily:F.sans}}>
-                    {Object.values(BIZ).map(b2=><option key={b2.id} value={b2.id}>{b2.icon} {b2.name}</option>)}
+                    {Object.values(BIZ).map(b2=><option key={b2.id} value={b2.id}><Ico e={b2.icon}/> {b2.name}</option>)}
                   </select>
                 </div>
                 <div>
-                  <div style={{fontSize:9.5,fontWeight:700,color:C.t2,marginBottom:4,textTransform:"uppercase",letterSpacing:.5}}>Periode</div>
+                  <div style={{fontSize:12,fontWeight:700,color:C.t2,marginBottom:4,textTransform:"none",letterSpacing:0}}>Periode</div>
                   <input type="month" value={targetForm.period} onChange={e=>setTargetForm(x=>({...x,period:e.target.value}))}
                     style={{width:"100%",padding:"10px",background:C.bg2,border:`1.5px solid ${C.bo0}`,borderRadius:8,color:C.t0,fontSize:12}}/>
                 </div>
                 <div>
-                  <div style={{fontSize:9.5,fontWeight:700,color:C.t2,marginBottom:4,textTransform:"uppercase",letterSpacing:.5}}>Target (Rp)</div>
+                  <div style={{fontSize:12,fontWeight:700,color:C.t2,marginBottom:4,textTransform:"none",letterSpacing:0}}>Target (Rp)</div>
                   <input type="number" value={targetForm.amount} onChange={e=>setTargetForm(x=>({...x,amount:e.target.value}))}
                     placeholder="0" style={{width:"100%",padding:"10px",background:C.bg2,border:`1.5px solid ${C.bo0}`,borderRadius:8,color:C.t0,fontSize:12,fontFamily:F.mono}}/>
                 </div>
@@ -3473,13 +3583,13 @@ function AppInner() {
                   <THead cols={["#","Username","Nama","Role","Akses","Wajah","Status","Aksi"]}/>
                   <tbody>{users.map((u,i)=><tr key={u.id} className="hrow" style={{borderTop:`1px solid ${C.bo0}`,background:i%2===0?"transparent":C.bg0}}>
                     <td style={{padding:"14px 13px",fontFamily:F.mono,color:C.t3,fontSize:10}}>{u.id}</td>
-                    <td style={{padding:"14px 13px",fontFamily:F.mono,fontSize:11}}>{u.avatar} {u.username}</td>
+                    <td style={{padding:"14px 13px",fontFamily:F.mono,fontSize:11}}>{u.username}</td>
                     <td style={{padding:"14px 13px",fontWeight:600}}>{u.name}</td>
                     <td style={{padding:"14px 13px"}}><RoleTag role={u.role}/></td>
                     <td style={{padding:"14px 13px"}}><div style={{display:"flex",gap:4,flexWrap:"wrap"}}>{u.access?.map(a=><BizChip key={a} biz={a} sm/>)}</div></td>
                     <td style={{padding:"14px 13px"}}>
                       {u.role==="admin"?<span style={{fontSize:10,color:C.t3}}>N/A</span>
-                      :u.faceDescriptor?<span style={{fontSize:10,color:C.g,fontWeight:700}}>✓ Ada</span>
+                      :u.faceDescriptor?<span style={{fontSize:10,color:C.g,fontWeight:700}}><Ico e="✓"/> Ada</span>
                       :<button onClick={()=>setFaceReg(u.id)} className="press" style={{padding:"3px 9px",background:C.a1,border:`1px solid ${C.a}33`,borderRadius:6,color:C.a,fontSize:10,fontWeight:700}}>Daftarkan</button>}
                     </td>
                     <td style={{padding:"14px 13px"}}>
@@ -3487,7 +3597,7 @@ function AppInner() {
                     </td>
                     <td style={{padding:"14px 13px",whiteSpace:"nowrap"}}>
                       <button onClick={()=>openEditU(u)} className="press" style={{marginRight:4,padding:"3px 9px",background:"transparent",border:`1px solid ${C.bo1}`,borderRadius:6,color:C.t0,fontSize:10}}>Edit</button>
-                      <button onClick={()=>{setCpwdModal(u.id);setCpwdForm({old:"",n1:"",n2:""}); }} className="press" style={{marginRight:4,padding:"3px 9px",background:C.a1,border:`1px solid ${C.a}22`,borderRadius:6,color:C.a,fontSize:10}}>🔑</button>
+                      <button onClick={()=>{setCpwdModal(u.id);setCpwdForm({old:"",n1:"",n2:""}); }} className="press" style={{marginRight:4,padding:"3px 9px",background:C.a1,border:`1px solid ${C.a}22`,borderRadius:6,color:C.a,fontSize:10}}><Ico e="🔑"/></button>
                       {u.faceDescriptor&&u.role!=="admin"&&<button onClick={()=>{fbUpdateUser(u.id,{...u,faceDescriptor:null},user.name);toast("Wajah direset","warn");}} className="press" style={{marginRight:4,padding:"3px 9px",background:C.b1,border:`1px solid ${C.b}22`,borderRadius:6,color:C.b,fontSize:10}}>Reset</button>}
                       <button onClick={()=>delUser(u)} className="press" style={{padding:"3px 9px",background:C.r1,border:`1px solid ${C.r}22`,borderRadius:6,color:C.r,fontSize:10}}>Hapus</button>
                     </td>
@@ -3500,7 +3610,7 @@ function AppInner() {
           <div className="hide-desktop mobile-card-list">
             {users.map((u,_ui)=><div key={u.id} className="mcard card-in" style={{background:C.bg2,borderRadius:16,border:`1px solid ${C.bo0}`,padding:"14px 15px"}}>
               <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:10}}>
-                <div style={{width:44,height:44,borderRadius:12,background:C.bg3,border:`1px solid ${C.bo1}`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:22,flexShrink:0}}>{u.avatar||"🧑"}</div>
+                <Avatar name={u.name} size={44}/>
                 <div style={{flex:1,minWidth:0}}>
                   <div style={{fontSize:15,fontWeight:700,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{u.name}</div>
                   <div style={{display:"flex",gap:6,alignItems:"center",marginTop:3,flexWrap:"wrap"}}>
@@ -3513,15 +3623,15 @@ function AppInner() {
               <div style={{display:"flex",gap:4,flexWrap:"wrap",marginBottom:10}}>
                 {u.access?.map(a=><BizChip key={a} biz={a} sm/>)}
                 {u.role!=="admin"&&(u.faceDescriptor
-                  ?<span style={{padding:"2px 8px",borderRadius:20,fontSize:10,fontWeight:700,background:C.g1,color:C.g}}>👁 Wajah terdaftar</span>
-                  :<span style={{padding:"2px 8px",borderRadius:20,fontSize:10,fontWeight:700,background:C.a1,color:C.a}}>⚠ Belum ada wajah</span>)}
+                  ?<span style={{padding:"2px 8px",borderRadius:20,fontSize:10,fontWeight:700,background:C.g1,color:C.g}}><Ico e="👁"/> Wajah terdaftar</span>
+                  :<span style={{padding:"2px 8px",borderRadius:20,fontSize:10,fontWeight:700,background:C.a1,color:C.a}}><Ico e="⚠"/> Belum ada wajah</span>)}
               </div>
               <div style={{display:"flex",gap:7,flexWrap:"wrap"}}>
-                <button onClick={()=>openEditU(u)} className="press" style={{flex:1,padding:"10px",background:"transparent",border:`1.5px solid ${C.bo1}`,borderRadius:10,color:C.t0,fontSize:12,fontWeight:600,fontFamily:F.sans}}>✏️ Edit</button>
-                <button onClick={()=>{setCpwdModal(u.id);setCpwdForm({old:"",n1:"",n2:""});}} className="press" style={{flex:1,padding:"10px",background:C.a1,border:`1.5px solid ${C.a}33`,borderRadius:10,color:C.a,fontSize:12,fontWeight:600,fontFamily:F.sans}}>🔑 Password</button>
-                {u.role!=="admin"&&!u.faceDescriptor&&<button onClick={()=>setFaceReg(u.id)} className="press" style={{flex:1,padding:"10px",background:C.b1,border:`1.5px solid ${C.b}33`,borderRadius:10,color:C.b,fontSize:12,fontWeight:600,fontFamily:F.sans}}>📷 Daftarkan</button>}
+                <button onClick={()=>openEditU(u)} className="press" style={{flex:1,padding:"10px",background:"transparent",border:`1.5px solid ${C.bo1}`,borderRadius:10,color:C.t0,fontSize:12,fontWeight:600,fontFamily:F.sans}}><Ico e="✏️"/> Edit</button>
+                <button onClick={()=>{setCpwdModal(u.id);setCpwdForm({old:"",n1:"",n2:""});}} className="press" style={{flex:1,padding:"10px",background:C.a1,border:`1.5px solid ${C.a}33`,borderRadius:10,color:C.a,fontSize:12,fontWeight:600,fontFamily:F.sans}}><Ico e="🔑"/> Password</button>
+                {u.role!=="admin"&&!u.faceDescriptor&&<button onClick={()=>setFaceReg(u.id)} className="press" style={{flex:1,padding:"10px",background:C.b1,border:`1.5px solid ${C.b}33`,borderRadius:10,color:C.b,fontSize:12,fontWeight:600,fontFamily:F.sans}}><Ico e="📷"/> Daftarkan</button>}
                 {u.faceDescriptor&&u.role!=="admin"&&<button onClick={()=>{fbUpdateUser(u.id,{...u,faceDescriptor:null},user.name);toast("Wajah direset","warn");}} className="press" style={{padding:"10px 14px",background:C.b1,border:`1.5px solid ${C.b}33`,borderRadius:10,color:C.b,fontSize:12,fontFamily:F.sans}}>Reset Wajah</button>}
-                <button onClick={()=>delUser(u)} className="press" style={{padding:"10px 14px",background:C.r1,border:`1.5px solid ${C.r}33`,borderRadius:10,color:C.r,fontSize:12,fontFamily:F.sans}}>🗑</button>
+                <button onClick={()=>delUser(u)} className="press" style={{padding:"10px 14px",background:C.r1,border:`1.5px solid ${C.r}33`,borderRadius:10,color:C.r,fontSize:12,fontFamily:F.sans}}><Ico e="🗑"/></button>
               </div>
             </div>)}
           </div>
@@ -3533,7 +3643,7 @@ function AppInner() {
             {Object.values(BIZ).map(b2=>{const isJ=b2.id==="JS_CLOTHING",active=adminBiz===b2.id;
               return <button key={b2.id} onClick={()=>{setAdminBiz(b2.id);setSearchQ("");setPModal(false);setEditPid(null);setInlineAddMode(false);}} className="press"
                 style={{padding:"7px 14px",borderRadius:9,cursor:"pointer",fontWeight:700,fontSize:12,background:active?(isJ?C.b1:C.p1):"transparent",border:`2px solid ${active?(isJ?C.b:C.p):C.bo0}`,color:active?(isJ?C.b:C.p):C.t2,fontFamily:F.sans}}>
-                {b2.icon} {b2.name}</button>;})}
+                <Ico e={b2.icon}/> {b2.name}</button>;})}
             <input value={searchQ} onChange={e=>setSearchQ(e.target.value)} placeholder="Cari produk..."
               style={{padding:"7px 11px",background:C.bg2,border:`1px solid ${C.bo0}`,borderRadius:8,color:C.t0,fontSize:12,width:140,fontFamily:F.sans}}/>
             <button onClick={()=>downloadXLSX(adminPs,[
@@ -3550,7 +3660,7 @@ function AppInner() {
             <Btn onClick={openAddP} size="sm">+ Tambah</Btn>
           </div>
           {/* Import Modal */}
-          {importModal&&<div style={{position:"fixed",inset:0,background:"rgba(2,8,24,.88)",zIndex:600,display:"flex",alignItems:"flex-end",justifyContent:"center"}} onClick={()=>setImportModal(false)}>
+          {importModal&&<div style={{position:"fixed",inset:0,background:"rgba(12,16,46,.55)",zIndex:600,display:"flex",alignItems:"flex-end",justifyContent:"center"}} onClick={()=>setImportModal(false)}>
             <div style={{width:"100%",maxWidth:560,background:C.bg2,borderRadius:"22px 22px 0 0",border:`1px solid ${C.vi}44`,borderBottom:"none",animation:"slideUp .25s ease",maxHeight:"90vh",overflowY:"auto",padding:"18px 18px 32px"}} onClick={e=>e.stopPropagation()}>
               <div style={{width:36,height:4,background:C.bo1,borderRadius:2,margin:"0 auto 16px"}}/>
               <h3 style={{fontSize:14,fontWeight:800,marginBottom:4,color:C.vi}}>⬆ Import Produk dari File</h3>
@@ -3575,13 +3685,13 @@ function AppInner() {
               </div>
               {/* Bisnis target */}
               <div style={{marginBottom:12}}>
-                <div style={{fontSize:10,fontWeight:700,color:C.t2,textTransform:"uppercase",letterSpacing:1,marginBottom:8}}>Target Bisnis (default jika kolom Bisnis kosong)</div>
+                <div style={{fontSize:12,fontWeight:700,color:C.t2,textTransform:"none",letterSpacing:0,marginBottom:8}}>Target Bisnis (default jika kolom Bisnis kosong)</div>
                 <div style={{display:"flex",gap:7}}>
                   {Object.values(BIZ).map(b2=>{const isJ=b2.id==="JS_CLOTHING",active=adminBiz===b2.id;
                     return <button key={b2.id} onClick={()=>setAdminBiz(b2.id)} className="press"
                       style={{flex:1,padding:"9px",borderRadius:9,fontWeight:700,fontSize:12,cursor:"pointer",
                         background:active?(isJ?C.b1:C.p1):"transparent",border:`2px solid ${active?(isJ?C.b:C.p):C.bo0}`,
-                        color:active?(isJ?C.b:C.p):C.t2,fontFamily:F.sans}}>{b2.icon} {b2.name}</button>;})}
+                        color:active?(isJ?C.b:C.p):C.t2,fontFamily:F.sans}}><Ico e={b2.icon}/> {b2.name}</button>;})}
                 </div>
               </div>
               {/* File drop zone */}
@@ -3592,20 +3702,20 @@ function AppInner() {
                   onChange={e=>{if(e.target.files[0])handleImportFile(e.target.files[0]);e.target.value="";}}/>
                 {importRows.length>0
                   ?<div>
-                    <div style={{fontSize:28,marginBottom:6}}>✅</div>
+                    <div style={{fontSize:28,marginBottom:6}}><Ico e="✅" size={28}/></div>
                     <div style={{fontSize:14,fontWeight:700,color:C.g}}>{importRows.length} produk siap diimport</div>
                     <div style={{fontSize:11,color:C.t2,marginTop:4}}>Klik untuk ganti file</div>
                   </div>
                   :<div>
-                    <div style={{fontSize:32,marginBottom:8,opacity:.5}}>📂</div>
+                    <div style={{fontSize:32,marginBottom:8,opacity:.5}}><Ico e="📂" size={32}/></div>
                     <div style={{fontSize:13,fontWeight:600,color:C.vi}}>Klik untuk pilih file</div>
                     <div style={{fontSize:11,color:C.t2,marginTop:4}}>.xlsx · .xls · .csv</div>
                   </div>}
               </div>
-              {importErr&&<div style={{padding:"9px 13px",background:C.r1,borderRadius:8,border:`1px solid ${C.r}33`,fontSize:12,color:C.r,marginBottom:12}}>⚠ {importErr}</div>}
+              {importErr&&<div style={{padding:"9px 13px",background:C.r1,borderRadius:8,border:`1px solid ${C.r}33`,fontSize:12,color:C.r,marginBottom:12}}><Ico e="⚠"/> {importErr}</div>}
               {/* Preview */}
               {importRows.length>0&&<div style={{marginBottom:14}}>
-                <div style={{fontSize:10,fontWeight:700,color:C.t2,textTransform:"uppercase",letterSpacing:1,marginBottom:8}}>Preview ({Math.min(importRows.length,5)} dari {importRows.length})</div>
+                <div style={{fontSize:12,fontWeight:700,color:C.t2,textTransform:"none",letterSpacing:0,marginBottom:8}}>Preview ({Math.min(importRows.length,5)} dari {importRows.length})</div>
                 <div style={{background:C.bg3,borderRadius:10,border:`1px solid ${C.bo0}`,overflow:"hidden"}}>
                   <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 80px 80px 60px",padding:"8px 12px",borderBottom:`1px solid ${C.bo0}`,fontSize:9.5,fontWeight:700,color:C.t3,textTransform:"uppercase",letterSpacing:.5}}>
                     <span>Barcode</span><span>Nama</span><span>Harga</span><span>HPP</span><span>Stok</span>
@@ -3624,7 +3734,7 @@ function AppInner() {
                 {/* Duplicate warning */}
                 {(()=>{const dups=importRows.filter(r=>prods.find(p=>p.barcode===r.barcode));
                   return dups.length>0&&<div style={{marginTop:8,padding:"8px 12px",background:C.a1,borderRadius:8,border:`1px solid ${C.a}33`,fontSize:11.5,color:C.a}}>
-                    ⚠ {dups.length} barcode sudah ada dan akan dilewati (tidak di-overwrite)
+                    <Ico e="⚠"/> {dups.length} barcode sudah ada dan akan dilewati (tidak di-overwrite)
                   </div>;})()} 
               </div>}
               <div style={{display:"flex",gap:8}}>
@@ -3640,18 +3750,18 @@ function AppInner() {
           </div>}
           {/* Scan cari produk */}
           <div style={{display:"flex",gap:8,alignItems:"center",padding:"10px 14px",background:C.bg2,borderRadius:12,border:`1px solid ${C.bo0}`}}>
-            <span style={{fontSize:12,color:C.t2,fontWeight:600,whiteSpace:"nowrap"}}>🔍 Scan/Cari:</span>
+            <span style={{fontSize:12,color:C.t2,fontWeight:600,whiteSpace:"nowrap"}}><Ico e="🔍"/> Scan/Cari:</span>
             <div style={{flex:1,position:"relative"}}>
               <input value={adminScanQ} onChange={e=>setAdminScanQ(e.target.value)}
                 onKeyDown={e=>{if(e.key==="Enter"){const bc=adminScanQ.trim();
                   const found=prods.find(p=>p.barcode===bc&&p.business===adminBiz)||prods.find(p=>p.name.toLowerCase().includes(bc.toLowerCase())&&p.business===adminBiz);
                   if(found){openEditP(found);setAdminScanQ("");}else toast("Produk tidak ditemukan: "+bc,"warn");}}}
-                placeholder="Scan barcode / ketik barcode atau nama produk..."
+                placeholder="Scan atau cari produk"
                 style={{width:"100%",padding:"10px 12px",background:C.bg3,border:`1.5px solid ${C.bo1}`,borderRadius:9,color:C.t0,fontSize:13,fontFamily:F.mono}}/>
 
               {/* Autocomplete Suggestions Admin */}
               {adminScanQ.trim().length > 1 && (
-                <div style={{position:"absolute",top:"100%",left:0,right:0,zIndex:100,background:C.bg2,border:`1px solid ${C.bo1}`,borderRadius:12,marginTop:6,boxShadow:"0 10px 30px rgba(0,0,0,0.6)",overflow:"hidden",animation:"fadeUp 0.2s ease"}}>
+                <div style={{position:"absolute",top:"100%",left:0,right:0,zIndex:100,background:C.bg2,border:`1px solid ${C.bo1}`,borderRadius:12,marginTop:6,boxShadow:C.sh2,overflow:"hidden",animation:"fadeUp 0.2s ease"}}>
                   {prods.filter(p => p.business === adminBiz && (p.name.toLowerCase().includes(adminScanQ.trim().toLowerCase()) || p.barcode.includes(adminScanQ.trim()))).slice(0, 5).map((p, i) => (
                     <div key={p.id} onClick={() => { openEditP(p); setAdminScanQ(""); }} className="hrow"
                       style={{padding:"10px 14px",cursor:"pointer",borderTop:i>0?`1px solid ${C.bo0}`:undefined,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
@@ -3675,7 +3785,7 @@ function AppInner() {
           <div id="prod-form-anchor"/>
           {pModal&&inlineAddMode&&<div style={{background:C.bg2,borderRadius:14,border:`2px solid ${C.g}55`,padding:"14px 14px 12px",animation:"fadeUp .2s ease"}}>
             <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
-              <span style={{fontSize:12,fontWeight:800,color:C.g}}>➕ Produk Baru</span>
+              <span style={{fontSize:12,fontWeight:800,color:C.g}}><Ico e="➕"/> Produk Baru</span>
               <button onClick={()=>{setPModal(false);setInlineAddMode(false);}} style={{background:"transparent",border:"none",color:C.t3,fontSize:18,cursor:"pointer",lineHeight:1}}>×</button>
             </div>
             
@@ -3683,35 +3793,35 @@ function AppInner() {
             <div style={{display:"flex",flexDirection:"column",gap:8}}>
               <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
                 <div style={{gridColumn:"span 2"}}>
-                  <div style={{fontSize:9,fontWeight:700,color:C.t2,textTransform:"uppercase",letterSpacing:.5,marginBottom:4}}>Barcode *</div>
+                  <div style={{fontSize:12,fontWeight:700,color:C.t2,textTransform:"none",letterSpacing:0,marginBottom:4}}>Barcode *</div>
                   <input value={pForm.barcode||""} disabled={editPid!==null} onChange={e=>setPForm(x=>({...x,barcode:e.target.value}))}
                     style={{...IS,width:"100%",boxSizing:"border-box",color:editPid!==null?C.t2:C.t0}}
-                    onFocus={e=>editPid===null&&(e.target.style.borderColor=C.g+"88")} onBlur={e=>e.target.style.borderColor=C.bo0}/>
+                    onFocus={e=>editPid===null&&(e.target.style.borderColor=C.pri+"88")} onBlur={e=>e.target.style.borderColor=C.bo0}/>
                 </div>
                 <div style={{gridColumn:"span 2"}}>
-                  <div style={{fontSize:9,fontWeight:700,color:C.t2,textTransform:"uppercase",letterSpacing:.5,marginBottom:4}}>Nama Produk *</div>
+                  <div style={{fontSize:12,fontWeight:700,color:C.t2,textTransform:"none",letterSpacing:0,marginBottom:4}}>Nama Produk *</div>
                   <input value={pForm.name||""} onChange={e=>setPForm(x=>({...x,name:e.target.value}))}
                     style={{...IS,width:"100%",boxSizing:"border-box"}}
-                    onFocus={e=>e.target.style.borderColor=C.g+"88"} onBlur={e=>e.target.style.borderColor=C.bo0}/>
+                    onFocus={e=>e.target.style.borderColor=C.pri+"88"} onBlur={e=>e.target.style.borderColor=C.bo0}/>
                 </div>
                 <div>
-                  <div style={{fontSize:9,fontWeight:700,color:C.t2,textTransform:"uppercase",letterSpacing:.5,marginBottom:4}}>Kategori</div>
+                  <div style={{fontSize:12,fontWeight:700,color:C.t2,textTransform:"none",letterSpacing:0,marginBottom:4}}>Kategori</div>
                   <input value={pForm.category||""} onChange={e=>setPForm(x=>({...x,category:e.target.value}))}
                     style={{...IS,width:"100%",boxSizing:"border-box"}}
-                    onFocus={e=>e.target.style.borderColor=C.g+"88"} onBlur={e=>e.target.style.borderColor=C.bo0}/>
+                    onFocus={e=>e.target.style.borderColor=C.pri+"88"} onBlur={e=>e.target.style.borderColor=C.bo0}/>
                 </div>
                 <div>
-                  <div style={{fontSize:9,fontWeight:700,color:C.t2,textTransform:"uppercase",letterSpacing:.5,marginBottom:4}}>Stok *</div>
+                  <div style={{fontSize:12,fontWeight:700,color:C.t2,textTransform:"none",letterSpacing:0,marginBottom:4}}>Stok *</div>
                   <input type="number" value={pForm.stock||""} onChange={e=>setPForm(x=>({...x,stock:e.target.value}))}
                     style={{...IS,width:"100%",boxSizing:"border-box"}}
-                    onFocus={e=>e.target.style.borderColor=C.g+"88"} onBlur={e=>e.target.style.borderColor=C.bo0}/>
+                    onFocus={e=>e.target.style.borderColor=C.pri+"88"} onBlur={e=>e.target.style.borderColor=C.bo0}/>
                 </div>
               </div>
 
               {/* ─── Expire date ─── */}
               <div style={{display:"flex",flexDirection:"column",gap:4}}>
-                <div style={{fontSize:9,fontWeight:700,color:C.r,textTransform:"uppercase",letterSpacing:.5}}>
-                  ⏰ Tanggal Expire <span style={{color:C.t3,fontWeight:400,fontSize:8}}>(opsional)</span>
+                <div style={{fontSize:12,fontWeight:700,color:C.r,textTransform:"none",letterSpacing:0}}>
+                  <Ico e="⏰"/> Tanggal Expire <span style={{color:C.t3,fontWeight:400,fontSize:8}}>(opsional)</span>
                 </div>
                 <input type="date" value={pForm.expireDate||""} onChange={e=>setPForm(x=>({...x,expireDate:e.target.value}))}
                   style={{...IS,width:"100%",boxSizing:"border-box",
@@ -3722,11 +3832,11 @@ function AppInner() {
                   const days=Math.ceil((new Date(pForm.expireDate)-new Date())/86400000);
                   const col=days<0?C.r:days<=30?C.r:days<=90?C.a:C.g;
                   return <div style={{fontSize:10,color:col,fontWeight:600}}>
-                    {days<0?`⛔ Sudah kadaluarsa ${Math.abs(days)} hari lalu`:
-                     days===0?"⛔ Expire hari ini":
-                     days<=30?`🔴 ${days} hari lagi`:
-                     days<=90?`🟡 ${days} hari lagi`:
-                     `🟢 ${days} hari lagi`}
+                    {days<0?`Sudah kadaluarsa ${Math.abs(days)} hari lalu`:
+                     days===0?"Expire hari ini":
+                     days<=30?`${days} hari lagi`:
+                     days<=90?`${days} hari lagi`:
+                     `${days} hari lagi`}
                   </div>;
                 })()}
               </div>
@@ -3735,7 +3845,7 @@ function AppInner() {
                 style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"9px 12px",
                   background:C.bg3,border:`1px solid ${C.bo0}`,borderRadius:9,cursor:"pointer",fontFamily:F.sans,width:"100%",textAlign:"left"}}>
                 <span style={{fontSize:11.5,fontWeight:700,color:C.t1}}>
-                  💰 Harga & HPP
+                  <Ico e="💰"/> Harga & HPP
                   {pForm.price&&+pForm.price>0&&<span className="mn" style={{color:C.g,marginLeft:6}}>{rp(pForm.price)}</span>}
                   {pForm.hpp&&+pForm.hpp>0&&<span className="mn" style={{color:C.a,marginLeft:4}}>/ {rp(pForm.hpp)}</span>}
                 </span>
@@ -3743,13 +3853,13 @@ function AppInner() {
               </button>
               {showPriceDrawer&&<div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,animation:"fadeUp .15s ease"}}>
                 <div>
-                  <div style={{fontSize:9,fontWeight:700,color:C.g,textTransform:"uppercase",letterSpacing:.5,marginBottom:4}}>Harga Jual *</div>
+                  <div style={{fontSize:12,fontWeight:700,color:C.g,textTransform:"none",letterSpacing:0,marginBottom:4}}>Harga Jual *</div>
                   <input type="number" value={pForm.price||""} onChange={e=>setPForm(x=>({...x,price:e.target.value}))}
                     style={{...IS,width:"100%",boxSizing:"border-box"}}
-                    onFocus={e=>e.target.style.borderColor=C.g+"88"} onBlur={e=>e.target.style.borderColor=C.bo0}/>
+                    onFocus={e=>e.target.style.borderColor=C.pri+"88"} onBlur={e=>e.target.style.borderColor=C.bo0}/>
                 </div>
                 <div>
-                  <div style={{fontSize:9,fontWeight:700,color:C.a,textTransform:"uppercase",letterSpacing:.5,marginBottom:4}}>HPP / Modal</div>
+                  <div style={{fontSize:12,fontWeight:700,color:C.a,textTransform:"none",letterSpacing:0,marginBottom:4}}>HPP / Modal</div>
                   <input type="number" value={pForm.hpp||""} onChange={e=>setPForm(x=>({...x,hpp:e.target.value}))}
                     style={{...IS,width:"100%",boxSizing:"border-box",borderColor:C.a+"44"}}
                     onFocus={e=>e.target.style.borderColor=C.a+"88"} onBlur={e=>e.target.style.borderColor=C.a+"44"}/>
@@ -3762,8 +3872,8 @@ function AppInner() {
               </div>}
               {/* ─── Add-on ─── */}
               <div style={{marginTop:10,paddingTop:10,borderTop:`1px solid ${C.bo0}`}}>
-              <div style={{fontSize:10,fontWeight:700,color:C.vi,textTransform:"uppercase",letterSpacing:1,marginBottom:8}}>
-                ➕ Konfigurasi Add-on (Opsional)
+              <div style={{fontSize:12,fontWeight:700,color:C.vi,textTransform:"none",letterSpacing:0,marginBottom:8}}>
+                <Ico e="➕"/> Konfigurasi Add-on (Opsional)
               </div>
               <p style={{fontSize:11.5,color:C.t2,marginBottom:10,lineHeight:1.6}}>
                 Saat produk ini di-scan kasir, sistem akan menawarkan produk add-on berikut.
@@ -3823,7 +3933,7 @@ function AppInner() {
                 </div>}
             </div>
               <div style={{display:"flex",gap:7,marginTop:10}}>
-                <Btn onClick={saveProd} full size="sm">✓ Simpan</Btn>
+                <Btn onClick={saveProd} full size="sm"><Ico e="✓"/> Simpan</Btn>
                 <Btn onClick={()=>{setPModal(false);setEditPid(null);setInlineAddMode(false);}} outline size="sm">Batal</Btn>
               </div>
             </div>
@@ -3867,8 +3977,8 @@ function AppInner() {
                           const expired=days<0;
                           const color=expired?C.r:days<=30?C.r:days<=90?C.a:C.t2;
                           return <span className="mn" style={{fontSize:10,fontWeight:700,color}}>
-                            {expired?`⛔ ${Math.abs(days)}h lalu`:days===0?"⛔ Hari ini":
-                             days<=30?`🔴 ${days}h`:days<=90?`🟡 ${days}h`:`🟢 ${days}h`}
+                            {expired?`${Math.abs(days)}h lalu`:days===0?"Hari ini":
+                             days<=30?`${days}h`:days<=90?`${days}h`:`${days}h`}
                           </span>;
                         })():<span style={{fontSize:10,color:C.t3}}>—</span>}
                       </td>
@@ -3885,7 +3995,7 @@ function AppInner() {
                             background:editPid===p.id&&pModal?"transparent":"transparent",
                             border:`1px solid ${editPid===p.id&&pModal?C.g:C.bo1}`,
                             borderRadius:6,color:editPid===p.id&&pModal?C.g:C.t0,fontSize:10,fontWeight:editPid===p.id&&pModal?700:400}}>
-                          {editPid===p.id&&pModal?"✓ Edit":"Edit"}</button>
+                          {editPid===p.id&&pModal?"Sedang diedit":"Edit"}</button>
                         <button onClick={()=>fbDeleteProduct(p.id,p.name,p.business,user.name).then(()=>toast("Produk dihapus")).catch(e=>toast(e.message,"err"))} className="press" style={{padding:"3px 9px",background:C.r1,border:`1px solid ${C.r}22`,borderRadius:6,color:C.r,fontSize:10}}>Hapus</button>
                       </td>
                     </tr>
@@ -3894,46 +4004,46 @@ function AppInner() {
                       <td colSpan={9} style={{padding:"0 0 8px 0",background:C.bg1}}>
                         <div style={{margin:"0 8px",background:C.bg2,borderRadius:12,border:`2px solid ${C.g}44`,padding:"14px",animation:"fadeUp .2s ease"}}>
                           <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
-                            <span style={{fontSize:12,fontWeight:800,color:C.g}}>✏️ Edit: {p.name}</span>
+                            <span style={{fontSize:12,fontWeight:800,color:C.g}}><Ico e="✏️"/> Edit: {p.name}</span>
                             <button onClick={()=>{setPModal(false);setEditPid(null);}} style={{background:"transparent",border:"none",color:C.t3,fontSize:18,cursor:"pointer",lineHeight:1}}>×</button>
                           </div>
                           <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:8,marginBottom:8}}>
                             <div style={{gridColumn:"span 2"}}>
-                              <div style={{fontSize:9,fontWeight:700,color:C.t2,textTransform:"uppercase",letterSpacing:.5,marginBottom:3}}>Nama Produk *</div>
+                              <div style={{fontSize:12,fontWeight:700,color:C.t2,textTransform:"none",letterSpacing:0,marginBottom:3}}>Nama Produk *</div>
                               <input value={pForm.name||""} onChange={e=>setPForm(x=>({...x,name:e.target.value}))}
                                 style={{...IS,width:"100%",boxSizing:"border-box",padding:"9px 11px"}}
-                                onFocus={e=>e.target.style.borderColor=C.g+"88"} onBlur={e=>e.target.style.borderColor=C.bo0}/>
+                                onFocus={e=>e.target.style.borderColor=C.pri+"88"} onBlur={e=>e.target.style.borderColor=C.bo0}/>
                             </div>
                             <div>
-                              <div style={{fontSize:9,fontWeight:700,color:C.t2,textTransform:"uppercase",letterSpacing:.5,marginBottom:3}}>Kategori</div>
+                              <div style={{fontSize:12,fontWeight:700,color:C.t2,textTransform:"none",letterSpacing:0,marginBottom:3}}>Kategori</div>
                               <input value={pForm.category||""} onChange={e=>setPForm(x=>({...x,category:e.target.value}))}
                                 style={{...IS,width:"100%",boxSizing:"border-box",padding:"9px 11px"}}
-                                onFocus={e=>e.target.style.borderColor=C.g+"88"} onBlur={e=>e.target.style.borderColor=C.bo0}/>
+                                onFocus={e=>e.target.style.borderColor=C.pri+"88"} onBlur={e=>e.target.style.borderColor=C.bo0}/>
                             </div>
                             <div>
-                              <div style={{fontSize:9,fontWeight:700,color:C.t2,textTransform:"uppercase",letterSpacing:.5,marginBottom:3}}>Stok *</div>
+                              <div style={{fontSize:12,fontWeight:700,color:C.t2,textTransform:"none",letterSpacing:0,marginBottom:3}}>Stok *</div>
                               <input type="number" value={pForm.stock||""} onChange={e=>setPForm(x=>({...x,stock:e.target.value}))}
                                 style={{...IS,width:"100%",boxSizing:"border-box",padding:"9px 11px"}}
-                                onFocus={e=>e.target.style.borderColor=C.g+"88"} onBlur={e=>e.target.style.borderColor=C.bo0}/>
+                                onFocus={e=>e.target.style.borderColor=C.pri+"88"} onBlur={e=>e.target.style.borderColor=C.bo0}/>
                             </div>
                           </div>
                           {/* Expire date */}
                           <div style={{marginBottom:8}}>
-                            <div style={{fontSize:9,fontWeight:700,color:C.r,textTransform:"uppercase",letterSpacing:.5,marginBottom:3}}>
-                              ⏰ Expire <span style={{color:C.t3,fontWeight:400}}>(opsional)</span>
+                            <div style={{fontSize:12,fontWeight:700,color:C.r,textTransform:"none",letterSpacing:0,marginBottom:3}}>
+                              <Ico e="⏰"/> Expire <span style={{color:C.t3,fontWeight:400}}>(opsional)</span>
                             </div>
                             <input type="date" value={pForm.expireDate||""} onChange={e=>setPForm(x=>({...x,expireDate:e.target.value}))}
                               style={{...IS,width:"100%",boxSizing:"border-box",padding:"8px 10px",borderColor:pForm.expireDate?C.r+"55":C.bo0}}
                               onFocus={e=>e.target.style.borderColor=C.r+"88"} onBlur={e=>e.target.style.borderColor=pForm.expireDate?C.r+"55":C.bo0}/>
                             {pForm.expireDate&&(()=>{const d=Math.ceil((new Date(pForm.expireDate)-new Date())/86400000);const col=d<0?C.r:d<=90?C.a:C.g;
-                              return <div style={{fontSize:10,color:col,fontWeight:600,marginTop:3}}>{d<0?`⛔ Kadaluarsa ${Math.abs(d)}h lalu`:d===0?"⛔ Hari ini":`${d<=30?"🔴":"🟡"} ${d} hari lagi`}</div>;})()}
+                              return <div style={{fontSize:10,color:col,fontWeight:600,marginTop:3}}>{d<0?`Kadaluarsa ${Math.abs(d)}h lalu`:d===0?"Hari ini":`${d} hari lagi`}</div>;})()}
                           </div>
                           {/* Price drawer */}
                           <button onClick={()=>setShowPriceDrawer(x=>!x)} className="press"
                             style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"8px 11px",
                               background:C.bg3,border:`1px solid ${C.bo0}`,borderRadius:8,cursor:"pointer",fontFamily:F.sans,width:"100%",textAlign:"left",marginBottom:6,boxSizing:"border-box"}}>
                             <span style={{fontSize:11,fontWeight:700,color:C.t1}}>
-                              💰 Harga & HPP
+                              <Ico e="💰"/> Harga & HPP
                               {pForm.price&&+pForm.price>0&&<span className="mn" style={{color:C.g,marginLeft:6}}>{rp(pForm.price)}</span>}
                               {pForm.hpp&&+pForm.hpp>0&&<span className="mn" style={{color:C.a,marginLeft:4}}>/ HPP {rp(pForm.hpp)}</span>}
                             </span>
@@ -3941,13 +4051,13 @@ function AppInner() {
                           </button>
                           {showPriceDrawer&&<div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:8,marginBottom:8,animation:"fadeUp .15s ease"}}>
                             <div>
-                              <div style={{fontSize:9,fontWeight:700,color:C.g,textTransform:"uppercase",letterSpacing:.5,marginBottom:3}}>Harga Jual</div>
+                              <div style={{fontSize:12,fontWeight:700,color:C.g,textTransform:"none",letterSpacing:0,marginBottom:3}}>Harga Jual</div>
                               <input type="number" value={pForm.price||""} onChange={e=>setPForm(x=>({...x,price:e.target.value}))}
                                 style={{...IS,width:"100%",boxSizing:"border-box",padding:"9px 11px"}}
-                                onFocus={e=>e.target.style.borderColor=C.g+"88"} onBlur={e=>e.target.style.borderColor=C.bo0}/>
+                                onFocus={e=>e.target.style.borderColor=C.pri+"88"} onBlur={e=>e.target.style.borderColor=C.bo0}/>
                             </div>
                             <div>
-                              <div style={{fontSize:9,fontWeight:700,color:C.a,textTransform:"uppercase",letterSpacing:.5,marginBottom:3}}>HPP / Modal</div>
+                              <div style={{fontSize:12,fontWeight:700,color:C.a,textTransform:"none",letterSpacing:0,marginBottom:3}}>HPP / Modal</div>
                               <input type="number" value={pForm.hpp||""} onChange={e=>setPForm(x=>({...x,hpp:e.target.value}))}
                                 style={{...IS,width:"100%",boxSizing:"border-box",padding:"9px 11px",borderColor:C.a+"44"}}
                                 onFocus={e=>e.target.style.borderColor=C.a+"88"} onBlur={e=>e.target.style.borderColor=C.a+"44"}/>
@@ -3958,7 +4068,7 @@ function AppInner() {
                             </div>}
                           </div>}
                           <div style={{display:"flex",gap:7}}>
-                            <Btn onClick={saveProd} size="sm">✓ Simpan</Btn>
+                            <Btn onClick={saveProd} size="sm"><Ico e="✓"/> Simpan</Btn>
                             <Btn onClick={()=>{setPModal(false);setEditPid(null);}} outline size="sm">Batal</Btn>
                           </div>
                         </div>
@@ -4006,15 +4116,15 @@ function AppInner() {
                 </div>
                 <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:8,marginBottom:10,background:C.bg3,borderRadius:10,padding:"10px 12px"}}>
                   <div>
-                    <div style={{fontSize:9.5,color:C.t3,fontWeight:700,textTransform:"uppercase",letterSpacing:.5,marginBottom:2}}>HPP</div>
+                    <div style={{fontSize:12,color:C.t3,fontWeight:700,textTransform:"none",letterSpacing:0,marginBottom:2}}>HPP</div>
                     <div className="mn" style={{fontSize:12,color:C.a,fontWeight:700}}>{rp(p.hpp||0)}</div>
                   </div>
                   <div>
-                    <div style={{fontSize:9.5,color:C.t3,fontWeight:700,textTransform:"uppercase",letterSpacing:.5,marginBottom:2}}>Harga Jual</div>
+                    <div style={{fontSize:12,color:C.t3,fontWeight:700,textTransform:"none",letterSpacing:0,marginBottom:2}}>Harga Jual</div>
                     <div className="mn" style={{fontSize:12,color:C.g,fontWeight:700}}>{rp(p.price)}</div>
                   </div>
                   <div>
-                    <div style={{fontSize:9.5,color:C.t3,fontWeight:700,textTransform:"uppercase",letterSpacing:.5,marginBottom:2}}>Margin</div>
+                    <div style={{fontSize:12,color:C.t3,fontWeight:700,textTransform:"none",letterSpacing:0,marginBottom:2}}>Margin</div>
                     <div className="mn" style={{fontSize:12,color:C.cy,fontWeight:700}}>{mg}</div>
                   </div>
                 </div>
@@ -4024,43 +4134,43 @@ function AppInner() {
                       background:editPid===p.id&&pModal?C.g1:"transparent",
                       border:`1.5px solid ${editPid===p.id&&pModal?C.g:C.bo1}`,
                       borderRadius:10,color:editPid===p.id&&pModal?C.g:C.t0,fontSize:13,fontWeight:600,fontFamily:F.sans}}>
-                    {editPid===p.id&&pModal?"✓ Sedang Diedit":"✏️ Edit"}</button>
-                  <button onClick={()=>fbDeleteProduct(p.id,p.name,p.business,user.name).then(()=>toast("Produk dihapus")).catch(e=>toast(e.message,"err"))} className="press" style={{padding:"11px 16px",background:C.r1,border:`1.5px solid ${C.r}33`,borderRadius:10,color:C.r,fontSize:13,fontFamily:F.sans}}>🗑</button>
+                    {editPid===p.id&&pModal?"Sedang diedit":"Edit"}</button>
+                  <button onClick={()=>fbDeleteProduct(p.id,p.name,p.business,user.name).then(()=>toast("Produk dihapus")).catch(e=>toast(e.message,"err"))} className="press" style={{padding:"11px 16px",background:C.r1,border:`1.5px solid ${C.r}33`,borderRadius:10,color:C.r,fontSize:13,fontFamily:F.sans}}><Ico e="🗑"/></button>
                 </div>
                 {/* Inline edit form (mobile) */}
                 {editPid===p.id&&pModal&&!inlineAddMode&&<div id={"prod-inline-"+p.id} style={{marginTop:10,background:C.bg3,borderRadius:12,border:`2px solid ${C.g}44`,padding:"12px",animation:"fadeUp .2s ease"}}>
-                  <div style={{fontSize:11,fontWeight:800,color:C.g,marginBottom:10}}>✏️ Edit Produk</div>
+                  <div style={{fontSize:11,fontWeight:800,color:C.g,marginBottom:10}}><Ico e="✏️"/> Edit Produk</div>
                   <div style={{display:"flex",flexDirection:"column",gap:8}}>
                     <div>
-                      <div style={{fontSize:9,fontWeight:700,color:C.t2,textTransform:"uppercase",letterSpacing:.5,marginBottom:3}}>Nama Produk *</div>
+                      <div style={{fontSize:12,fontWeight:700,color:C.t2,textTransform:"none",letterSpacing:0,marginBottom:3}}>Nama Produk *</div>
                       <input value={pForm.name||""} onChange={e=>setPForm(x=>({...x,name:e.target.value}))}
                         style={{...IS,width:"100%",boxSizing:"border-box"}}
-                        onFocus={e=>e.target.style.borderColor=C.g+"88"} onBlur={e=>e.target.style.borderColor=C.bo0}/>
+                        onFocus={e=>e.target.style.borderColor=C.pri+"88"} onBlur={e=>e.target.style.borderColor=C.bo0}/>
                     </div>
                     <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
                       <div>
-                        <div style={{fontSize:9,fontWeight:700,color:C.t2,textTransform:"uppercase",letterSpacing:.5,marginBottom:3}}>Kategori</div>
+                        <div style={{fontSize:12,fontWeight:700,color:C.t2,textTransform:"none",letterSpacing:0,marginBottom:3}}>Kategori</div>
                         <input value={pForm.category||""} onChange={e=>setPForm(x=>({...x,category:e.target.value}))}
                           style={{...IS,width:"100%",boxSizing:"border-box"}}
-                          onFocus={e=>e.target.style.borderColor=C.g+"88"} onBlur={e=>e.target.style.borderColor=C.bo0}/>
+                          onFocus={e=>e.target.style.borderColor=C.pri+"88"} onBlur={e=>e.target.style.borderColor=C.bo0}/>
                       </div>
                       <div>
-                        <div style={{fontSize:9,fontWeight:700,color:C.t2,textTransform:"uppercase",letterSpacing:.5,marginBottom:3}}>Stok *</div>
+                        <div style={{fontSize:12,fontWeight:700,color:C.t2,textTransform:"none",letterSpacing:0,marginBottom:3}}>Stok *</div>
                         <input type="number" value={pForm.stock||""} onChange={e=>setPForm(x=>({...x,stock:e.target.value}))}
                           style={{...IS,width:"100%",boxSizing:"border-box"}}
-                          onFocus={e=>e.target.style.borderColor=C.g+"88"} onBlur={e=>e.target.style.borderColor=C.bo0}/>
+                          onFocus={e=>e.target.style.borderColor=C.pri+"88"} onBlur={e=>e.target.style.borderColor=C.bo0}/>
                       </div>
                     </div>
                     {/* Expire date */}
                     <div>
-                      <div style={{fontSize:9,fontWeight:700,color:C.r,textTransform:"uppercase",letterSpacing:.5,marginBottom:3}}>
-                        ⏰ Expire <span style={{color:C.t3,fontWeight:400}}>(opsional)</span>
+                      <div style={{fontSize:12,fontWeight:700,color:C.r,textTransform:"none",letterSpacing:0,marginBottom:3}}>
+                        <Ico e="⏰"/> Expire <span style={{color:C.t3,fontWeight:400}}>(opsional)</span>
                       </div>
                       <input type="date" value={pForm.expireDate||""} onChange={e=>setPForm(x=>({...x,expireDate:e.target.value}))}
                         style={{...IS,width:"100%",boxSizing:"border-box",borderColor:pForm.expireDate?C.r+"55":C.bo0}}
                         onFocus={e=>e.target.style.borderColor=C.r+"88"} onBlur={e=>e.target.style.borderColor=pForm.expireDate?C.r+"55":C.bo0}/>
                       {pForm.expireDate&&(()=>{const d=Math.ceil((new Date(pForm.expireDate)-new Date())/86400000);const col=d<0?C.r:d<=90?C.a:C.g;
-                        return <div style={{fontSize:10,color:col,fontWeight:600,marginTop:3}}>{d<0?`⛔ ${Math.abs(d)}h lalu`:d===0?"⛔ Hari ini":`${d<=30?"🔴":"🟡"} ${d} hari lagi`}</div>;})()}
+                        return <div style={{fontSize:10,color:col,fontWeight:600,marginTop:3}}>{d<0?`${Math.abs(d)}h lalu`:d===0?"Hari ini":`${d} hari lagi`}</div>;})()}
                     </div>
                     {/* Price drawer */}
                     <button onClick={()=>setShowPriceDrawer(x=>!x)} className="press"
@@ -4068,7 +4178,7 @@ function AppInner() {
                         padding:"9px 12px",background:C.bg2,border:`1px solid ${C.bo0}`,
                         borderRadius:9,cursor:"pointer",fontFamily:F.sans,width:"100%",textAlign:"left",boxSizing:"border-box"}}>
                       <span style={{fontSize:11,fontWeight:700,color:C.t1}}>
-                        💰 Harga & HPP
+                        <Ico e="💰"/> Harga & HPP
                         {pForm.price&&+pForm.price>0&&<span className="mn" style={{color:C.g,marginLeft:5}}>{rp(pForm.price)}</span>}
                         {pForm.hpp&&+pForm.hpp>0&&<span className="mn" style={{color:C.a,marginLeft:4}}>/ {rp(pForm.hpp)}</span>}
                       </span>
@@ -4076,13 +4186,13 @@ function AppInner() {
                     </button>
                     {showPriceDrawer&&<div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,animation:"fadeUp .15s ease"}}>
                       <div>
-                        <div style={{fontSize:9,fontWeight:700,color:C.g,textTransform:"uppercase",letterSpacing:.5,marginBottom:3}}>Harga Jual</div>
+                        <div style={{fontSize:12,fontWeight:700,color:C.g,textTransform:"none",letterSpacing:0,marginBottom:3}}>Harga Jual</div>
                         <input type="number" value={pForm.price||""} onChange={e=>setPForm(x=>({...x,price:e.target.value}))}
                           style={{...IS,width:"100%",boxSizing:"border-box"}}
-                          onFocus={e=>e.target.style.borderColor=C.g+"88"} onBlur={e=>e.target.style.borderColor=C.bo0}/>
+                          onFocus={e=>e.target.style.borderColor=C.pri+"88"} onBlur={e=>e.target.style.borderColor=C.bo0}/>
                       </div>
                       <div>
-                        <div style={{fontSize:9,fontWeight:700,color:C.a,textTransform:"uppercase",letterSpacing:.5,marginBottom:3}}>HPP / Modal</div>
+                        <div style={{fontSize:12,fontWeight:700,color:C.a,textTransform:"none",letterSpacing:0,marginBottom:3}}>HPP / Modal</div>
                         <input type="number" value={pForm.hpp||""} onChange={e=>setPForm(x=>({...x,hpp:e.target.value}))}
                           style={{...IS,width:"100%",boxSizing:"border-box",borderColor:C.a+"44"}}
                           onFocus={e=>e.target.style.borderColor=C.a+"88"} onBlur={e=>e.target.style.borderColor=C.a+"44"}/>
@@ -4094,7 +4204,7 @@ function AppInner() {
                         </div>)}
                     </div>}
                     <div style={{display:"flex",gap:7,marginTop:2}}>
-                      <Btn onClick={saveProd} full size="sm">✓ Simpan</Btn>
+                      <Btn onClick={saveProd} full size="sm"><Ico e="✓"/> Simpan</Btn>
                       <Btn onClick={()=>{setPModal(false);setEditPid(null);}} outline size="sm">Batal</Btn>
                     </div>
                   </div>
@@ -4138,14 +4248,14 @@ function AppInner() {
                 className={`chip${isAct?" on":""}`}
                 style={{borderColor:isAct?cl:"transparent",color:isAct?cl:C.t2,
                   background:isAct?cl+"22":"transparent"}}>
-                {b2==="ALL"?"🏢 Semua":BIZ[b2]?.icon+" "+BIZ[b2]?.name}
+                {b2==="ALL"?"Semua":BIZ[b2]?.name}
               </button>;})}
             <div style={{width:1,height:20,background:C.bo0,alignSelf:"center"}}/>
             {/* Kasir filter */}
             <select value={reportKasir} onChange={e=>setReportKasir(e.target.value)}
               style={{padding:"8px 12px",background:C.bg2,border:`1.5px solid ${C.bo0}`,borderRadius:50,
                 color:C.t0,fontSize:12,fontFamily:F.sans,cursor:"pointer",fontWeight:600}}>
-              <option value="ALL">👤 Semua Kasir</option>
+              <option value="ALL">Semua Kasir</option>
               {users.filter(u=>u.role==="kasir"||u.role==="admin").map(u=><option key={u.id} value={String(u.id)}>{u.name}</option>)}
             </select>
             <div style={{width:1,height:20,background:C.bo0,alignSelf:"center"}}/>
@@ -4154,13 +4264,13 @@ function AppInner() {
               style={{padding:"8px 12px",background:reportCategory!=="ALL"?C.cy1:C.bg2,
                 border:`1.5px solid ${reportCategory!=="ALL"?C.cy:C.bo0}`,borderRadius:50,
                 color:reportCategory!=="ALL"?C.cy:C.t0,fontSize:12,fontFamily:F.sans,cursor:"pointer",fontWeight:600}}>
-              <option value="ALL">🏷 Semua Kategori</option>
+              <option value="ALL">Semua Kategori</option>
               {allCategories.map(cat=><option key={cat} value={cat}>{cat}</option>)}
             </select>
           </div>
           {/* Period chips */}
           <div style={{display:"flex",gap:6,flexWrap:"wrap",alignItems:"center",marginTop:2}}>
-            {[["all","📅 Semua"],["today","Hari Ini"],["week","7 Hari"],["month","📆 Bulan Ini"],["custom","Rentang"]].map(([v,l])=><button key={v}
+            {[["all","Semua"],["today","Hari Ini"],["week","7 Hari"],["month","Bulan Ini"],["custom","Rentang"]].map(([v,l])=><button key={v}
               onClick={()=>setReportRange(v)}
               className={`chip${reportRange===v?" on":""}`}>{l}</button>)}
             {reportRange==="custom"&&<div style={{display:"flex",gap:7,alignItems:"center",flexWrap:"wrap",marginTop:4}}>
@@ -4177,15 +4287,15 @@ function AppInner() {
               <span style={{fontSize:10,color:C.t3,fontWeight:600}}>Filter aktif:</span>
               {reportBiz!=="ALL"&&<span style={{padding:"3px 10px",borderRadius:20,fontSize:11,fontWeight:700,
                 background:reportBiz==="JB_STORE"?C.p1:C.b1,color:reportBiz==="JB_STORE"?C.p:C.b}}>
-                {BIZ[reportBiz]?.icon} {BIZ[reportBiz]?.name}
+                <Ico e={BIZ[reportBiz]?.icon}/> {BIZ[reportBiz]?.name}
                 <button onClick={()=>setReportBiz("ALL")} style={{background:"none",border:"none",color:"inherit",marginLeft:4,cursor:"pointer",fontSize:12,lineHeight:1}}>×</button>
               </span>}
               {reportKasir!=="ALL"&&<span style={{padding:"3px 10px",borderRadius:20,fontSize:11,fontWeight:700,background:C.vi1,color:C.vi}}>
-                👤 {users.find(u=>String(u.id)===reportKasir)?.name||reportKasir}
+                <Ico e="👤"/> {users.find(u=>String(u.id)===reportKasir)?.name||reportKasir}
                 <button onClick={()=>setReportKasir("ALL")} style={{background:"none",border:"none",color:"inherit",marginLeft:4,cursor:"pointer",fontSize:12,lineHeight:1}}>×</button>
               </span>}
               {reportCategory!=="ALL"&&<span style={{padding:"3px 10px",borderRadius:20,fontSize:11,fontWeight:700,background:C.cy1,color:C.cy}}>
-                🏷 {reportCategory}
+                <Ico e="🏷"/> {reportCategory}
                 <button onClick={()=>setReportCategory("ALL")} style={{background:"none",border:"none",color:"inherit",marginLeft:4,cursor:"pointer",fontSize:12,lineHeight:1}}>×</button>
               </span>}
               <button onClick={()=>{setReportBiz("ALL");setReportKasir("ALL");setReportCategory("ALL");setReportRange("month");}}
@@ -4210,7 +4320,7 @@ function AppInner() {
               {ic:"📦",lbl:"Total HPP",val:rp(totalHppAll),color:C.a},
               {ic:"🎯",lbl:"Total Diskon",val:rp(totalDisc),color:C.r},
             ].map((s,i)=><div key={i} className="stat-mobile card-in" style={{"--stat-glow":s.color}}>
-              <span className="stat-ico">{s.ic}</span>
+              <span className="stat-ico" style={{background:(s.color||C.pri)+"1F",color:s.color||C.pri}}><Ico e={s.ic} size={18}/></span>
               <span className="stat-lbl">{s.lbl}</span>
               <span className="stat-val" style={{color:s.color,fontSize:s.val.length>10?15:18}}>{s.val}</span>
               {s.sub&&<span style={{fontSize:10,color:C.t2,fontWeight:600}}>{s.sub}</span>}
@@ -4218,18 +4328,18 @@ function AppInner() {
           </div>
           {/* Pie */}
           {bizRevData.length>1&&<Card>
-            <div style={{fontSize:10,fontWeight:700,color:C.t2,textTransform:"uppercase",letterSpacing:1,marginBottom:12}}>Kontribusi per Bisnis</div>
+            <div style={{fontSize:12,fontWeight:700,color:C.t2,textTransform:"none",letterSpacing:0,marginBottom:12}}>Kontribusi per Bisnis</div>
             <SimplePieChart data={bizRevData}/>
           </Card>}
           {/* Daily chart */}
           {dailyData.length>0&&<Card>
-            <div style={{fontSize:10,fontWeight:700,color:C.t2,textTransform:"uppercase",letterSpacing:1,marginBottom:12}}>Tren Harian</div>
+            <div style={{fontSize:12,fontWeight:700,color:C.t2,textTransform:"none",letterSpacing:0,marginBottom:12}}>Tren Harian</div>
             <SimpleBarChart data={dailyData} keys={["rev","profit"]} colors={[C.g,C.cy]} height={200} labelKey="date"/>
           </Card>}
           {/* Per kasir */}
           {kasirBreakdown.length>0&&<Card noPad style={{overflow:"hidden"}}>
             <div style={{padding:"12px 14px",borderBottom:`1px solid ${C.bo0}`}}>
-              <span style={{fontSize:10,fontWeight:700,color:C.t2,textTransform:"uppercase",letterSpacing:1}}>Performa per Kasir</span>
+              <span style={{fontSize:12,fontWeight:700,color:C.t2,textTransform:"none",letterSpacing:0}}>Performa per Kasir</span>
             </div>
             <TableWrap>
               <table style={{width:"100%",borderCollapse:"collapse",fontSize:12,minWidth:500}}>
@@ -4251,7 +4361,7 @@ function AppInner() {
               style={{width:"100%",display:"flex",alignItems:"center",justifyContent:"space-between",
                 padding:"13px 16px",background:"transparent",border:"none",cursor:"pointer",fontFamily:F.sans}}>
               <div style={{display:"flex",alignItems:"center",gap:8}}>
-                <span style={{fontSize:13,fontWeight:800,color:C.t0}}>📋 Detail Penjualan Per Produk</span>
+                <span style={{fontSize:13,fontWeight:800,color:C.t0}}><Ico e="📋"/> Detail Penjualan Per Produk</span>
                 <span style={{fontSize:11,color:C.t2}}>(per item transaksi)</span>
               </div>
               <span style={{fontSize:14,color:C.t2,transition:"transform .2s",
@@ -4282,7 +4392,7 @@ function AppInner() {
             if(!rows.length) return null;
             return <Card noPad style={{overflow:"hidden"}}>
               <div style={{padding:"12px 14px",borderBottom:`1px solid ${C.bo0}`,display:"flex",justifyContent:"space-between",alignItems:"center",flexWrap:"wrap",gap:8}}>
-                <span style={{fontSize:10,fontWeight:700,color:C.t2,textTransform:"uppercase",letterSpacing:1}}>
+                <span style={{fontSize:12,fontWeight:700,color:C.t2,textTransform:"none",letterSpacing:0}}>
                   Detail Penjualan per Produk ({rows.length} baris)
                 </span>
                 <button onClick={()=>downloadXLSX(rows,[
@@ -4310,7 +4420,7 @@ function AppInner() {
                       <td style={{padding:"11px 13px",fontSize:10,color:C.t2,whiteSpace:"nowrap"}}>{r.date}</td>
                       <td style={{padding:"11px 13px",fontWeight:600,fontSize:12}}>
                         <div style={{display:"flex",alignItems:"center",gap:5}}>
-                          {r.namaPembeli!=="Umum"&&<span style={{fontSize:13}}>🧑</span>}
+                          {r.namaPembeli!=="Umum"&&<span style={{fontSize:13}}><Ico e="🧑"/></span>}
                           <span style={{color:r.namaPembeli==="Umum"?C.t2:C.t0}}>{r.namaPembeli}</span>
                         </div>
                       </td>
@@ -4368,15 +4478,15 @@ function AppInner() {
             const toggleExpand=id=>setExpandedTrx(p=>({...p,[id]:!p[id]}));
             return <Card noPad style={{overflow:"hidden"}}>
               <div style={{padding:"12px 14px",borderBottom:`1px solid ${C.bo0}`,display:"flex",gap:8,alignItems:"center",flexWrap:"wrap"}}>
-                <span style={{fontSize:10,fontWeight:700,color:C.t2,textTransform:"uppercase",letterSpacing:1,flex:1,whiteSpace:"nowrap"}}>
+                <span style={{fontSize:12,fontWeight:700,color:C.t2,textTransform:"none",letterSpacing:0,flex:1,whiteSpace:"nowrap"}}>
                   Invoice ({trxFiltered.length}{sq?` dari ${filtTrx.length}`:""})
                 </span>
                 <div style={{position:"relative",flex:"0 1 220px",minWidth:160}}>
-                  <span style={{position:"absolute",left:9,top:"50%",transform:"translateY(-50%)",fontSize:13,color:C.t2,pointerEvents:"none"}}>🔍</span>
+                  <span style={{position:"absolute",left:9,top:"50%",transform:"translateY(-50%)",fontSize:13,color:C.t2,pointerEvents:"none"}}><Ico e="🔍"/></span>
                   <input value={searchInvoice} onChange={e=>setSearchInvoice(e.target.value)}
                     placeholder="Cari nama pembeli / ID..."
                     style={{width:"100%",padding:"7px 10px 7px 30px",background:C.bg3,
-                      border:`1.5px solid ${searchInvoice?C.g+"88":C.bo0}`,borderRadius:20,
+                      border:`1.5px solid ${searchInvoice?C.pri+"88":C.bo0}`,borderRadius:20,
                       color:C.t0,fontSize:12,fontFamily:F.sans,boxSizing:"border-box"}}/>
                   {searchInvoice&&<button onClick={()=>setSearchInvoice("")}
                     style={{position:"absolute",right:8,top:"50%",transform:"translateY(-50%)",
@@ -4413,7 +4523,7 @@ function AppInner() {
                           <div style={{display:"flex",alignItems:"center",gap:6,flexWrap:"wrap",marginBottom:3}}>
                             <span className="mn" style={{fontSize:10,color:C.t3}}>{t.id?.slice(-12)}</span>
                             {hasPembeli&&<span style={{padding:"1px 8px",borderRadius:20,
-                              background:C.b1,color:C.b,fontSize:10,fontWeight:700}}>🧑 {t.namaPembeli}</span>}
+                              background:C.b1,color:C.b,fontSize:10,fontWeight:700}}><Ico e="🧑"/> {t.namaPembeli}</span>}
                             {t.returned&&<span style={{padding:"1px 7px",borderRadius:20,
                               background:C.a1,color:C.a,fontSize:9.5,fontWeight:700}}>Retur</span>}
                           </div>
@@ -4472,7 +4582,7 @@ function AppInner() {
                         </div>
                         <div style={{display:"flex",gap:8}}>
                           {t.returned
-                            ?<span style={{flex:1,padding:"9px",textAlign:"center",color:C.a,fontSize:12,fontWeight:600}}>✓ Sudah diretur</span>
+                            ?<span style={{flex:1,padding:"9px",textAlign:"center",color:C.a,fontSize:12,fontWeight:600}}><Ico e="✓"/> Sudah diretur</span>
                             :<button onClick={e=>{e.stopPropagation();if(window.confirm("Retur transaksi ini?\nStok akan dikembalikan."))doRetur(t);}} className="press"
                               style={{flex:1,padding:"9px",background:C.a1,border:`1.5px solid ${C.a}33`,
                                 borderRadius:9,color:C.a,fontSize:12,fontWeight:700,fontFamily:F.sans}}>↩ Retur</button>}
@@ -4507,22 +4617,22 @@ function AppInner() {
               ],"Absensi","absensi")} className="press"
                 style={{padding:"7px 14px",background:C.g1,border:`1px solid ${C.g}33`,borderRadius:8,color:C.g,fontSize:12,fontWeight:700,fontFamily:F.sans}}>⬇ Excel</button>
               <button onClick={async()=>{if(!window.confirm("Reset absensi hari ini?")) return;await fbClearAttendanceByDate(todayDate()).catch(()=>{});toast("Absensi hari ini direset","warn");}} className="press"
-                style={{padding:"7px 14px",background:C.r1,border:`1px solid ${C.r}33`,borderRadius:8,color:C.r,fontSize:12,fontWeight:700,fontFamily:F.sans}}>🗑 Reset Hari Ini</button>
+                style={{padding:"7px 14px",background:C.r1,border:`1px solid ${C.r}33`,borderRadius:8,color:C.r,fontSize:12,fontWeight:700,fontFamily:F.sans}}><Ico e="🗑"/> Reset Hari Ini</button>
             </div>
           </div>
           <Card style={{padding:"12px 14px"}}>
             <div style={{display:"flex",gap:7,flexWrap:"wrap",alignItems:"flex-end"}}>
               <div style={{flex:"1 1 180px",minWidth:160}}>
-                <div style={{fontSize:9.5,fontWeight:700,color:C.t2,textTransform:"uppercase",letterSpacing:.5,marginBottom:5}}>Pegawai</div>
+                <div style={{fontSize:12,fontWeight:700,color:C.t2,textTransform:"none",letterSpacing:0,marginBottom:5}}>Pegawai</div>
                 <select value={selUser} onChange={e=>setSelUser(e.target.value)} style={{width:"100%",padding:"10px 12px",background:C.bg3,border:`1.5px solid ${C.bo0}`,borderRadius:10,color:C.t0,fontSize:13,fontFamily:F.sans,cursor:"pointer"}}>
                   <option value="ALL">Semua Pegawai</option>
-                  {users.filter(u=>u.role!=="admin").map(u=><option key={u.id} value={String(u.id)}>{u.avatar} {u.name}</option>)}
+                  {users.filter(u=>u.role!=="admin").map(u=><option key={u.id} value={String(u.id)}>{u.name}</option>)}
                 </select>
               </div>
               <div style={{flex:"2 1 300px"}}>
-                <div style={{fontSize:9.5,fontWeight:700,color:C.t2,textTransform:"uppercase",letterSpacing:.5,marginBottom:5}}>Rentang Waktu</div>
+                <div style={{fontSize:12,fontWeight:700,color:C.t2,textTransform:"none",letterSpacing:0,marginBottom:5}}>Rentang Waktu</div>
                 <div style={{display:"flex",gap:6,flexWrap:"wrap",alignItems:"center"}}>
-                  {[["all","📅 Semua"],["today","Hari Ini"],["week","7 Hari"],["month","📆 Bulan Ini"],["custom","Rentang"]].map(([v,l])=>(
+                  {[["all","Semua"],["today","Hari Ini"],["week","7 Hari"],["month","Bulan Ini"],["custom","Rentang"]].map(([v,l])=>(
                     <button key={v} onClick={()=>setAttRange(v)}
                       className={`chip${attRange===v?" on":""}`}>{l}</button>))}
                   {attRange==="custom"&&<>
@@ -4541,7 +4651,7 @@ function AppInner() {
           {/* Ringkasan */}
           <Card noPad style={{overflow:"hidden"}}>
             <div style={{padding:"12px 14px",borderBottom:`1px solid ${C.bo0}`}}>
-              <span style={{fontSize:10,fontWeight:700,color:C.t2,textTransform:"uppercase",letterSpacing:1}}>Ringkasan Kehadiran ({Object.keys(attByUser).length} pegawai)</span>
+              <span style={{fontSize:12,fontWeight:700,color:C.t2,textTransform:"none",letterSpacing:0}}>Ringkasan Kehadiran ({Object.keys(attByUser).length} pegawai)</span>
             </div>
             {Object.keys(attByUser).length===0
               ?<div style={{padding:"24px",textAlign:"center",color:C.t3,fontSize:12}}>Belum ada data untuk periode ini</div>
@@ -4554,7 +4664,7 @@ function AppInner() {
                     const avgJam=`${Math.floor(avgMin/60)}j ${avgMin%60}m`;
                     return <tr key={au.userId} className="hrow" style={{borderTop:`1px solid ${C.bo0}`,background:i%2===0?"transparent":C.bg0}}>
                       <td style={{padding:"14px 13px",fontWeight:700,display:"flex",alignItems:"center",gap:6}}>
-                        <span>{users.find(u=>u.id===au.userId)?.avatar||"🧑"}</span>{au.name}</td>
+                        <Avatar name={au.name} size={24} style={{marginRight:8}}/>{au.name}</td>
                       <td style={{padding:"14px 13px"}}><RoleTag role={au.role}/></td>
                       <td style={{padding:"14px 13px",fontFamily:F.mono,fontWeight:700,color:C.g,fontSize:14}}>{au.days}</td>
                       <td style={{padding:"14px 13px",fontFamily:F.mono,color:C.cy}}>{au.totalMinutes>0?totalJam:"-"}</td>
@@ -4568,7 +4678,7 @@ function AppInner() {
           {/* Detail */}
           <Card noPad style={{overflow:"hidden"}}>
             <div style={{padding:"12px 14px",borderBottom:`1px solid ${C.bo0}`}}>
-              <span style={{fontSize:10,fontWeight:700,color:C.t2,textTransform:"uppercase",letterSpacing:1}}>Detail Absensi ({attFiltered.length})</span>
+              <span style={{fontSize:12,fontWeight:700,color:C.t2,textTransform:"none",letterSpacing:0}}>Detail Absensi ({attFiltered.length})</span>
             </div>
             {attFiltered.length===0?<div style={{padding:"24px",textAlign:"center",color:C.t3,fontSize:12}}>Tidak ada data</div>
             :<>
@@ -4579,7 +4689,7 @@ function AppInner() {
                     <tr key={a.id} className="hrow" style={{borderTop:`1px solid ${C.bo0}`,background:i%2===0?"transparent":C.bg0}}>
                       <td style={{padding:"14px 13px",fontFamily:F.mono,fontSize:10,color:C.t2,whiteSpace:"nowrap"}}>{a.date}</td>
                       <td style={{padding:"14px 13px",fontWeight:600,display:"flex",alignItems:"center",gap:5}}>
-                        <span>{users.find(u=>u.id===a.userId)?.avatar||"🧑"}</span>{a.name}</td>
+                        <Avatar name={a.name} size={26}/>{a.name}</td>
                       <td style={{padding:"14px 13px"}}><RoleTag role={a.role}/></td>
                       <td style={{padding:"14px 13px"}}><BizChip biz={a.business} sm/></td>
                       <td style={{padding:"14px 13px",fontFamily:F.mono,fontSize:11,color:C.g}}>{a.checkIn}</td>
@@ -4594,7 +4704,7 @@ function AppInner() {
                 {[...attFiltered].sort((a,b)=>{try{return new Date(b.checkInISO||b.checkIn)-new Date(a.checkInISO||a.checkIn);}catch{return 0;}}).map(a=>(
                   <div key={a.id} style={{background:C.bg2,borderRadius:14,border:`1px solid ${a.checkOut?C.bo0:C.a+"44"}`,padding:"13px 14px"}}>
                     <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:8}}>
-                      <div style={{width:40,height:40,borderRadius:11,background:C.bg3,display:"flex",alignItems:"center",justifyContent:"center",fontSize:20,flexShrink:0}}>{users.find(u=>u.id===a.userId)?.avatar||"🧑"}</div>
+                      <Avatar name={a.name} size={40}/>
                       <div style={{flex:1,minWidth:0}}>
                         <div style={{fontSize:14,fontWeight:700}}>{a.name}</div>
                         <div style={{display:"flex",gap:5,alignItems:"center",marginTop:2,flexWrap:"wrap"}}>
@@ -4666,7 +4776,7 @@ function AppInner() {
                 </>}
               </div>
             </Card>
-            {slogsFiltered.length===0?<div style={{textAlign:"center",padding:"48px",color:C.t3}}><div style={{fontSize:40,opacity:.08,marginBottom:10}}>📋</div><p>Tidak ada data</p></div>
+            {slogsFiltered.length===0?<div style={{textAlign:"center",padding:"48px",color:C.t3}}><div style={{fontSize:40,opacity:.08,marginBottom:10}}><Ico e="📋" size={40}/></div><p>Tidak ada data</p></div>
             :<Card noPad style={{overflow:"hidden"}}>
               <TableWrap>
                 <table style={{width:"100%",borderCollapse:"collapse",fontSize:11.5,minWidth:540}}>
@@ -4748,7 +4858,7 @@ function AppInner() {
         {adminTab==="sheets"&&<div style={{maxWidth:640,display:"flex",flexDirection:"column",gap:10}}>
           <h2 style={{fontSize:15,fontWeight:800}}>Google Sheets Sync</h2>
           <Card>
-            <div style={{fontSize:10,fontWeight:700,color:C.g,textTransform:"uppercase",letterSpacing:1,marginBottom:12}}>📋 Cara Setup</div>
+            <div style={{fontSize:12,fontWeight:700,color:C.g,textTransform:"none",letterSpacing:0,marginBottom:12}}><Ico e="📋"/> Cara Setup</div>
             {[{n:1,t:"Buat Spreadsheet Baru",d:"Buka sheets.google.com, beri nama 'Kasir JE Grup'"},
               {n:2,t:"Buka Apps Script",d:"Menu Ekstensi → Apps Script, hapus kode lama"},
               {n:3,t:"Paste Kode",d:"Klik tombol salin di bawah dan paste ke editor script"},
@@ -4761,14 +4871,14 @@ function AppInner() {
           </Card>
           <Card noPad style={{overflow:"hidden"}}>
             <div style={{padding:"10px 14px",borderBottom:`1px solid ${C.bo0}`,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-              <span style={{fontSize:10,fontWeight:700,color:C.t2,textTransform:"uppercase"}}>Kode Apps Script</span>
+              <span style={{fontSize:12,fontWeight:700,color:C.t2,textTransform:"none"}}>Kode Apps Script</span>
               <button onClick={()=>{navigator.clipboard.writeText(APPSCRIPT_CODE.trim());setCopyDone(true);setTimeout(()=>setCopyDone(false),2000);toast("✓ Kode disalin!");}} className="press"
                 style={{padding:"4px 10px",background:copyDone?C.g1:C.bg4,border:`1px solid ${copyDone?C.g:C.bo1}`,borderRadius:7,color:copyDone?C.g:C.t1,fontSize:10,fontWeight:700}}>{copyDone?"Tersalin":"Salin Kode"}</button>
             </div>
             <pre style={{padding:"12px 14px",fontSize:10,fontFamily:F.mono,color:C.t2,overflowX:"auto",maxHeight:200,background:C.bg0}}>{APPSCRIPT_CODE.trim()}</pre>
           </Card>
           <Card>
-            <div style={{fontSize:10,fontWeight:700,color:C.t2,textTransform:"uppercase",marginBottom:10}}>URL Web App</div>
+            <div style={{fontSize:12,fontWeight:700,color:C.t2,textTransform:"none",marginBottom:10}}>URL Web App</div>
             <div style={{display:"flex",gap:8,marginBottom:10}}>
               <input value={gsUrl} onChange={e=>{setGsUrl(e.target.value);localStorage.setItem("je_gs_url",e.target.value);}} placeholder="https://script.google.com/macros/s/.../exec"
                 style={{flex:1,padding:"11px 13px",background:C.bg3,border:`1.5px solid ${C.bo0}`,borderRadius:10,color:C.t0,fontSize:12,fontFamily:F.mono}}/>
@@ -4780,7 +4890,7 @@ function AppInner() {
                 setGsLoad(false);
               }} disabled={gsLoad}>{gsLoad?"Memproses...":"↑ Ekspor Data"}</Btn>
             </div>
-            <div style={{fontSize:11,color:C.a}}>💡 Gunakan fitur ini untuk backup database atau membuat laporan di Excel.</div>
+            <div style={{fontSize:11,color:C.a}}><Ico e="💡"/> Gunakan fitur ini untuk backup database atau membuat laporan di Excel.</div>
           </Card>
           <Card style={{marginTop:10}}>
              <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
@@ -4830,14 +4940,12 @@ function AppInner() {
         {BNAV_TABS.map(t=>{const isAct=adminTab===t.id&&!showMoreDrawer;
           return <button key={t.id} className={`bnavbtn${isAct?" active":""}`}
             onClick={()=>{setAdminTab(t.id);setSearchQ("");setPModal(false);setShowMoreDrawer(false);setEditPid(null);setInlineAddMode(false);}}>
-            <span className="bnav-icon">{t.ic}</span>
-            <span className="bnav-label" style={{color:isAct?C.g:C.t2}}>{t.label}</span>
-            {isAct&&<div className="bnav-dot"/>}
+            <span className="bnav-icon"><t.ic size={22} strokeWidth={isAct?2.2:1.8}/></span>
+            <span className="bnav-label">{t.label}</span>
           </button>;})}
         <button className={`bnavbtn${isMoreTab||showMoreDrawer?" active":""}`} onClick={()=>setShowMoreDrawer(x=>!x)}>
-          <span className="bnav-icon" style={{fontSize:28,fontWeight:300,lineHeight:.9}}>⋯</span>
-          <span className="bnav-label" style={{color:isMoreTab||showMoreDrawer?C.g:C.t2}}>Lainnya</span>
-          {(isMoreTab||showMoreDrawer)&&<div className="bnav-dot"/>}
+          <span className="bnav-icon"><MoreHorizontal size={22} strokeWidth={isMoreTab||showMoreDrawer?2.2:1.8}/></span>
+          <span className="bnav-label">Lainnya</span>
         </button>
       </nav>
     </div>;

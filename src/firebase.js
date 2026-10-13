@@ -11,8 +11,19 @@ import {
 
 // ── Config ─────────────────────────────────────────────────────
 const CONFIG_KEY = "je_grup_fb_config";
-export const loadConfig  = () => { try { return JSON.parse(localStorage.getItem(CONFIG_KEY)); } catch { return null; } };
-export const saveConfig  = (c) => localStorage.setItem(CONFIG_KEY, JSON.stringify(c));
+// Konfigurasi dari .env (VITE_FIREBASE_*) diprioritaskan; jika kosong, pakai form setup (localStorage).
+const E = import.meta.env;
+const ENV_CONFIG = (E.VITE_FIREBASE_API_KEY && E.VITE_FIREBASE_PROJECT_ID) ? {
+  apiKey: E.VITE_FIREBASE_API_KEY,
+  authDomain: E.VITE_FIREBASE_AUTH_DOMAIN || `${E.VITE_FIREBASE_PROJECT_ID}.firebaseapp.com`,
+  projectId: E.VITE_FIREBASE_PROJECT_ID,
+  storageBucket: E.VITE_FIREBASE_STORAGE_BUCKET || `${E.VITE_FIREBASE_PROJECT_ID}.appspot.com`,
+  messagingSenderId: E.VITE_FIREBASE_MESSAGING_SENDER_ID || "",
+  appId: E.VITE_FIREBASE_APP_ID || "",
+} : null;
+export const hasEnvConfig = !!ENV_CONFIG;
+export const loadConfig  = () => { if (ENV_CONFIG) return ENV_CONFIG; try { return JSON.parse(localStorage.getItem(CONFIG_KEY)); } catch { return null; } };
+export const saveConfig  = (c) => ENV_CONFIG ? null : localStorage.setItem(CONFIG_KEY, JSON.stringify(c));
 export const clearConfig = () => localStorage.removeItem(CONFIG_KEY);
 
 // ── Password hashing (SHA-256) ─────────────────────────────────

@@ -5,8 +5,8 @@
   "start_url": "/",
   "display": "standalone",
   "orientation": "portrait-primary",
-  "background_color": "#020817",
-  "theme_color": "#020817",
+  "background_color": "#232C75",
+  "theme_color": "#232C75",
   "categories": ["business", "finance", "productivity"],
   "icons": [
     { "src": "/icons/icon-72.png",  "sizes": "72x72",   "type": "image/png", "purpose": "any maskable" },
