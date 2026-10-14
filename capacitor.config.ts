@@ -14,18 +14,18 @@ const config: CapacitorConfig = {
     buildOptions: {
       releaseType: 'APK',
     },
-    backgroundColor: '#020817',
+    backgroundColor: '#F4F5FA',
     allowMixedContent: true,
   },
   ios: {
-    backgroundColor: '#020817',
+    backgroundColor: '#F4F5FA',
     contentInset: 'automatic',
     limitsNavigationsToAppBoundDomains: true,
   },
   plugins: {
     SplashScreen: {
       launchShowDuration: 2000,
-      backgroundColor: '#020817',
+      backgroundColor: '#232C75',
       androidSplashResourceName: 'splash',
       androidScaleType: 'CENTER_CROP',
       showSpinner: false,
@@ -33,8 +33,8 @@ const config: CapacitorConfig = {
       splashImmersive: true,
     },
     StatusBar: {
-      style: 'Dark',
-      backgroundColor: '#020817',
+      style: 'Light',
+      backgroundColor: '#FFFFFF',
     },
   },
 };
