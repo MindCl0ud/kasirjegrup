@@ -10,8 +10,7 @@ Mendukung **100% offline** setelah setup awal.
 | Username     | Password  | Role  | Akses                    |
 |--------------|-----------|-------|--------------------------|
 | admin        | admin123  | Admin | JS Clothing + JB Store   |
-| kasir.js     | kasir123  | Kasir | JS Clothing              |
-| kasir.jb     | kasir123  | Kasir | JB Store                 |
+| kasir        | kasir123  | Kasir | JS Clothing + JB Store (satu layar kasir) |
 | stok.js      | stok123   | Stok  | JS Clothing              |
 | stok.jb      | stok123   | Stok  | JB Store                 |
 

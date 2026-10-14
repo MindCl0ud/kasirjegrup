@@ -17,7 +17,7 @@ import {
   Search, Pencil, Plus, ScanLine, Target, Store, Receipt, CalendarDays, CreditCard, KeyRound, Trash2,
   Briefcase, Factory, Sun, Moon, Flame, Lightbulb, ShoppingCart, Lock, BarChart3, TrendingUp, Link2, Tag,
   Shirt, Sparkles, Home, Printer, RefreshCw, Folder, FileText, Eye, EyeOff, Building2, LayoutDashboard,
-  Undo2, Activity, ChevronRight, LogOut, Bell, ArrowLeftRight, ArrowLeft, MoreHorizontal, WifiOff, Info,
+  Undo2, Activity, PanelLeftClose, PanelLeftOpen, ChevronRight, LogOut, Bell, ArrowLeftRight, ArrowLeft, MoreHorizontal, WifiOff, Info,
 } from "lucide-react";
 
 // ─────────────────────────────────────────────────────────────
@@ -29,8 +29,7 @@ const BIZ = {
 };
 const SEED_USERS = [
   { id:1, username:"admin",    password:"admin123", name:"Administrator",  role:"admin", access:["JS_CLOTHING","JB_STORE"], avatar:"👑", active:true, faceDescriptor:null },
-  { id:2, username:"kasir.js", password:"kasir123", name:"Kasir JS Cloth", role:"kasir", access:["JS_CLOTHING"],           avatar:"🧑‍💼", active:true, faceDescriptor:null },
-  { id:3, username:"kasir.jb", password:"kasir123", name:"Kasir JB Store", role:"kasir", access:["JB_STORE"],              avatar:"👩‍💼", active:true, faceDescriptor:null },
+  { id:2, username:"kasir",    password:"kasir123", name:"Kasir JE Grup",  role:"kasir", access:["JS_CLOTHING","JB_STORE"], avatar:"🧑‍💼", active:true, faceDescriptor:null },
   { id:4, username:"stok.js",  password:"stok123",  name:"Stok JS Cloth",  role:"stok",  access:["JS_CLOTHING"],           avatar:"🧑‍🏭", active:true, faceDescriptor:null },
   { id:5, username:"stok.jb",  password:"stok123",  name:"Stok JB Store",  role:"stok",  access:["JB_STORE"],              avatar:"👩‍🏭", active:true, faceDescriptor:null },
 ];
@@ -215,6 +214,15 @@ const makeCSS = () => `
   .srow .sic{width:34px;height:34px;border-radius:10px;display:grid;place-items:center;flex-shrink:0;background:${C.bg3};color:${C.t1};}
   .hbtn{position:relative;width:40px;height:40px;border-radius:12px;border:none;background:transparent;color:${C.t1};display:grid;place-items:center;}
   .hbtn:hover{background:${C.bg3};}
+
+  .admin-body{flex:1;display:flex;min-height:0;min-width:0;}
+  .admin-content{min-width:0;}
+  .sbtn{background:transparent;}
+  .sbtn:not([aria-current]):hover{background:${C.bg3};}
+  .sresize{position:absolute;top:0;bottom:0;right:-5px;width:10px;cursor:col-resize;z-index:5;touch-action:none;}
+  .sresize::after{content:"";position:absolute;top:0;bottom:0;left:4px;width:2px;background:transparent;transition:background .15s;}
+  .sresize:hover::after,.sresize.on::after,.sresize:focus-visible::after{background:${C.pri};}
+  .sresize:focus-visible{outline:none;}
 
   /* ── Kartu & chip ── */
   .mcard{background:${C.bg2};border-radius:16px;border:1px solid ${C.bo0};padding:14px 15px;box-shadow:${C.sh};transition:transform .12s,background .1s;}
@@ -1262,7 +1270,7 @@ function KasirStokPanel({prods, biz, onClose, onAdjust, onAddToCart}) {
   const list = prods.filter(p=>!search ||
     p.name.toLowerCase().includes(search.toLowerCase()) ||
     p.barcode.includes(search));
-  const bc = biz==="JS_CLOTHING" ? C.b : C.p;
+  const bc = !biz ? C.pri : biz==="JS_CLOTHING" ? C.b : C.p;
   return (
     <div style={{position:"fixed",inset:0,background:"rgba(12,16,46,.55)",zIndex:600,
       display:"flex",alignItems:"flex-end",justifyContent:"center",fontFamily:F.sans}}
@@ -1897,6 +1905,47 @@ function syncSheet(sh,rows,headers){
 // ─────────────────────────────────────────────────────────────
 //  MAIN APP
 // ─────────────────────────────────────────────────────────────
+function AdminSidebar({tabs,active,onSelect}) {
+  const MIN=208,MAX=380,RAIL=68,SNAP=150;
+  const [w,setW]=React.useState(()=>{const v=parseInt(localStorage.getItem("je_sidew"),10);return v>=RAIL&&v<=MAX?v:248;});
+  const [drag,setDrag]=React.useState(false);
+  const ref=React.useRef(null);
+  const rail=w<=RAIL;
+  const commit=v=>{setW(v);try{localStorage.setItem("je_sidew",String(v));}catch{}};
+  const fromX=x=>{const left=ref.current?.getBoundingClientRect().left||0;const raw=x-left;return raw<SNAP?RAIL:Math.min(MAX,Math.max(MIN,raw));};
+  const down=e=>{e.preventDefault();e.currentTarget.setPointerCapture(e.pointerId);document.body.style.userSelect="none";setDrag(true);};
+  const move=e=>{if(drag)setW(fromX(e.clientX));};
+  const up=e=>{if(!drag)return;setDrag(false);document.body.style.userSelect="";try{e.currentTarget.releasePointerCapture(e.pointerId);}catch{}commit(fromX(e.clientX));};
+  const key=e=>{
+    if(e.key==="ArrowLeft")commit(rail?RAIL:(w-16<SNAP?RAIL:Math.max(MIN,w-16)));
+    else if(e.key==="ArrowRight")commit(rail?MIN:Math.min(MAX,w+16));
+    else if(e.key==="Home")commit(248);
+    else return;
+    e.preventDefault();
+  };
+  return <div ref={ref} className="hide-mobile" style={{width:w,flexShrink:0,position:"relative",background:C.bg2,borderRight:`1px solid ${C.bo0}`,
+    transition:drag?"none":"width .18s ease",display:"flex",flexDirection:"column",minHeight:0}}>
+    <nav aria-label="Menu admin" style={{flex:1,overflowY:"auto",overflowX:"hidden",padding:rail?"12px 10px":"12px"}}>
+      {tabs.map(t=>{const on=active===t.id;
+        return <button key={t.id} onClick={()=>onSelect(t.id)} title={rail?t.l:undefined} aria-label={rail?t.l:undefined} aria-current={on?"page":undefined} className="press sbtn"
+          style={{display:"flex",alignItems:"center",gap:12,width:"100%",height:44,padding:rail?0:"0 12px",justifyContent:rail?"center":"flex-start",marginBottom:2,
+            border:"none",borderRadius:12,background:on?C.pri1:undefined,color:on?C.pri:C.t1,fontSize:14,fontWeight:on?700:600,whiteSpace:"nowrap"}}>
+          <t.ic size={20} strokeWidth={on?2.2:1.8} style={{flexShrink:0}}/>
+          {!rail&&<span style={{overflow:"hidden",textOverflow:"ellipsis"}}>{t.l}</span>}
+        </button>;})}
+    </nav>
+    <div style={{padding:rail?"10px":"10px 12px",borderTop:`1px solid ${C.bo0}`}}>
+      <button onClick={()=>commit(rail?248:RAIL)} className="press sbtn" aria-label={rail?"Perluas menu":"Ciutkan menu"} title={rail?"Perluas menu":undefined}
+        style={{display:"flex",alignItems:"center",gap:12,width:"100%",height:40,padding:rail?0:"0 12px",justifyContent:rail?"center":"flex-start",border:"none",borderRadius:10,background:undefined,color:C.t2,fontSize:13,fontWeight:600}}>
+        {rail?<PanelLeftOpen size={19}/>:<><PanelLeftClose size={19}/>Ciutkan menu</>}
+      </button>
+    </div>
+    <div role="separator" aria-orientation="vertical" aria-label="Ubah lebar menu" aria-valuenow={w} aria-valuemin={RAIL} aria-valuemax={MAX} tabIndex={0}
+      onPointerDown={down} onPointerMove={move} onPointerUp={up} onPointerCancel={up} onKeyDown={key} onDoubleClick={()=>commit(rail?248:RAIL)}
+      className={`sresize${drag?" on":""}`}/>
+  </div>;
+}
+
 function AppInner() {
   // ─── Firebase ───
   const [fbReady,setFbReady]=useState(false);
@@ -2059,9 +2108,12 @@ function AppInner() {
     if(result!==null) toast(`🕐 Absen masuk tercatat — ${u.name}`,"info");
   };
   const doCheckOut=async()=>{
-    const rec=todayAtt(user?.id,biz);if(!rec) return;
-    await fbCheckOut(rec.id,nowStr()).catch(()=>{});
-    toast("✅ Absen pulang tercatat!");
+    let did=false;
+    for(const b of (user?.role==="kasir"?user.access:[biz])){
+      const rec=todayAtt(user?.id,b);
+      if(rec&&!rec.checkOut){await fbCheckOut(rec.id,nowStr()).catch(()=>{});did=true;}
+    }
+    if(did) toast("✅ Absen pulang tercatat!");
   };
   // ─── Login ───
   const doLogin=async()=>{
@@ -2082,8 +2134,9 @@ function AppInner() {
   };
   const afterFace=async(u)=>{
     setUser(u);setPending(null);
-    if(u.access.length===1){
-      const b=u.access[0];setBiz(b);await doCheckIn(u,b);
+    if(u.role==="kasir"||u.access.length===1){
+      const b=u.access[0];setBiz(b);
+      for(const x of (u.role==="kasir"?u.access:[b])) await doCheckIn(u,x);
       const sc=u.role==="kasir"?"kasir":"stok";
       setScreen(sc);
       sessionStorage.setItem("je_session",JSON.stringify({userId:u.id,biz:b,screen:sc,t:Date.now()}));
@@ -2091,7 +2144,7 @@ function AppInner() {
   };
   const doLogout=()=>{
     setUser(null);setBiz(null);setScreen("login");setSessionStart(null);
-    setCart([]);setScanIn("");setStokTarget(null);setReceipt(null);
+    setCart([]);setScanIn("");setStokTarget(null);setReceipt(null);setReceiptQueue([]);
     sessionStorage.removeItem("je_session");
   };
   const handlePulang=async()=>{await doCheckOut();setTimeout(doLogout,1500);};
@@ -2100,6 +2153,7 @@ function AppInner() {
   const [cart,setCart]=useState([]);
   const [scanIn,setScanIn]=useState("");
   const [receipt,setReceipt]=useState(null);
+  const [receiptQueue,setReceiptQueue]=useState([]);
   const [showStock,setShowStock]=useState(false);
   const [showLowStock,setShowLowStock]=useState(false);
   const [showKasirStok,setShowKasirStok]=useState(false);
@@ -2177,6 +2231,7 @@ function AppInner() {
 
   // ─── Helpers ───
   const bizProds=(b=biz)=>prods.filter(p=>p.business===b);
+  const kasirProds=()=>prods.filter(p=>user?.access?.includes(p.business));
   const parseD=str=>{
     try{
       if(!str||typeof str!=="string") return null;
@@ -2224,17 +2279,18 @@ function AppInner() {
         if(ex.qty>=p.stock){toast("Stok tidak cukup","warn");return prev;}
         return prev.map(c=>c.barcode===p.barcode?{...c,qty:c.qty+qty}:c);
       }
-      return [...prev,{id:p.id,barcode:p.barcode,name:p.name,price:p.price,hpp:p.hpp||0,stock:p.stock,qty}];
+      return [...prev,{id:p.id,barcode:p.barcode,name:p.name,price:p.price,hpp:p.hpp||0,stock:p.stock,qty,business:p.business}];
     });
   };
   const kasirScan=useCallback(async(bc)=>{
     bc=bc.trim();if(!bc) return;
-    const p=prods.find(x=>x.barcode===bc&&x.business===biz) || prods.find(x=>x.name.toLowerCase().includes(bc.toLowerCase())&&x.business===biz);
+    const ok=x=>user?.access?.includes(x.business);
+    const p=prods.find(x=>x.barcode===bc&&ok(x)) || prods.find(x=>x.name.toLowerCase().includes(bc.toLowerCase())&&ok(x));
     if(!p){toast("Produk tidak ditemukan: "+bc,"err");setScanIn("");return;}
     if(p.stock===0){toast("Stok "+p.name+" habis!","warn");setScanIn("");return;}
     // Check if this product has add-ons configured
     const addonIds=p.addons||[];
-    const availableAddons=addonIds.map(id=>prods.find(x=>x.id===id&&x.business===biz&&x.stock>0)).filter(Boolean);
+    const availableAddons=addonIds.map(id=>prods.find(x=>x.id===id&&x.business===p.business&&x.stock>0)).filter(Boolean);
     addToCart(p);
     setScanIn("");
     if(availableAddons.length>0){
@@ -2243,7 +2299,7 @@ function AppInner() {
       toast("✓ "+p.name);
       scanRef.current?.focus();
     }
-  },[prods,biz,toast]);
+  },[prods,user,toast]);
 
   const calcDiscount=(subtotal)=>{
     if(!discount.value||+discount.value<=0) return 0;
@@ -2254,21 +2310,37 @@ function AppInner() {
   const doCheckout=useCallback(async()=>{
     if(!cart.length) return;
     const subtotal=cart.reduce((s,c)=>s+c.price*c.qty,0);
-    const discAmt=calcDiscount(subtotal);
-    const total=subtotal-discAmt;
-    const totalHpp=cart.reduce((s,c)=>s+(c.hpp||0)*c.qty,0);
-    const trx={id:"TRX-"+uid().toUpperCase(),date:nowStr(),kasir:user.name,kasirId:user.id,business:biz,
-      namaPembeli:namaPembeli.trim()||"Umum",
-      items:[...cart],subtotal,discount:discAmt,total,totalHpp,profit:total-totalHpp,payment:payMethod,returned:false};
-    const stockUpdates=cart.map(c=>({productId:c.id,newStock:c.stock-c.qty}));
-    const logs=cart.map(c=>({id:"LOG-"+uid(),date:nowStr(),barcode:c.barcode,name:c.name,
-      type:"keluar",qty:c.qty,before:c.stock,after:c.stock-c.qty,by:user.name,business:biz}));
+    const discAll=calcDiscount(subtotal);
+    // Satu keranjang bisa berisi dua bisnis: transaksi dipecah per bisnis agar laporan & stok tetap terpisah.
+    const groups={};
+    cart.forEach(c=>{const b=c.business||biz;(groups[b]=groups[b]||[]).push(c);});
+    const ids=Object.keys(groups);
+    let discLeft=discAll;const made=[];
     try{
-      await fbAddTransaction(trx,stockUpdates,logs);
+      for(let i=0;i<ids.length;i++){
+        const b=ids[i],items=groups[b];
+        const sub=items.reduce((s,c)=>s+c.price*c.qty,0);
+        const disc=i===ids.length-1?discLeft:Math.min(sub,Math.round(discAll*sub/subtotal));
+        discLeft-=disc;
+        const total=sub-disc;
+        const totalHpp=items.reduce((s,c)=>s+(c.hpp||0)*c.qty,0);
+        const trx={id:"TRX-"+uid().toUpperCase(),date:nowStr(),kasir:user.name,kasirId:user.id,business:b,
+          namaPembeli:namaPembeli.trim()||"Umum",
+          items:items.map(c=>({...c})),subtotal:sub,discount:disc,total,totalHpp,profit:total-totalHpp,payment:payMethod,returned:false};
+        const stockUpdates=items.map(c=>({productId:c.id,newStock:c.stock-c.qty}));
+        const logs=items.map(c=>({id:"LOG-"+uid(),date:nowStr(),barcode:c.barcode,name:c.name,
+          type:"keluar",qty:c.qty,before:c.stock,after:c.stock-c.qty,by:user.name,business:b}));
+        await fbAddTransaction(trx,stockUpdates,logs);
+        made.push(trx);
+      }
       setCart([]);setDiscount({type:"pct",value:""});setPayMethod("Tunai");setNamaPembeli("");
-      setShowCheckout(false);setReceipt(trx);toast("✅ Transaksi berhasil! "+rp(total));
-    }catch(e){toast("Gagal: "+e.message,"err");}
-  },[cart,user,biz,discount,payMethod,toast]);
+      setShowCheckout(false);setReceipt(made[0]);setReceiptQueue(made.slice(1));
+      toast("✅ Transaksi berhasil! "+rp(subtotal-discAll)+(made.length>1?` · ${made.length} struk`:""));
+    }catch(e){
+      if(made.length) setCart(prev=>prev.filter(c=>!made.some(t=>t.items.some(i=>i.barcode===c.barcode))));
+      toast("Gagal: "+e.message,"err");
+    }
+  },[cart,user,biz,discount,payMethod,namaPembeli,toast]);
 
   // ─── Stok functions ───
  const stokScanFn=useCallback((bc)=>{
@@ -2737,7 +2809,7 @@ function AppInner() {
           <h2 style={{fontSize:21,fontWeight:800,letterSpacing:"-.02em"}}>Masuk</h2>
           <p style={{fontSize:13.5,color:C.t2,marginTop:4,lineHeight:1.5}}>Gunakan akun yang diberikan admin.</p>
         </div>
-        <Inp value={lf.u} onChange={e=>setLf(x=>({...x,u:e.target.value}))} onKeyDown={e=>e.key==="Enter"&&doLogin()} placeholder="mis. kasir.js" icon={<User size={17}/>} label="Username"/>
+        <Inp value={lf.u} onChange={e=>setLf(x=>({...x,u:e.target.value}))} onKeyDown={e=>e.key==="Enter"&&doLogin()} placeholder="mis. kasir" icon={<User size={17}/>} label="Username"/>
         <div style={{position:"relative"}}>
           <Inp value={lf.p} onChange={e=>setLf(x=>({...x,p:e.target.value}))} type={showPw?"text":"password"} onKeyDown={e=>e.key==="Enter"&&doLogin()} placeholder="Password" icon={<Lock size={17}/>} label="Password" style={{paddingRight:48}}/>
           <button type="button" onClick={()=>setShowPw(x=>!x)} aria-label={showPw?"Sembunyikan password":"Tampilkan password"} className="press"
@@ -2817,12 +2889,11 @@ function AppInner() {
     const discAmt=calcDiscount(subtotal);
     const total=subtotal-discAmt;
     const totalHpp=cart.reduce((s,c)=>s+(c.hpp||0)*c.qty,0);
-    const bc=biz==="JS_CLOTHING"?C.b:C.p;
+    const bc=C.pri;
 
     return <div style={{fontFamily:F.sans,background:C.bg1,color:C.t0,height:"100vh",display:"flex",flexDirection:"column"}}>
       <style>{CSS}</style><Toast n={notif}/>
-      <Header biz={biz} user={user} online={online} onLogout={doLogout}
-        onSwitchBiz={user?.access?.length>1?()=>{setCart([]);setScreen("bizselect");}:null}
+      <Header title="Kasir" user={user} online={online} onLogout={doLogout}
         onAbsenPulang={handlePulang} hasCheckedIn={hasCheckedIn}
         onToggleTheme={toggleTheme} isDark={isDark} lowStockCount={lowStockCount} onLowStockClick={()=>setShowLowStock(true)} expireCount={nearExpiry.length} expiredCount={expiredProds.length} onExpireClick={()=>setShowExpirePopup(true)}/>
 
@@ -2837,13 +2908,13 @@ function AppInner() {
         }}
         onSkip={()=>{setAddonPrompt(null);scanRef.current?.focus();}}
       />}
-      {receipt&&<Invoice receipt={receipt} biz={biz}
-        onClose={()=>{setReceipt(null);scanRef.current?.focus();}}
-        onNew={()=>{setReceipt(null);setCart([]);scanRef.current?.focus();}}/>}
+      {receipt&&<Invoice receipt={receipt} biz={receipt.business}
+        onClose={()=>{setReceipt(receiptQueue[0]||null);setReceiptQueue(q=>q.slice(1));scanRef.current?.focus();}}
+        onNew={()=>{setReceipt(receiptQueue[0]||null);setReceiptQueue(q=>q.slice(1));scanRef.current?.focus();}}/>}
       {/* Stock check */}
-      {showStock&&<StockCheckModal prods={bizProds()} biz={biz} onClose={()=>setShowStock(false)}/> }
+      {showStock&&<StockCheckModal prods={kasirProds()} biz={null} onClose={()=>setShowStock(false)}/> }
       {showKasirStok&&<KasirStokPanel
-        prods={bizProds()} biz={biz}
+        prods={kasirProds()} biz={null}
         onClose={()=>setShowKasirStok(false)}
         onAdjust={(p,delta)=>doQuickAdj(p,delta)}
         onAddToCart={(p)=>{addToCart(p);toast("✓ "+p.name+" → keranjang");}}
@@ -2936,7 +3007,7 @@ function AppInner() {
                 {/* Autocomplete Suggestions Kasir */}
                 {scanIn.trim().length > 1 && (
                   <div style={{position:"absolute",top:"100%",left:0,right:0,zIndex:100,background:C.bg2,border:`1px solid ${C.bo1}`,borderRadius:12,marginTop:6,boxShadow:C.sh2,overflow:"hidden",animation:"fadeUp 0.2s ease"}}>
-                    {bizProds().filter(p => p.name.toLowerCase().includes(scanIn.trim().toLowerCase()) || p.barcode.includes(scanIn.trim())).slice(0, 5).map((p, i) => (
+                    {kasirProds().filter(p => p.name.toLowerCase().includes(scanIn.trim().toLowerCase()) || p.barcode.includes(scanIn.trim())).slice(0, 5).map((p, i) => (
                       <div key={p.id} onClick={() => kasirScan(p.barcode)} className="hrow"
                         style={{padding:"10px 14px",cursor:"pointer",borderTop:i>0?`1px solid ${C.bo0}`:undefined,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
                         <div>
@@ -2946,7 +3017,7 @@ function AppInner() {
                         <div className="mn" style={{color:C.g,fontWeight:700,fontSize:13}}>{rp(p.price)}</div>
                       </div>
                     ))}
-                    {bizProds().filter(p => p.name.toLowerCase().includes(scanIn.trim().toLowerCase()) || p.barcode.includes(scanIn.trim())).length === 0 && (
+                    {kasirProds().filter(p => p.name.toLowerCase().includes(scanIn.trim().toLowerCase()) || p.barcode.includes(scanIn.trim())).length === 0 && (
                       <div style={{padding:"12px 14px",fontSize:12,color:C.t3,textAlign:"center"}}>Produk tidak ditemukan</div>
                     )}
                   </div>
@@ -2963,11 +3034,11 @@ function AppInner() {
             {cart.length===0 ? <div style={{display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",flex:1,gap:10,padding:"32px 16px"}}>
               <div style={{fontSize:48,opacity:.08}}><Ico e="🛒" size={48}/></div>
               <p style={{fontSize:13,fontWeight:600,color:C.t2}}>Keranjang kosong</p>
-              <p style={{fontSize:11.5,color:C.t3}}>Scan barcode {BIZ[biz]?.name} untuk mulai</p>
+              <p style={{fontSize:11.5,color:C.t3}}>Scan produk JS Clothing atau JB Store untuk mulai</p>
             </div> : cart.map(item=><div key={item.barcode} style={{background:C.bg2,borderRadius:12,border:`1px solid ${C.bo0}`,padding:"10px 12px",display:"flex",alignItems:"center",gap:8,animation:"fadeUp .15s ease"}}>
               <div style={{flex:1,minWidth:0}}>
                 <div style={{fontWeight:600,fontSize:12.5,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{item.name}</div>
-                <div className="mn" style={{color:C.t2,fontSize:10,marginTop:1}}>{item.barcode}</div>
+                <div className="mn" style={{color:C.t2,fontSize:10,marginTop:1}}><span style={{display:"inline-block",width:7,height:7,borderRadius:"50%",background:item.business==="JB_STORE"?C.p:C.b,marginRight:6}}/>{BIZ[item.business]?.name} · {item.barcode}</div>
               </div>
               <div style={{display:"flex",alignItems:"center",gap:4,flexShrink:0}}>
                 <button onClick={()=>setCart(p=>{const it=p.find(c=>c.barcode===item.barcode);return it.qty<=1?p.filter(c=>c.barcode!==item.barcode):p.map(c=>c.barcode===item.barcode?{...c,qty:c.qty-1}:c);})}
@@ -2984,8 +3055,10 @@ function AppInner() {
         </div>
         {/* Side panel tablet */}
         <div className="hide-mobile" style={{width:220,background:C.bg2,borderLeft:`1px solid ${C.bo0}`,display:"flex",flexDirection:"column",padding:12,flexShrink:0}}>
-          <div style={{padding:"8px 10px",borderRadius:10,marginBottom:12,textAlign:"center",background:biz==="JS_CLOTHING"?C.b1:C.p1,border:`1px solid ${bc}22`}}>
-            <span style={{fontSize:12,color:bc,fontWeight:700}}><Ico e={BIZ[biz]?.icon}/> {BIZ[biz]?.name}</span>
+          <div style={{display:"flex",flexDirection:"column",gap:6,marginBottom:12}}>
+            {user.access.map(bz=>{const sub=cart.filter(c=>c.business===bz).reduce((s,c)=>s+c.price*c.qty,0),cl=bz==="JS_CLOTHING"?C.b:C.p;
+              return <div key={bz} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"8px 10px",borderRadius:10,background:bz==="JS_CLOTHING"?C.b1:C.p1,fontSize:12.5,fontWeight:700,color:cl}}>
+                <span><Ico e={BIZ[bz].icon} size={14}/> {BIZ[bz].name}</span><span className="mn">{rp(sub)}</span></div>;})}
           </div>
           <div style={{flex:1}}>
             {[{l:"Produk",v:cart.length},{l:"Total Item",v:cart.reduce((s,c)=>s+c.qty,0)}].map(r=>(
@@ -3011,9 +3084,9 @@ function AppInner() {
           <Divider my={8}/>
           <button onClick={()=>setShowKasirStok(true)} className="press"
             style={{width:"100%",padding:"8px",background:C.bg3,border:`1px solid ${C.bo1}`,borderRadius:9,color:C.t1,fontSize:11,fontWeight:700,marginBottom:8,fontFamily:F.sans}}>
-            <Ico e="📦"/> Stok & Kelola ({bizProds().length})</button>
+            <Ico e="📦"/> Stok & Kelola ({kasirProds().length})</button>
           <div style={{fontSize:12,color:C.t3,textTransform:"none",letterSpacing:0,marginBottom:6,fontWeight:700}}>Terbaru</div>
-          {trxs.filter(t=>t.business===biz).slice(0,5).map(t=><div key={t.id}
+          {trxs.filter(t=>user.access.includes(t.business)).slice(0,5).map(t=><div key={t.id}
             style={{display:"flex",justifyContent:"space-between",marginBottom:4,fontSize:11}}>
             <span className="mn" style={{color:C.t2}}>{t.id?.slice(-8)}</span>
             <span className="mn" style={{color:C.g}}>{rp(t.total)}</span>
@@ -3422,13 +3495,7 @@ function AppInner() {
 
       {showLowStock&&<LowStockPopup prods={prods} onClose={()=>setShowLowStock(false)}/>}
       {showExpirePopup&&<ExpirePopup nearExpiry={nearExpiry} expiredProds={expiredProds} onClose={()=>setShowExpirePopup(false)}/>}
-      {/* Tab bar */}
-      {/* Desktop tab bar — hidden on mobile */}
-      <div className="hide-mobile" style={{background:C.bg2,borderBottom:`1px solid ${C.bo0}`,display:"flex",overflowX:"auto",flexShrink:0,gap:0,padding:"0 4px"}}>
-        {TABS.map(t=><button key={t.id} onClick={()=>{setAdminTab(t.id);setSearchQ("");setPModal(false);setShowMoreDrawer(false);setEditPid(null);setInlineAddMode(false);}}
-          className={`atab${adminTab===t.id?" on":""}`}><t.ic size={16} strokeWidth={2}/>{t.l}</button>)}
-      </div>
-
+      
       {/* More drawer (mobile) */}
       {showMoreDrawer&&<div className="drawer-overlay" onClick={()=>setShowMoreDrawer(false)}>
         <div className="drawer" onClick={e=>e.stopPropagation()}>
@@ -3450,6 +3517,8 @@ function AppInner() {
         </div>
       </div>}
 
+      <div className="admin-body">
+      <AdminSidebar tabs={TABS} active={adminTab} onSelect={id=>{setAdminTab(id);setSearchQ("");setPModal(false);setShowMoreDrawer(false);setEditPid(null);setInlineAddMode(false);}}/>
       <div className="admin-content">
 
 
@@ -4933,6 +5002,7 @@ function AppInner() {
           slogs={slogs} loadSheetJS={loadSheetJS} downloadXLSX={downloadXLSX}
           BIZ={BIZ} C={C} F={F}/>}
 
+      </div>
       </div>
 
       {/* Mobile bottom nav */}
