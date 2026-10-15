@@ -12,7 +12,9 @@ import {
   subscribeOpnames, subscribeOpnameItems, fbCreateOpname, fbCloseOpname,
   fbDeleteOpname, fbUpdateOpnameItem, fbBulkUpdateOpnameItems, fbApplyOpnameAdjustments,
 } from "./firebase.js";
-import { getQris, toDynamicQris, qrDataUrl } from "./qris.js";
+const getQris = () => null;
+const toDynamicQris = (q) => q;
+const qrDataUrl = async () => "";
 import {
   Check, CheckCircle2, X, AlertTriangle, Ban, Package, User, Users, Crown, ClipboardList, ClipboardCheck, Wallet, Clock,
   Search, Pencil, Plus, ScanLine, Target, Store, Receipt, CalendarDays, CreditCard, KeyRound, Trash2,
@@ -2172,7 +2174,8 @@ function AppInner() {
       const u=users.find(x=>x.id===s.userId&&x.active);
       if(!u){sessionStorage.removeItem("je_session");return;}
       setUser(u);setBiz(s.biz);setSessionStart(s.t);
-      if(s.screen==="admin") setAdminTab("dashboard");
+      if(s.screen==="admin" && s.tab) setAdminTab(s.tab);
+      if(s.adminBiz) setAdminBiz(s.adminBiz);
       setScreen(s.screen);
     }catch{sessionStorage.removeItem("je_session");}
   },[fbReady,users]);
@@ -2309,9 +2312,29 @@ function AppInner() {
   useEffect(()=>{if(screen==="stok")setTimeout(()=>stokScanRef.current?.focus(),100);},[screen]);
   useEffect(()=>{if(stokTarget)setTimeout(()=>stokQRef.current?.focus(),100);},[stokTarget]);
   // ─── Admin state ───
-  const [adminTab,setAdminTab]=useState("dashboard");
+  const [adminTab,setAdminTab]=useState(()=>{
+    try {
+      const s = JSON.parse(sessionStorage.getItem("je_session")||"null");
+      return s?.tab || "dashboard";
+    } catch { return "dashboard"; }
+  });
   const [adminScanQ,setAdminScanQ]=useState("");
-  const [adminBiz,setAdminBiz]=useState("JS_CLOTHING");
+  const [adminBiz,setAdminBiz]=useState(()=>{
+    try {
+      const s = JSON.parse(sessionStorage.getItem("je_session")||"null");
+      return s?.adminBiz || "JS_CLOTHING";
+    } catch { return "JS_CLOTHING"; }
+  });
+
+  // Sinkronkan tab aktif & bisnis admin ke sessionStorage saat berubah
+  useEffect(()=>{
+    try {
+      const s = JSON.parse(sessionStorage.getItem("je_session")||"null");
+      if(s && s.screen==="admin"){
+        sessionStorage.setItem("je_session", JSON.stringify({ ...s, tab: adminTab, adminBiz }));
+      }
+    } catch {}
+  },[adminTab, adminBiz]);
   const [searchQ,setSearchQ]=useState("");
   const [showMoreDrawer,setShowMoreDrawer]=useState(false);
   const [reportBiz,setReportBiz]=useState("ALL");
