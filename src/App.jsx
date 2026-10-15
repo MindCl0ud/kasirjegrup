@@ -2470,6 +2470,7 @@ function AppInner() {
   const [lapFrom,setLapFrom]=useState("");
   const [lapTo,setLapTo]=useState("");
   const [lowStockPage,setLowStockPage]=useState(1);
+  const [lowStockPer,setLowStockPer]=useState(()=>Number(localStorage.getItem("je_lowstock_per"))||5);
     const [gsLoad,setGsLoad]=useState(false);
   const [copyDone,setCopyDone]=useState(false);
   const [uModal,setUModal]=useState(false);
@@ -3770,7 +3771,7 @@ function AppInner() {
           {/* Stok menipis */}
           {lowStockCount>0&&(()=>{
             const dList = prods.filter(p=>p.stock<10).sort((a,b)=>a.stock-b.stock);
-            const dPerPage = 5;
+            const dPerPage = lowStockPer===0 ? Math.max(1,dList.length) : lowStockPer;
             const dTotalPages = Math.max(1, Math.ceil(dList.length / dPerPage));
             const dCurPage = Math.min(lowStockPage, dTotalPages);
             const dPaginated = dList.slice((dCurPage - 1) * dPerPage, dCurPage * dPerPage);
@@ -3799,6 +3800,21 @@ function AppInner() {
                 <span style={{fontWeight:600,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",marginRight:8}}>{p.name}</span>
                 <div style={{display:"flex",gap:8,alignItems:"center",flexShrink:0}}><BizChip biz={p.business} sm/><StockBadge s={p.stock}/></div>
               </div>)}
+              <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:8,flexWrap:"wrap",paddingTop:10,marginTop:4,borderTop:`1px solid ${C.bo0}`,fontSize:12,color:C.t2}}>
+                <label style={{display:"flex",alignItems:"center",gap:6}}>
+                  Tampilkan
+                  <select value={lowStockPer} onChange={e=>{const v=Number(e.target.value);setLowStockPer(v);setLowStockPage(1);localStorage.setItem("je_lowstock_per",String(v));}}
+                    style={{padding:"4px 8px",borderRadius:8,background:C.bg3,border:`1.5px solid ${C.bo1}`,color:C.t0,fontSize:12,fontWeight:700,fontFamily:F.sans}}>
+                    {[5,10,20,50].map(n=><option key={n} value={n}>{n}</option>)}
+                    <option value={0}>Semua</option>
+                  </select>
+                  <span className="mn">{(dCurPage-1)*dPerPage+1}–{Math.min(dCurPage*dPerPage,dList.length)} dari {dList.length}</span>
+                </label>
+                <button onClick={()=>setShowLowStock(true)} className="press"
+                  style={{padding:"5px 10px",borderRadius:8,border:`1px solid ${C.r}55`,background:C.r1,color:C.r,fontSize:12,fontWeight:700,display:"inline-flex",alignItems:"center",gap:4}}>
+                  Lihat semua <ChevronRight size={13}/>
+                </button>
+              </div>
             </Card>;
           })()}
           {/* Today attendance */}
