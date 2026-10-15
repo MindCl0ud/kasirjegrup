@@ -12,12 +12,14 @@ import {
   subscribeOpnames, subscribeOpnameItems, fbCreateOpname, fbCloseOpname,
   fbDeleteOpname, fbUpdateOpnameItem, fbBulkUpdateOpnameItems, fbApplyOpnameAdjustments,
 } from "./firebase.js";
+import { getQris, toDynamicQris, qrDataUrl } from "./qris.js";
 import {
   Check, CheckCircle2, X, AlertTriangle, Ban, Package, User, Users, Crown, ClipboardList, ClipboardCheck, Wallet, Clock,
   Search, Pencil, Plus, ScanLine, Target, Store, Receipt, CalendarDays, CreditCard, KeyRound, Trash2,
   Briefcase, Factory, Sun, Moon, Flame, Lightbulb, ShoppingCart, Lock, BarChart3, TrendingUp, Link2, Tag,
   Shirt, Sparkles, Home, Printer, RefreshCw, Folder, FileText, Eye, EyeOff, Building2, LayoutDashboard,
   Undo2, Activity, PanelLeftClose, PanelLeftOpen, ChevronRight, LogOut, Bell, ArrowLeftRight, ArrowLeft, MoreHorizontal, WifiOff, Info,
+  QrCode,
 } from "lucide-react";
 
 // ─────────────────────────────────────────────────────────────
@@ -278,6 +280,24 @@ const makeCSS = () => `
   }
   @keyframes popIn{from{opacity:0;transform:translateY(8px) scale(.97)}to{opacity:1;transform:none}}
 
+  /* ── Penyempurnaan UX ── */
+  .dash{display:flex;flex-direction:column;gap:10px;}
+  @media(min-width:1000px){.dash{display:grid;grid-template-columns:1fr 1fr;gap:14px;align-items:start;}.dash>*{grid-column:1/-1;}.dash>.dash-half{grid-column:auto;}}
+  @media(min-width:641px){table td,table th{font-size:13px!important;}}
+  @media(max-width:640px){
+    div:has(>.chip){flex-wrap:nowrap!important;overflow-x:auto;scrollbar-width:none;-webkit-overflow-scrolling:touch;}
+    div:has(>.chip)::-webkit-scrollbar{display:none;}
+    div:has(>.chip)>.chip{flex-shrink:0;}
+    .ptool>button,.ptool .press{min-height:40px;}
+    .ptool-search{flex:1 1 100%!important;width:100%!important;min-height:42px;}
+  }
+
+  @media(max-width:640px){
+    div:has(>.fbtn){flex-wrap:nowrap!important;overflow-x:auto;scrollbar-width:none;-webkit-overflow-scrolling:touch;}
+    div:has(>.fbtn)::-webkit-scrollbar{display:none;}
+    .fbtn{flex-shrink:0;min-height:38px;font-size:13px!important;padding:0 14px!important;white-space:nowrap;}
+  }
+
   /* ── Kartu & chip ── */
   .mcard{background:${C.bg2};border-radius:16px;border:1px solid ${C.bo0};padding:14px 15px;box-shadow:${C.sh};transition:transform .12s,background .1s;}
   .mcard:active{transform:scale(.985);background:${C.bg3};}
@@ -389,11 +409,19 @@ function Inp({value,onChange,type="text",placeholder,disabled,mono,onKeyDown,fre
     </div>
   </div>;
 }
-function Card({children,style:s={},onClick,accent,noPad}) {
-  return <div onClick={onClick} style={{background:C.bg2,borderRadius:16,
+function Card({children,style:s={},onClick,accent,noPad,className}) {
+  return <div className={className} onClick={onClick} style={{background:C.bg2,borderRadius:16,
     border:`1px solid ${accent?accent+"55":C.bo0}`,padding:noPad?0:"16px",
     boxShadow:C.sh,cursor:onClick?"pointer":undefined,...s}}>
     {children}</div>;
+}
+function EmptyState({icon,title,hint,pad=36}) {
+  return <div style={{display:"flex",flexDirection:"column",alignItems:"center",textAlign:"center",gap:6,padding:`${pad}px 20px`}}>
+    <span aria-hidden="true" style={{width:52,height:52,borderRadius:16,background:C.bg3,color:C.t3,display:"grid",placeItems:"center",marginBottom:4}}>
+      {icon||<ClipboardList size={24} strokeWidth={1.6}/>}</span>
+    <div style={{fontSize:14.5,fontWeight:700,color:C.t1}}>{title}</div>
+    {hint&&<div style={{fontSize:13,color:C.t2,maxWidth:300,lineHeight:1.5}}>{hint}</div>}
+  </div>;
 }
 function Divider({my=10}) { return <div style={{height:1,background:C.bo0,margin:`${my}px 0`}}/>; }
 function RoleTag({role}) {
@@ -1040,6 +1068,50 @@ function Invoice({receipt,biz,onClose,onNew}) {
 }
 
 
+// Membagi keranjang per bisnis (sama dengan logika checkout) agar tiap toko punya nominal QRIS sendiri
+function splitCart(cart,discAll,defBiz) {
+  const subtotal=cart.reduce((s,c)=>s+c.price*c.qty,0);
+  const groups={};
+  cart.forEach(c=>{const b=c.business||defBiz;(groups[b]=groups[b]||[]).push(c);});
+  const ids=Object.keys(groups);let left=discAll;
+  return ids.map((b,i)=>{
+    const sub=groups[b].reduce((s,c)=>s+c.price*c.qty,0);
+    const disc=i===ids.length-1?left:Math.min(sub,Math.round(discAll*sub/subtotal));
+    left-=disc;return {b,sub,disc,total:sub-disc};
+  });
+}
+
+function QrisModal({open,groups,onPaid,onCancel}) {
+  const [i,setI]=React.useState(0);
+  const [img,setImg]=React.useState("");
+  const [err,setErr]=React.useState("");
+  const g=groups[i];
+  React.useEffect(()=>{if(open)setI(0);},[open]);
+  React.useEffect(()=>{
+    if(!open||!g) return;
+    let dead=false;setImg("");setErr("");
+    try{qrDataUrl(toDynamicQris(getQris(g.b),g.total)).then(u=>{if(!dead)setImg(u);}).catch(e=>{if(!dead)setErr(e.message);});}
+    catch(e){setErr(e.message);}
+    return()=>{dead=true;};
+  },[open,i,g?.b,g?.total]);
+  if(!open||!g) return null;
+  const b=BIZ[g.b]||{},last=i===groups.length-1;
+  return <Modal open size="sm" dismiss={false} onClose={onCancel} icon={<QrCode size={20}/>} title="Bayar dengan QRIS"
+    subtitle={groups.length>1?`${b.name} · ${i+1} dari ${groups.length}`:b.name}
+    footer={<><Btn outline onClick={onCancel}>Batal</Btn>
+      <Btn color={C.g} disabled={!img} onClick={()=>last?onPaid():setI(i+1)}><Check size={17}/>{last?"Sudah dibayar":"Sudah dibayar, lanjut"}</Btn></>}>
+    <div style={{textAlign:"center"}}>
+      <div className="mn" style={{fontSize:32,fontWeight:800,letterSpacing:"-.02em"}}>{rp(g.total)}</div>
+      <div style={{fontSize:13,color:C.t2,margin:"4px 0 14px"}}>Minta pembeli scan dengan aplikasi apa saja</div>
+      <div style={{display:"inline-block",padding:12,background:"#fff",borderRadius:16,border:`1px solid ${C.bo1}`}}>
+        {img?<img src={img} alt={"QRIS "+rp(g.total)} width={260} height={260} style={{display:"block",maxWidth:"100%",height:"auto"}}/>
+            :<div style={{width:260,height:260,display:"grid",placeItems:"center",color:C.r,fontSize:13,padding:12}}>{err||"Membuat QR…"}</div>}
+      </div>
+      <p style={{fontSize:12.5,color:C.t2,lineHeight:1.5,marginTop:14}}>Tekan <b style={{color:C.t0}}>Sudah dibayar</b> hanya setelah notifikasi pembayaran masuk di aplikasi toko.</p>
+    </div>
+  </Modal>;
+}
+
 // ─────────────────────────────────────────────────────────────
 //  STOCK CHECK
 // ─────────────────────────────────────────────────────────────
@@ -1190,59 +1262,34 @@ function SimplePieChart({data}) {
 //  LOW STOCK POPUP
 // ─────────────────────────────────────────────────────────────
 function LowStockPopup({prods,onClose}) {
-  const list = prods.filter(p=>p.stock<10).sort((a,b)=>a.stock-b.stock);
-  return <div style={{position:"fixed",inset:0,background:"rgba(12,16,46,.55)",zIndex:800,
-    display:"flex",alignItems:"flex-end",justifyContent:"center",fontFamily:F.sans}}
-    onClick={onClose}>
-    <div style={{width:"100%",maxWidth:460,background:C.bg2,borderRadius:"22px 22px 0 0",
-      border:`1px solid ${C.r}44`,borderBottom:"none",animation:"slideUp .25s ease",
-      maxHeight:"80vh",display:"flex",flexDirection:"column"}}
-      onClick={e=>e.stopPropagation()}>
-      <div style={{width:36,height:4,background:C.bo1,borderRadius:2,margin:"14px auto 0"}}/>
-      <div style={{padding:"10px 16px 12px",borderBottom:`1px solid ${C.bo0}`,flexShrink:0}}>
-        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-          <div>
-            <div style={{fontSize:14,fontWeight:800,color:C.r}}><Ico e="⚠"/> Stok Menipis</div>
-            <div style={{fontSize:11,color:C.t2,marginTop:2}}>{list.length} produk perlu ditambah stok</div>
-          </div>
-          <button onClick={onClose} style={{background:"transparent",border:"none",color:C.t2,fontSize:20,cursor:"pointer",lineHeight:1}}>×</button>
+  const list=prods.filter(p=>p.stock<10).sort((a,b)=>a.stock-b.stock);
+  const habis=list.filter(p=>p.stock===0).length;
+  return <Modal open size="md" onClose={onClose} icon={<AlertTriangle size={20}/>} title="Stok menipis"
+    subtitle={list.length?`${list.length} produk perlu ditambah stok`:undefined}
+    footer={<Btn outline onClick={onClose}>Tutup</Btn>}>
+    {list.length===0
+      ? <EmptyState icon={<Check size={24} strokeWidth={2}/>} title="Semua stok aman" hint="Tidak ada produk dengan stok di bawah 10."/>
+      : <>
+        <div style={{display:"flex",gap:8,marginBottom:10,flexWrap:"wrap"}}>
+          {habis>0&&<span style={{padding:"5px 11px",borderRadius:20,background:C.r1,color:C.r,fontSize:12.5,fontWeight:700}}>{habis} habis</span>}
+          {list.length-habis>0&&<span style={{padding:"5px 11px",borderRadius:20,background:C.a1,color:C.a,fontSize:12.5,fontWeight:700}}>{list.length-habis} menipis</span>}
         </div>
-      </div>
-      <div style={{overflowY:"auto",flex:1}}>
-        {list.length===0
-          ?<div style={{padding:"32px",textAlign:"center",color:C.t3,fontSize:13}}>Semua stok aman</div>
-          :list.map((p,i)=>(
-          <div key={p.id} style={{display:"flex",alignItems:"center",gap:12,padding:"12px 16px",
-            borderTop:i>0?`1px solid ${C.bo0}`:undefined}}>
-            <div style={{width:36,height:36,borderRadius:10,flexShrink:0,display:"flex",alignItems:"center",
-              justifyContent:"center",fontSize:20,
-              background:p.stock===0?C.r1:C.a1,border:`1px solid ${p.stock===0?C.r:C.a}33`}}>
-              {p.stock===0?"✕":"!"}
-            </div>
-            <div style={{flex:1,minWidth:0}}>
-              <div style={{fontWeight:600,fontSize:13,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{p.name}</div>
-              <div style={{display:"flex",gap:6,marginTop:2,flexWrap:"wrap",alignItems:"center"}}>
-                <span className="mn" style={{fontSize:10,color:C.t2}}>{p.barcode}</span>
-                <BizChip biz={p.business} sm/>
-                <span style={{fontSize:10,color:C.t2}}>{p.category}</span>
-              </div>
-            </div>
-            <div style={{textAlign:"right",flexShrink:0}}>
-              <div className="mn" style={{fontSize:22,fontWeight:800,
-                color:p.stock===0?C.r:C.a,lineHeight:1}}>{p.stock}</div>
-              <div style={{fontSize:10,color:C.t2,marginTop:2}}>{p.stock===0?"HABIS":"tersisa"}</div>
+        {list.map((p,i)=><div key={p.id} style={{display:"flex",alignItems:"center",gap:12,padding:"12px 0",borderTop:i>0?`1px solid ${C.bo0}`:undefined}}>
+          <span style={{width:38,height:38,borderRadius:11,flexShrink:0,display:"grid",placeItems:"center",background:p.stock===0?C.r1:C.a1,color:p.stock===0?C.r:C.a}}>
+            {p.stock===0?<Ban size={18}/>:<Package size={18}/>}</span>
+          <div style={{flex:1,minWidth:0}}>
+            <div style={{fontWeight:600,fontSize:14,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{p.name}</div>
+            <div style={{display:"flex",gap:8,marginTop:3,flexWrap:"wrap",alignItems:"center"}}>
+              <span className="mn" style={{fontSize:12,color:C.t2}}>{p.barcode}</span><BizChip biz={p.business} sm/>
             </div>
           </div>
-        ))}
-      </div>
-      <div style={{padding:"12px 16px",borderTop:`1px solid ${C.bo0}`,flexShrink:0,fontSize:11,color:C.t2,
-        display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-        <span>Total: <b style={{color:C.r}}>{list.filter(p=>p.stock===0).length} habis</b> · <b style={{color:C.a}}>{list.filter(p=>p.stock>0).length} menipis</b></span>
-        <button onClick={onClose} style={{padding:"6px 16px",background:C.bg3,border:`1px solid ${C.bo1}`,
-          borderRadius:8,color:C.t1,fontSize:12,fontWeight:600,cursor:"pointer",fontFamily:F.sans}}>Tutup</button>
-      </div>
-    </div>
-  </div>;
+          <div style={{textAlign:"right",flexShrink:0}}>
+            <div className="mn" style={{fontSize:22,fontWeight:800,color:p.stock===0?C.r:C.a,lineHeight:1}}>{p.stock}</div>
+            <div style={{fontSize:12,color:C.t2,marginTop:2}}>{p.stock===0?"habis":"tersisa"}</div>
+          </div>
+        </div>)}
+      </>}
+  </Modal>;
 }
 
 
@@ -1252,89 +1299,30 @@ function LowStockPopup({prods,onClose}) {
 function AddonPrompt({prompt, onAdd, onSkip}) {
   const {mainItem, addons} = prompt;
   const [selected, setSelected] = React.useState(() => new Set());
-  const toggle = (id) => setSelected(prev => {
-    const next = new Set(prev);
-    next.has(id) ? next.delete(id) : next.add(id);
-    return next;
-  });
-  const handleConfirm = () => {
-    const chosen = addons.filter(a => selected.has(a.id));
-    onAdd(chosen);
-  };
-  return (
-    <div style={{position:"fixed",inset:0,background:"rgba(12,16,46,.55)",zIndex:700,
-      display:"flex",alignItems:"flex-end",justifyContent:"center",fontFamily:F.sans}}
-      onClick={onSkip}>
-      <div style={{width:"100%",maxWidth:460,background:C.bg2,borderRadius:"22px 22px 0 0",
-        border:`1px solid ${C.g}44`,borderBottom:"none",animation:"slideUp .22s ease",
-        padding:"16px 18px 32px"}} onClick={e=>e.stopPropagation()}>
-        <div style={{width:36,height:4,background:C.bo1,borderRadius:2,margin:"0 auto 16px"}}/>
-        {/* Header */}
-        <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:14}}>
-          <div style={{width:40,height:40,borderRadius:12,background:C.g1,border:`1px solid ${C.g}33`,
-            display:"flex",alignItems:"center",justifyContent:"center",fontSize:20,flexShrink:0}}><Ico e="➕"/></div>
-          <div>
-            <div style={{fontSize:14,fontWeight:800}}>Tambah Add-on?</div>
-            <div style={{fontSize:12,color:C.t2,marginTop:1}}>
-              Produk <b style={{color:C.g}}>{mainItem.name}</b> punya item tambahan
-            </div>
-          </div>
-        </div>
-        {/* Addon list */}
-        <div style={{display:"flex",flexDirection:"column",gap:8,marginBottom:16}}>
-          {addons.map(a => {
-            const sel = selected.has(a.id);
-            return (
-              <button key={a.id} onClick={()=>toggle(a.id)} className="press"
-                style={{display:"flex",alignItems:"center",gap:12,padding:"12px 14px",
-                  borderRadius:12,cursor:"pointer",textAlign:"left",
-                  background:sel?C.g1:C.bg3,
-                  border:`2px solid ${sel?C.g:C.bo0}`,transition:"all .15s"}}>
-                <div style={{width:24,height:24,borderRadius:6,flexShrink:0,
-                  background:sel?C.g:"transparent",border:`2px solid ${sel?C.g:C.bo1}`,
-                  display:"flex",alignItems:"center",justifyContent:"center",transition:"all .15s"}}>
-                  {sel&&<span style={{color:C.on,fontSize:13,fontWeight:700}}><Ico e="✓"/></span>}
-                </div>
-                <div style={{flex:1,minWidth:0}}>
-                  <div style={{fontWeight:600,fontSize:13,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{a.name}</div>
-                  <div style={{fontSize:10.5,color:C.t2,marginTop:1}}>{a.barcode} · Stok: {a.stock}</div>
-                </div>
-                <div style={{textAlign:"right",flexShrink:0}}>
-                  <div className="mn" style={{fontSize:15,fontWeight:700,color:sel?C.g:C.t1}}>{rp(a.price)}</div>
-                  {a.hpp>0&&<div style={{fontSize:10,color:C.t3,marginTop:1}}>hpp {rp(a.hpp)}</div>}
-                </div>
-              </button>
-            );
-          })}
-        </div>
-        {/* Summary */}
-        {selected.size>0&&(
-          <div style={{padding:"8px 12px",background:C.g2,borderRadius:9,border:`1px solid ${C.g}22`,
-            fontSize:12,color:C.g,marginBottom:12,display:"flex",justifyContent:"space-between"}}>
-            <span>{selected.size} add-on dipilih</span>
-            <span className="mn" style={{fontWeight:700}}>
-              +{rp(addons.filter(a=>selected.has(a.id)).reduce((s,a)=>s+a.price,0))}
-            </span>
-          </div>
-        )}
-        {/* Actions */}
-        <div style={{display:"flex",gap:8}}>
-          <button onClick={handleConfirm} className="press"
-            style={{flex:2,padding:"13px",
-              background:selected.size>0?`${C.pri}`:C.bg3,
-              border:`1.5px solid ${selected.size>0?C.g:C.bo0}`,
-              borderRadius:12,color:selected.size>0?"#000":C.t2,
-              fontSize:13,fontWeight:800,fontFamily:F.sans,cursor:"pointer"}}>
-            {selected.size>0?`Tambah ${selected.size} add-on`:"Lanjut tanpa add-on"}
-          </button>
-          <button onClick={onSkip} className="press"
-            style={{flex:1,padding:"13px",background:"transparent",
-              border:`1px solid ${C.bo0}`,borderRadius:12,color:C.t2,
-              fontSize:12,fontFamily:F.sans,cursor:"pointer"}}>Lewati</button>
-        </div>
-      </div>
+  const toggle = (id) => setSelected(prev => {const next = new Set(prev); next.has(id) ? next.delete(id) : next.add(id); return next;});
+  const chosen = addons.filter(a => selected.has(a.id));
+  return <Modal open size="sm" zIndex={750} onClose={onSkip} icon={<Plus size={20}/>} title="Tambah add-on?" subtitle={`${mainItem.name} punya item tambahan`}
+    footer={<><Btn outline onClick={onSkip}>Lewati</Btn>
+      <Btn size="lg" onClick={()=>onAdd(chosen)}>{chosen.length>0?`Tambah ${chosen.length} add-on`:"Lanjut tanpa add-on"}</Btn></>}>
+    <div style={{display:"flex",flexDirection:"column",gap:8}}>
+      {addons.map(a => {
+        const sel = selected.has(a.id);
+        return <button key={a.id} onClick={()=>toggle(a.id)} className="press" role="checkbox" aria-checked={sel}
+          style={{display:"flex",alignItems:"center",gap:12,padding:"12px 14px",minHeight:60,borderRadius:14,textAlign:"left",
+            background:sel?C.pri1:C.bg3,border:`2px solid ${sel?C.pri:C.bo0}`,color:C.t0}}>
+          <span style={{width:24,height:24,borderRadius:7,flexShrink:0,display:"grid",placeItems:"center",background:sel?C.pri:"transparent",border:`2px solid ${sel?C.pri:C.bo2}`,color:C.on}}>
+            {sel&&<Check size={15} strokeWidth={3}/>}</span>
+          <span style={{flex:1,minWidth:0}}>
+            <span style={{display:"block",fontWeight:600,fontSize:14,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{a.name}</span>
+            <span className="mn" style={{display:"block",fontSize:12,color:C.t2,marginTop:1}}>{a.barcode} · stok {a.stock}</span>
+          </span>
+          <span className="mn" style={{fontSize:15,fontWeight:700,color:sel?C.pri:C.t1,flexShrink:0}}>{rp(a.price)}</span>
+        </button>;
+      })}
     </div>
-  );
+    {chosen.length>0&&<div style={{marginTop:12,padding:"10px 14px",background:C.g2,borderRadius:12,fontSize:13,color:C.g,fontWeight:600,display:"flex",justifyContent:"space-between"}}>
+      <span>{chosen.length} add-on dipilih</span><span className="mn">+{rp(chosen.reduce((t,a)=>t+a.price,0))}</span></div>}
+  </Modal>;
 }
 
 
@@ -1343,77 +1331,30 @@ function AddonPrompt({prompt, onAdd, onSkip}) {
 // ─────────────────────────────────────────────────────────────
 function ExpirePopup({nearExpiry, expiredProds, onClose}) {
   const all=[...expiredProds,...nearExpiry];
-  const daysDiff=(dateStr)=>{
-    const d=Math.ceil((new Date(dateStr)-new Date())/(1000*60*60*24));
-    return d;
-  };
-  return <div style={{position:"fixed",inset:0,background:"rgba(12,16,46,.55)",zIndex:800,
-    display:"flex",alignItems:"flex-end",justifyContent:"center",fontFamily:F.sans}}
-    onClick={onClose}>
-    <div style={{width:"100%",maxWidth:480,background:C.bg2,borderRadius:"22px 22px 0 0",
-      border:`1px solid ${C.r}44`,borderBottom:"none",animation:"slideUp .25s ease",
-      maxHeight:"82vh",display:"flex",flexDirection:"column"}} onClick={e=>e.stopPropagation()}>
-      <div style={{width:36,height:4,background:C.bo1,borderRadius:2,margin:"14px auto 0"}}/>
-      <div style={{padding:"10px 16px 12px",borderBottom:`1px solid ${C.bo0}`,flexShrink:0}}>
-        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-          <div>
-            <div style={{fontSize:14,fontWeight:800}}><Ico e="⏰"/> Peringatan Expire</div>
-            <div style={{fontSize:11,color:C.t2,marginTop:2}}>
-              {expiredProds.length>0&&<span style={{color:C.r,fontWeight:700}}>{expiredProds.length} sudah kadaluarsa · </span>}
-              {nearExpiry.length} mendekati expire (≤6 bulan)
+  const daysDiff=(dateStr)=>Math.ceil((new Date(dateStr)-new Date())/(1000*60*60*24));
+  return <Modal open size="md" onClose={onClose} icon={<Clock size={20}/>} title="Peringatan expire"
+    subtitle={all.length?`${expiredProds.length>0?expiredProds.length+" sudah kadaluarsa · ":""}${nearExpiry.length} mendekati expire (≤6 bulan)`:undefined}
+    footer={<Btn outline onClick={onClose}>Tutup</Btn>}>
+    {all.length===0
+      ? <EmptyState icon={<Check size={24} strokeWidth={2}/>} title="Semua produk aman" hint="Tidak ada produk kadaluarsa atau mendekati expire."/>
+      : all.map((p,i)=>{
+          const days=daysDiff(p.expireDate),expired=days<0,urgent=days>=0&&days<=30,warn=days>30&&days<=90;
+          const color=expired||urgent?C.r:warn?C.a:C.g,bg=expired||urgent?C.r1:warn?C.a1:C.g1;
+          return <div key={p.id} style={{display:"flex",alignItems:"center",gap:12,padding:"12px 0",borderTop:i>0?`1px solid ${C.bo0}`:undefined}}>
+            <span style={{width:38,height:38,borderRadius:11,flexShrink:0,display:"grid",placeItems:"center",background:bg,color}}>{expired?<Ban size={18}/>:<Clock size={18}/>}</span>
+            <div style={{flex:1,minWidth:0}}>
+              <div style={{fontWeight:600,fontSize:14,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{p.name}</div>
+              <div style={{display:"flex",gap:8,marginTop:3,flexWrap:"wrap",alignItems:"center"}}>
+                <span className="mn" style={{fontSize:12,color:C.t2}}>{p.barcode}</span><BizChip biz={p.business} sm/>
+                <span style={{fontSize:12,color:C.t2}}>Stok {p.stock}</span>
+              </div>
             </div>
-          </div>
-          <button onClick={onClose} style={{background:"transparent",border:"none",color:C.t2,fontSize:20,cursor:"pointer",lineHeight:1}}>×</button>
-        </div>
-      </div>
-      <div style={{overflowY:"auto",flex:1}}>
-        {all.length===0
-          ?<div style={{padding:"32px",textAlign:"center",color:C.t3,fontSize:13}}>Semua produk aman</div>
-          :all.map((p,i)=>{
-            const days=daysDiff(p.expireDate);
-            const expired=days<0;
-            const urgent=days>=0&&days<=30;
-            const warn=days>30&&days<=90;
-            const color=expired?C.r:urgent?C.r:warn?C.a:C.g;
-            const bg=expired?C.r1:urgent?C.r1:warn?C.a1:C.g1;
-            return <div key={p.id} style={{display:"flex",alignItems:"center",gap:12,padding:"12px 16px",
-              borderTop:i>0?`1px solid ${C.bo0}`:undefined,
-              background:expired?`${C.r}04`:undefined}}>
-              <div style={{width:42,height:42,borderRadius:11,flexShrink:0,display:"flex",
-                flexDirection:"column",alignItems:"center",justifyContent:"center",
-                background:bg,border:`1px solid ${color}33`,padding:"2px"}}>
-                <span style={{fontSize:expired?16:14}}><Ico e={expired?"⛔":urgent?"🔴":warn?"🟡":"🟢"} size={16}/></span>
-              </div>
-              <div style={{flex:1,minWidth:0}}>
-                <div style={{fontWeight:600,fontSize:13,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{p.name}</div>
-                <div style={{display:"flex",gap:6,marginTop:2,flexWrap:"wrap",alignItems:"center"}}>
-                  <span className="mn" style={{fontSize:10,color:C.t2}}>{p.barcode}</span>
-                  <BizChip biz={p.business} sm/>
-                  <span style={{fontSize:10,color:C.t2}}>Stok: {p.stock}</span>
-                </div>
-              </div>
-              <div style={{textAlign:"right",flexShrink:0}}>
-                <div className="mn" style={{fontSize:12,fontWeight:800,color}}>
-                  {expired?`${Math.abs(days)}h lalu`:days===0?"Hari ini":`${days} hari`}
-                </div>
-                <div className="mn" style={{fontSize:10,color:C.t2,marginTop:2}}>
-                  {new Date(p.expireDate).toLocaleDateString("id-ID",{day:"numeric",month:"short",year:"numeric"})}
-                </div>
-              </div>
-            </div>;
-          })}
-      </div>
-      <div style={{padding:"10px 16px",borderTop:`1px solid ${C.bo0}`,flexShrink:0,
-        display:"flex",justifyContent:"space-between",alignItems:"center",fontSize:12}}>
-        <span style={{color:C.t2}}>
-          {expiredProds.length>0&&<span style={{color:C.r,fontWeight:700}}>{expiredProds.length} kadaluarsa · </span>}
-          {nearExpiry.length} akan expire
-        </span>
-        <button onClick={onClose} style={{padding:"7px 16px",background:C.bg3,border:`1px solid ${C.bo1}`,
-          borderRadius:8,color:C.t1,fontSize:12,fontWeight:600,cursor:"pointer",fontFamily:"inherit"}}>Tutup</button>
-      </div>
-    </div>
-  </div>;
+            <div style={{textAlign:"right",flexShrink:0}}>
+              <div className="mn" style={{fontSize:13.5,fontWeight:800,color}}>{expired?`${Math.abs(days)} hari lalu`:days===0?"Hari ini":`${days} hari`}</div>
+              <div className="mn" style={{fontSize:12,color:C.t2,marginTop:2}}>{new Date(p.expireDate).toLocaleDateString("id-ID",{day:"numeric",month:"short",year:"numeric"})}</div>
+            </div>
+          </div>;})}
+  </Modal>;
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -1535,7 +1476,7 @@ function KasirStokPanel({prods, biz, onClose, onAdjust, onAddToCart}) {
                 className="press"
                 style={{padding:"7px 12px",borderRadius:9,fontWeight:700,fontSize:12,
                   background:p.stock===0?C.bg4:`linear-gradient(90deg,${bc},${bc}cc)`,
-                  border:"none",color:p.stock===0?C.t3:"#fff",
+                  border:"none",color:p.stock===0?C.t3:C.on,
                   cursor:p.stock===0?"not-allowed":"pointer",flexShrink:0}}>
                 <Ico e="🛒"/>
               </button>
@@ -1916,7 +1857,7 @@ function ImportOpnameModal({ show, onClose, onImport, C, F, loadSheetJS, prods, 
           }));
           await onImport(matched);
         }} className="press"
-          style={{flex:1,padding:"11px",background:`${C.pri}`,border:"none",borderRadius:10,color:"#fff",fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>
+          style={{flex:1,padding:"11px",background:`${C.pri}`,border:"none",borderRadius:10,color:C.on,fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>
           Import {rows.filter(r=>r.product).length} Produk
         </button>
       </div>}
@@ -1967,32 +1908,16 @@ function OpnamePanel({
   const statusLabels = { open: "OPEN", closed: "CLOSED", applied: "APPLIED" };
 
   return <div style={{maxWidth:800,margin:"0 auto",display:"flex",flexDirection:"column",gap:10}}>
-    {showCreateOpname && <div style={{position:"fixed",inset:0,background:"rgba(12,16,46,.55)",zIndex:500,display:"flex",alignItems:"flex-end",justifyContent:"center"}}
-      onClick={()=>setShowCreateOpname(false)}>
-      <div style={{width:"100%",maxWidth:420,background:C.bg2,borderRadius:"22px 22px 0 0",padding:"18px 20px 32px",
-        border:`1px solid ${C.bo1}`,borderBottom:"none",animation:"slideUp .25s ease"}} onClick={e=>e.stopPropagation()}>
-        <div style={{width:36,height:4,background:C.b1,borderRadius:2,margin:"0 auto 16px"}}/>
-        <h3 style={{fontSize:14,fontWeight:800,marginBottom:14,color:C.a}}><Ico e="📋"/> Buat Sesi Opname Baru</h3>
-        <div style={{display:"flex",flexDirection:"column",gap:10}}>
-          <div style={{fontSize:11,color:C.t2}}>PIC: <b style={{color:C.t0}}>{user.name}</b></div>
-          <select value={opnameForm.business} onChange={e=>setOpnameForm(f=>({...f,business:e.target.value}))}
-            style={{padding:"11px 13px",background:C.bg3,border:`1.5px solid ${C.bo0}`,borderRadius:10,color:C.t0,fontSize:12}}>
-            {Object.values(BIZ).map(b=><option key={b.id} value={b.id}><Ico e={b.icon}/> {b.name}</option>)}
-          </select>
-          <input type="date" value={opnameForm.date} onChange={e=>setOpnameForm(f=>({...f,date:e.target.value}))}
-            style={{padding:"11px 13px",background:C.bg3,border:`1.5px solid ${C.bo0}`,borderRadius:10,color:C.t0,fontSize:12}}/>
-          <input value={opnameForm.notes} onChange={e=>setOpnameForm(f=>({...f,notes:e.target.value}))}
-            placeholder="Catatan (opsional)"
-            style={{padding:"11px 13px",background:C.bg3,border:`1.5px solid ${C.bo0}`,borderRadius:10,color:C.t0,fontSize:12}}/>
-          <div style={{display:"flex",gap:8,marginTop:4}}>
-            <button onClick={()=>setShowCreateOpname(false)}
-              style={{flex:1,padding:"11px",background:C.bg3,border:`1px solid ${C.bo1}`,borderRadius:10,color:C.t1,fontSize:12,fontWeight:600,cursor:"pointer",fontFamily:"inherit"}}>Batal</button>
-            <button onClick={handleCreate}
-              style={{flex:1,padding:"11px",background:C.g1,border:`1px solid ${C.g}44`,borderRadius:10,color:C.g,fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>Buat Sesi</button>
-          </div>
-        </div>
+    <Modal open={!!showCreateOpname} size="sm" dismiss={false} onClose={()=>setShowCreateOpname(false)} icon={<ClipboardList size={20}/>} title="Sesi opname baru" subtitle={`PIC: ${user.name}`}
+      footer={<><Btn outline onClick={()=>setShowCreateOpname(false)}>Batal</Btn><Btn onClick={handleCreate}>Buat sesi</Btn></>}>
+      <div style={{display:"flex",flexDirection:"column",gap:14}}>
+        <Sel label="Bisnis" value={opnameForm.business} onChange={e=>setOpnameForm(f=>({...f,business:e.target.value}))}>
+          {Object.values(BIZ).map(b=><option key={b.id} value={b.id}>{b.name}</option>)}
+        </Sel>
+        <Inp label="Tanggal" type="date" value={opnameForm.date} onChange={e=>setOpnameForm(f=>({...f,date:e.target.value}))}/>
+        <Inp label="Catatan (opsional)" value={opnameForm.notes} onChange={e=>setOpnameForm(f=>({...f,notes:e.target.value}))} placeholder="Mis. opname akhir bulan"/>
       </div>
-    </div>}
+    </Modal>
 
     {showImportOpname && <ImportOpnameModal
       show={showImportOpname}
@@ -2405,6 +2330,7 @@ function AppInner() {
   const [editUid,setEditUid]=useState(null);
   const [pModal,setPModal]=useState(false);
   const [invTrx,setInvTrx]=useState(null);
+  const [qrisOpen,setQrisOpen]=useState(false);
   const [pForm,setPForm]=useState({});
   const [editPid,setEditPid]=useState(null);
   const [showPriceDrawer,setShowPriceDrawer]=useState(false);
@@ -3095,6 +3021,9 @@ function AppInner() {
     const total=subtotal-discAmt;
     const totalHpp=cart.reduce((s,c)=>s+(c.hpp||0)*c.qty,0);
     const bc=C.pri;
+    const qrisBiz=[...new Set(cart.map(c=>c.business))];
+    const qrisReady=payMethod==="QRIS"&&qrisBiz.length>0&&qrisBiz.every(x=>getQris(x));
+    const qrisMissing=payMethod==="QRIS"&&!qrisReady?qrisBiz.filter(x=>!getQris(x)).map(x=>BIZ[x]?.name).join(", "):"";
 
     return <div style={{fontFamily:F.sans,background:C.bg1,color:C.t0,height:"100vh",display:"flex",flexDirection:"column"}}>
       <style>{CSS}</style><Toast n={notif}/>
@@ -3122,9 +3051,10 @@ function AppInner() {
       {showExpirePopup&&<ExpirePopup nearExpiry={nearExpiry} expiredProds={expiredProds} onClose={()=>setShowExpirePopup(false)}/>}
 
       {/* Checkout modal */}
+      <QrisModal open={qrisOpen} groups={qrisOpen?splitCart(cart,discAmt,biz):[]} onPaid={()=>{setQrisOpen(false);doCheckout();}} onCancel={()=>{setQrisOpen(false);setShowCheckout(true);}}/>
       <Modal open={showCheckout} size="lg" dismiss={false} onClose={()=>setShowCheckout(false)} icon={<CreditCard size={20}/>} title="Konfirmasi pembayaran"
         subtitle={`${cart.reduce((s,c)=>s+c.qty,0)} item`}
-        footer={<><Btn outline onClick={()=>setShowCheckout(false)}>Batal</Btn><Btn size="lg" onClick={doCheckout}><Check size={18}/>Bayar {rp(total)}</Btn></>}>
+        footer={<><Btn outline onClick={()=>setShowCheckout(false)}>Batal</Btn><Btn size="lg" onClick={qrisReady?()=>{setShowCheckout(false);setQrisOpen(true);}:doCheckout}>{qrisReady?<><QrCode size={18}/>Tampilkan QRIS</>:<><Check size={18}/>Bayar {rp(total)}</>}</Btn></>}>
         <div className="split">
           <div style={{display:"flex",flexDirection:"column",gap:18,minWidth:0}}>
             <Inp label="Nama pembeli (opsional)" icon={<User size={17}/>} value={namaPembeli} onChange={e=>setNamaPembeli(e.target.value)} placeholder="Kosongkan untuk Umum"/>
@@ -3161,6 +3091,7 @@ function AppInner() {
               <div style={{display:"flex",justifyContent:"space-between",alignItems:"baseline",marginTop:6}}>
                 <span style={{fontSize:14,fontWeight:700}}>Total</span>
                 <span className="mn" style={{fontSize:26,fontWeight:800,letterSpacing:"-.02em"}}>{rp(total)}</span></div>
+              {payMethod==="QRIS"&&<div style={{marginTop:10,fontSize:12.5,lineHeight:1.45,color:qrisReady?C.g:C.a,fontWeight:600}}>{qrisReady?"QR dengan nominal otomatis akan ditampilkan"+(qrisBiz.length>1?" per toko.":"."):`QRIS ${qrisMissing} belum disetel, jadi hanya dicatat sebagai QRIS.`}</div>}
               {user.access.length>1&&new Set(cart.map(c=>c.business)).size>1&&<div style={{marginTop:10,fontSize:12.5,color:C.t2,lineHeight:1.45}}>Keranjang berisi dua toko, jadi struk dibuat terpisah per toko.</div>}
             </div>
           </aside>
@@ -3426,7 +3357,7 @@ function AppInner() {
           </div>
           {/* Card view for mobile — easier tap targets */}
           <div className="hide-desktop" style={{padding:"8px 10px",display:"flex",flexDirection:"column",gap:7}}>
-            {filtered.length===0&&<div style={{padding:"24px",textAlign:"center",color:C.t3,fontSize:12}}>Tidak ada produk</div>}
+            {filtered.length===0&&<EmptyState pad={24} title="Tidak ada produk"/>}
             {filtered.map(p=>{
               const adj=quickAdj[p.id]||0;
               const preview=p.stock+adj;
@@ -3518,7 +3449,7 @@ function AppInner() {
             <span style={{fontSize:12,fontWeight:700,color:C.t2,textTransform:"none",letterSpacing:0}}>Log Penerimaan Stok</span>
           </div>
           {slogs.filter(l=>l.business===biz&&l.type==="masuk").length===0
-            ?<div style={{padding:"24px",textAlign:"center",color:C.t3,fontSize:12}}>Belum ada log penerimaan</div>
+            ?<EmptyState pad={24} title="Belum ada log penerimaan"/>
             :<TableWrap compact maxH="40vh">
               <table style={{width:"100%",borderCollapse:"collapse",fontSize:13,minWidth:400}}>
                 <THead cols={["Waktu","Produk","Qty","Sblm→Ssdh","Oleh"]}/>
@@ -3645,7 +3576,7 @@ function AppInner() {
 
 
         {/* ── DASHBOARD ── */}
-        {adminTab==="dashboard"&&<div style={{display:"flex",flexDirection:"column",gap:10}}>
+        {adminTab==="dashboard"&&<div className="dash">
           <h2 style={{fontSize:15,fontWeight:800}}>Dashboard</h2>
           {/* Desktop stat grid */}
           <div className="hide-mobile stat-grid-4" style={{display:"grid",gap:8}}>
@@ -3690,7 +3621,7 @@ function AppInner() {
               </div>;})}
           </Card>}
           {/* Stok menipis */}
-          {lowStockCount>0&&<Card accent={C.r}>
+          {lowStockCount>0&&<Card accent={C.r} className="dash-half">
             <div style={{fontSize:12,fontWeight:700,color:C.r,textTransform:"none",letterSpacing:0,marginBottom:10}}><Ico e="⚠"/> Stok Menipis ({lowStockCount})</div>
             {prods.filter(p=>p.stock<10).map(p=><div key={p.id} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"6px 0",borderTop:`1px solid ${C.bo0}`,fontSize:12.5}}>
               <span style={{fontWeight:600}}>{p.name}</span>
@@ -3698,7 +3629,7 @@ function AppInner() {
             </div>)}
           </Card>}
           {/* Today attendance */}
-          <Card>
+          <Card className="dash-half">
             <div style={{fontSize:12,fontWeight:700,color:C.t2,textTransform:"none",letterSpacing:0,marginBottom:10}}><Ico e="🕐"/> Kehadiran Hari Ini</div>
             {attend.filter(a=>a.date===todayDate()).length===0
               ?<p style={{fontSize:12,color:C.t3}}>Belum ada pegawai yang absen hari ini</p>
@@ -3830,12 +3761,12 @@ function AppInner() {
 
         {/* ── PRODUK ── */}
         {adminTab==="products"&&<div style={{display:"flex",flexDirection:"column",gap:10}}>
-          <div style={{display:"flex",gap:7,alignItems:"center",flexWrap:"wrap"}}>
+          <div className="ptool" style={{display:"flex",gap:7,alignItems:"center",flexWrap:"wrap"}}>
             {Object.values(BIZ).map(b2=>{const isJ=b2.id==="JS_CLOTHING",active=adminBiz===b2.id;
               return <button key={b2.id} onClick={()=>{setAdminBiz(b2.id);setSearchQ("");setPModal(false);setEditPid(null);setInlineAddMode(false);}} className="press"
                 style={{padding:"7px 14px",borderRadius:9,cursor:"pointer",fontWeight:700,fontSize:12,background:active?(isJ?C.b1:C.p1):"transparent",border:`2px solid ${active?(isJ?C.b:C.p):C.bo0}`,color:active?(isJ?C.b:C.p):C.t2,fontFamily:F.sans}}>
                 <Ico e={b2.icon}/> {b2.name}</button>;})}
-            <input value={searchQ} onChange={e=>setSearchQ(e.target.value)} placeholder="Cari produk..."
+            <input className="ptool-search" value={searchQ} onChange={e=>setSearchQ(e.target.value)} placeholder="Cari produk..."
               style={{padding:"7px 11px",background:C.bg2,border:`1px solid ${C.bo0}`,borderRadius:8,color:C.t0,fontSize:12,width:140,fontFamily:F.sans}}/>
             <button onClick={()=>downloadXLSX(adminPs,[
               {key:"barcode",label:"Barcode",w:14},{key:"name",label:"Nama Produk",w:28},
@@ -3931,7 +3862,7 @@ function AppInner() {
               <div style={{display:"flex",gap:8}}>
                 <button onClick={doImportProducts} disabled={!importRows.length||importLoading} className="press"
                   style={{flex:2,padding:"13px",background:importRows.length&&!importLoading?`linear-gradient(90deg,${C.vi},${C.b})`:C.bg3,
-                    border:"none",borderRadius:12,color:importRows.length&&!importLoading?"#fff":C.t2,
+                    border:"none",borderRadius:12,color:importRows.length&&!importLoading?C.on:C.t2,
                     fontSize:13,fontWeight:800,cursor:importRows.length&&!importLoading?"pointer":"not-allowed",fontFamily:F.sans}}>
                   {importLoading?"⏳ Mengimport...":"⬆ Import "+importRows.length+" Produk"}</button>
                 <button onClick={()=>{setImportModal(false);setImportRows([]);setImportErr("");}}
@@ -3970,7 +3901,7 @@ function AppInner() {
               )}
             </div>
             <button onClick={()=>{const bc=adminScanQ.trim();const found=prods.find(p=>p.barcode===bc&&p.business===adminBiz)||prods.find(p=>p.name.toLowerCase().includes(bc.toLowerCase())&&p.business===adminBiz);if(found){openEditP(found);setAdminScanQ("");}else toast("Tidak ditemukan","warn");}} className="press"
-              style={{padding:"10px 14px",background:C.b,border:"none",borderRadius:9,color:"#fff",fontWeight:700,fontSize:12,flexShrink:0}}>Cari</button>
+              style={{padding:"10px 14px",background:C.b,border:"none",borderRadius:9,color:C.on,fontWeight:700,fontSize:12,flexShrink:0}}>Cari</button>
           </div>
           {/* Desktop table */}
           <div className="hide-mobile">
@@ -4544,7 +4475,7 @@ function AppInner() {
               <span style={{fontSize:12,fontWeight:700,color:C.t2,textTransform:"none",letterSpacing:0}}>Ringkasan Kehadiran ({Object.keys(attByUser).length} pegawai)</span>
             </div>
             {Object.keys(attByUser).length===0
-              ?<div style={{padding:"24px",textAlign:"center",color:C.t3,fontSize:12}}>Belum ada data untuk periode ini</div>
+              ?<EmptyState pad={24} title="Belum ada data untuk periode ini"/>
               :<TableWrap>
                 <table style={{width:"100%",borderCollapse:"collapse",fontSize:12}}>
                   <THead cols={["Pegawai","Role","Hadir (Hari)","Total Jam Kerja","Rata-rata/Hari","Terakhir Masuk"]}/>
@@ -4570,7 +4501,7 @@ function AppInner() {
             <div style={{padding:"12px 14px",borderBottom:`1px solid ${C.bo0}`}}>
               <span style={{fontSize:12,fontWeight:700,color:C.t2,textTransform:"none",letterSpacing:0}}>Detail Absensi ({attFiltered.length})</span>
             </div>
-            {attFiltered.length===0?<div style={{padding:"24px",textAlign:"center",color:C.t3,fontSize:12}}>Tidak ada data</div>
+            {attFiltered.length===0?<EmptyState pad={24} title="Tidak ada data"/>
             :<>
               <div className="hide-mobile"><TableWrap>
                 <table style={{width:"100%",borderCollapse:"collapse",fontSize:12,minWidth:540}}>
@@ -4649,15 +4580,15 @@ function AppInner() {
             </div>
             <Card style={{padding:"12px 14px"}}>
               <div style={{display:"flex",gap:7,flexWrap:"wrap",alignItems:"center"}}>
-                {["ALL","JS_CLOTHING","JB_STORE"].map(b2=><button key={b2} onClick={()=>setSlogBiz(b2)} className="press"
+                {["ALL","JS_CLOTHING","JB_STORE"].map(b2=><button key={b2} onClick={()=>setSlogBiz(b2)} className="press fbtn"
                   style={{padding:"5px 11px",borderRadius:7,fontSize:11.5,fontWeight:600,cursor:"pointer",background:slogBiz===b2?(b2==="JB_STORE"?C.p1:b2==="JS_CLOTHING"?C.b1:C.g1):"transparent",border:`1.5px solid ${slogBiz===b2?(b2==="JB_STORE"?C.p:b2==="JS_CLOTHING"?C.b:C.g):C.bo0}`,color:slogBiz===b2?(b2==="JB_STORE"?C.p:b2==="JS_CLOTHING"?C.b:C.g):C.t2,fontFamily:F.sans}}>{b2==="ALL"?"Semua":BIZ[b2]?.name}</button>)}
                 <div style={{width:1,height:20,background:C.bo0}}/>
-                {["ALL","masuk","keluar"].map(t=><button key={t} onClick={()=>setSlogType(t)} className="press"
+                {["ALL","masuk","keluar"].map(t=><button key={t} onClick={()=>setSlogType(t)} className="press fbtn"
                   style={{padding:"5px 11px",borderRadius:7,fontSize:11.5,fontWeight:600,cursor:"pointer",background:slogType===t?(t==="masuk"?C.g1:t==="keluar"?C.r1:C.a1):"transparent",border:`1.5px solid ${slogType===t?(t==="masuk"?C.g:t==="keluar"?C.r:C.a):C.bo0}`,color:slogType===t?(t==="masuk"?C.g:t==="keluar"?C.r:C.a):C.t2,fontFamily:F.sans}}>
                   {t==="ALL"?"Semua":t==="masuk"?"↑ Masuk":"↓ Keluar"}</button>)}
                 <div style={{width:1,height:20,background:C.bo0}}/>
                 {[["all","Semua"],["today","Hari Ini"],["week","7 Hari"],["month","Bulan Ini"],["custom","Rentang"]].map(([v,l])=>(
-                  <button key={v} onClick={()=>setSlogRange(v)} className="press"
+                  <button key={v} onClick={()=>setSlogRange(v)} className="press fbtn"
                     style={{padding:"5px 11px",borderRadius:7,fontSize:11.5,fontWeight:600,cursor:"pointer",background:slogRange===v?C.g1:"transparent",border:`1.5px solid ${slogRange===v?C.g:C.bo0}`,color:slogRange===v?C.g:C.t2,fontFamily:F.sans}}>{l}</button>))}
                 {slogRange==="custom"&&<>
                   <input type="date" value={slogFrom} onChange={e=>setSlogFrom(e.target.value)} style={{padding:"5px 9px",background:C.bg3,border:`1.5px solid ${C.bo1}`,borderRadius:8,color:C.t0,fontSize:12,fontFamily:F.sans}}/>
@@ -4666,7 +4597,7 @@ function AppInner() {
                 </>}
               </div>
             </Card>
-            {slogsFiltered.length===0?<div style={{textAlign:"center",padding:"48px",color:C.t3}}><div style={{fontSize:40,opacity:.08,marginBottom:10}}><Ico e="📋" size={40}/></div><p>Tidak ada data</p></div>
+            {slogsFiltered.length===0?<Card><EmptyState title="Tidak ada data" hint="Coba ubah filter atau rentang waktu."/></Card>
             :<Card noPad style={{overflow:"hidden"}}>
               <TableWrap>
                 <table style={{width:"100%",borderCollapse:"collapse",fontSize:11.5,minWidth:540}}>
@@ -4702,7 +4633,7 @@ function AppInner() {
               style={{padding:"8px 14px",background:C.g1,border:`1px solid ${C.g}33`,borderRadius:9,color:C.g,fontSize:12,fontWeight:700,fontFamily:F.sans}}>⬇ Excel</button>
           </div>
           {returns.length===0
-            ?<div style={{textAlign:"center",padding:"48px",color:C.t3}}><div style={{fontSize:40,opacity:.08,marginBottom:10}}>↩</div><p>Belum ada retur</p></div>
+            ?<Card><EmptyState icon={<Undo2 size={24} strokeWidth={1.6}/>} title="Belum ada retur" hint="Transaksi yang dibatalkan akan tercatat di sini."/></Card>
             :<Card noPad style={{overflow:"hidden"}}>
               <TableWrap>
                 <table style={{width:"100%",borderCollapse:"collapse",fontSize:12,minWidth:520}}>
@@ -4728,6 +4659,7 @@ function AppInner() {
         {/* ── AKTIVITAS ── */}
         {adminTab==="actlog"&&<div style={{display:"flex",flexDirection:"column",gap:10}}>
           <h2 style={{fontSize:15,fontWeight:800}}>Log Aktivitas</h2>
+          {actLogs.length===0?<Card><EmptyState icon={<Activity size={24} strokeWidth={1.6}/>} title="Belum ada aktivitas" hint="Login, perubahan data, dan transaksi akan dicatat di sini."/></Card>:
           <Card noPad style={{overflow:"hidden"}}>
             <TableWrap>
               <table style={{width:"100%",borderCollapse:"collapse",fontSize:12,minWidth:520}}>
@@ -4741,7 +4673,7 @@ function AppInner() {
                 </tr>)}</tbody>
               </table>
             </TableWrap>
-          </Card>
+          </Card>}
         </div>}
 
         {/* ── OPNAME ── */}
