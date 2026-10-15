@@ -437,8 +437,32 @@ function THead({cols}) {
       fontWeight:700,fontSize:12,whiteSpace:"nowrap",borderBottom:`1px solid ${C.bo1}`,background:C.bg3}}>{c}</th>)}
   </tr></thead>;
 }
-function TableWrap({children,maxH="58vh"}) {
-  return <div style={{overflowX:"auto",overflowY:"auto",maxHeight:maxH,WebkitOverflowScrolling:"touch",position:"relative"}}>
+function TableWrap({children,maxH="58vh",compact}) {
+  // Default: tinggi tabel mengisi sisa layar (scroll di dalam tabel). compact = tinggi tetap maxH (tabel kecil di dashboard).
+  const ref=React.useRef(null);
+  const [h,setH]=React.useState(null);
+  React.useLayoutEffect(()=>{
+    if(compact) return;
+    const el=ref.current; if(!el) return;
+    const box=el.closest(".admin-content");
+    const measure=()=>{
+      const mobile=window.innerWidth<=640;
+      let avail;
+      if(box){
+        const top=el.getBoundingClientRect().top-box.getBoundingClientRect().top+box.scrollTop;
+        avail=box.clientHeight-top-(mobile?100:24);
+      } else avail=window.innerHeight-el.getBoundingClientRect().top-24;
+      const nh=Math.max(260,Math.floor(avail));
+      setH(prev=>prev===nh?prev:nh);
+    };
+    measure();
+    window.addEventListener("resize",measure);
+    const ro=typeof ResizeObserver!=="undefined"&&box?new ResizeObserver(measure):null;
+    if(ro) ro.observe(box);
+    return()=>{window.removeEventListener("resize",measure);ro?.disconnect();};
+  },[compact]);
+  return <div ref={ref} style={{overflowX:"auto",overflowY:"auto",WebkitOverflowScrolling:"touch",position:"relative",
+    ...(compact?{maxHeight:maxH}:{height:h||undefined,maxHeight:h?undefined:maxH})}}>
     {children}</div>;
 }
 function ProgressBar({value,max,color=C.pri,label}) {
@@ -3441,7 +3465,7 @@ function AppInner() {
           </div>
           {/* Table view for desktop */}
           <div className="hide-mobile">
-            <TableWrap maxH="50vh">
+            <TableWrap compact maxH="50vh">
               <table style={{width:"100%",borderCollapse:"collapse",fontSize:12,minWidth:520}}>
                 <THead cols={["Barcode","Nama","Kategori","Harga","Stok","+/-",""]}/>
                 <tbody>{filtered.map((p,i)=><tr key={p.id} className="hrow" style={{borderTop:`1px solid ${C.bo0}`,background:i%2===0?"transparent":C.bg0}}>
@@ -3495,7 +3519,7 @@ function AppInner() {
           </div>
           {slogs.filter(l=>l.business===biz&&l.type==="masuk").length===0
             ?<div style={{padding:"24px",textAlign:"center",color:C.t3,fontSize:12}}>Belum ada log penerimaan</div>
-            :<TableWrap maxH="40vh">
+            :<TableWrap compact maxH="40vh">
               <table style={{width:"100%",borderCollapse:"collapse",fontSize:13,minWidth:400}}>
                 <THead cols={["Waktu","Produk","Qty","Sblm→Ssdh","Oleh"]}/>
                 <tbody>{slogs.filter(l=>l.business===biz&&l.type==="masuk").slice(0,30).map((l,i)=>(
@@ -4276,7 +4300,7 @@ function AppInner() {
                   style={{padding:"5px 12px",background:C.g1,border:`1px solid ${C.g}33`,borderRadius:8,color:C.g,fontSize:11,fontWeight:700,fontFamily:F.sans}}>⬇ Excel</button>
               </div>
               {/* Desktop table */}
-              <div className="hide-mobile"><TableWrap maxH="60vh">
+              <div className="hide-mobile"><TableWrap>
                 <table style={{width:"100%",borderCollapse:"collapse",fontSize:12,minWidth:620}}>
                   <THead cols={["Tanggal","Nama Pembeli","Kasir","Produk","Qty","Harga","Subtotal","Bayar"]}/>
                   <tbody>{rows.slice(0,200).map((r,i)=>(
