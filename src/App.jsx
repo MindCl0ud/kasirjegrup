@@ -8,7 +8,7 @@ import {
   fbAddTransaction, fbAddReturn, fbUpdateStock, fbCheckIn, fbCheckOut,
   fbDeleteAttendance, fbClearAttendanceByDate,
   fbSetTarget, fbDeleteTarget, fbChangePassword,
-  fbLogActivity, verifyPassword, syncToSheets,
+  fbLogActivity, verifyPassword,
   subscribeOpnames, subscribeOpnameItems, fbCreateOpname, fbCloseOpname,
   fbDeleteOpname, fbUpdateOpnameItem, fbBulkUpdateOpnameItems, fbApplyOpnameAdjustments,
 } from "./firebase.js";
@@ -223,6 +223,60 @@ const makeCSS = () => `
   .sresize::after{content:"";position:absolute;top:0;bottom:0;left:4px;width:2px;background:transparent;transition:background .15s;}
   .sresize:hover::after,.sresize.on::after,.sresize:focus-visible::after{background:${C.pri};}
   .sresize:focus-visible{outline:none;}
+
+  /* ── Modal responsif: mobile = bottom sheet, desktop = dialog tengah ── */
+  .mdl-wrap{position:fixed;inset:0;background:rgba(12,16,46,.55);display:flex;align-items:flex-end;justify-content:center;animation:fadeIn .16s ease;}
+  .mdl{background:${C.bg2};width:100%;max-height:92dvh;display:flex;flex-direction:column;border-radius:22px 22px 0 0;
+    box-shadow:${C.sh2};animation:slideUp .26s cubic-bezier(.2,.9,.3,1);overflow:hidden;}
+  .mdl-lg,.mdl-xl{max-height:96dvh;}
+  .mdl-head{display:flex;align-items:flex-start;gap:12px;padding:4px 16px 12px;flex-shrink:0;}
+  .mdl-ico{width:40px;height:40px;border-radius:12px;display:grid;place-items:center;flex-shrink:0;background:${C.pri1};color:${C.pri};}
+  .mdl-title{font-size:18px;font-weight:800;letter-spacing:-.015em;line-height:1.25;margin-top:1px;}
+  .mdl-sub{font-size:13px;color:${C.t2};margin-top:2px;}
+  .mdl-x{width:40px;height:40px;margin-right:-6px;border:none;background:transparent;color:${C.t2};border-radius:12px;display:grid;place-items:center;flex-shrink:0;}
+  .mdl-x:hover{background:${C.bg3};}
+  .mdl-body{flex:1;min-height:0;overflow-y:auto;overscroll-behavior:contain;padding:6px 16px 18px;}
+  .mdl-foot{display:flex;flex-direction:column-reverse;gap:8px;padding:12px 16px calc(12px + var(--safe-b));border-top:1px solid ${C.bo0};background:${C.bg2};flex-shrink:0;}
+  .mdl-foot>*{width:100%;}
+  .mdl-row{display:flex;gap:8px;}.mdl-row>*{flex:1;}
+  .fgrid{display:grid;grid-template-columns:1fr;gap:14px;}
+  .fgrid .full{grid-column:1/-1;}
+  .fgrid.m2{grid-template-columns:1fr 1fr;gap:14px 12px;}
+  input[type=number]::-webkit-inner-spin-button,input[type=number]::-webkit-outer-spin-button{-webkit-appearance:none;margin:0;}
+  input[type=number]{-moz-appearance:textfield;appearance:textfield;}
+  .fsec{margin-top:20px;padding-top:18px;border-top:1px solid ${C.bo0};}
+  .fsec-title{display:flex;align-items:center;gap:8px;font-size:14px;font-weight:800;margin-bottom:8px;}
+  .split{display:grid;grid-template-columns:1fr;gap:18px;}
+  .split-side{background:${C.bg3};border-radius:16px;padding:14px 16px;align-self:start;}
+  .inv-layout{display:grid;grid-template-columns:1fr;gap:18px;}
+  .inv-paper{background:${C.bg2};border:1px solid ${C.bo1};border-radius:16px;padding:16px;}
+  .inv-meta{display:grid;grid-template-columns:1fr 1fr;gap:12px 16px;padding:14px 0;border-bottom:1px dashed ${C.bo2};}
+  .inv-rows{padding:6px 0;}
+  .inv-row{display:grid;grid-template-columns:1fr auto;gap:12px;padding:9px 0;font-size:14px;border-bottom:1px solid ${C.bo0};align-items:start;}
+  .inv-row:last-child{border-bottom:none;}
+  .inv-headrow{font-size:12px;font-weight:700;color:${C.t2};padding-top:4px;}
+  .inv-side{background:${C.bg3};border-radius:16px;padding:16px;align-self:start;}
+  @media(min-width:641px){
+    .mdl-wrap{align-items:center;padding:24px;}
+    .mdl{max-width:var(--mw);border-radius:20px;max-height:min(90dvh,860px);animation:popIn .2s cubic-bezier(.2,.9,.3,1);}
+    .mdl .grabber{display:none;}
+    .mdl-head{padding:22px 24px 12px;}
+    .mdl-body{padding:6px 24px 22px;}
+    .mdl-foot{flex-direction:row;justify-content:flex-end;padding:14px 24px;}
+    .mdl-foot>*{width:auto;min-width:104px;}
+    .fgrid{grid-template-columns:1fr 1fr;gap:16px 18px;}
+    .fgrid.cols3{grid-template-columns:repeat(3,1fr);}
+    .split{grid-template-columns:minmax(0,1fr) 310px;gap:26px;}
+    .split-side{position:sticky;top:0;}
+    .inv-layout{grid-template-columns:minmax(0,1fr) 240px;gap:22px;}
+    .inv-paper{padding:22px 24px;}
+    .inv-meta{grid-template-columns:repeat(4,1fr);}
+    .inv-row{grid-template-columns:minmax(0,1fr) 56px 110px 120px;}
+    /* popup lama (bottom-aligned) ikut tampil sebagai dialog tengah di desktop */
+    [style*="position: fixed"][style*="align-items: flex-end"]{align-items:center!important;}
+    [style*="align-items: flex-end"]>div[style*="22px 22px 0px 0px"]{border-radius:20px!important;border-bottom:1px solid ${C.bo1}!important;}
+  }
+  @keyframes popIn{from{opacity:0;transform:translateY(8px) scale(.97)}to{opacity:1;transform:none}}
 
   /* ── Kartu & chip ── */
   .mcard{background:${C.bg2};border-radius:16px;border:1px solid ${C.bo0};padding:14px 15px;box-shadow:${C.sh};transition:transform .12s,background .1s;}
@@ -741,8 +795,123 @@ function FirebaseSetup({onDone}) {
 // ─────────────────────────────────────────────────────────────
 //  INVOICE
 // ─────────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────
+//  MODAL RESPONSIF
+//  Mobile  : bottom sheet (lebar penuh, tombol aksi bertumpuk, form 1 kolom)
+//  Desktop : dialog di tengah (ukuran sm/md/lg/xl, tombol di kanan bawah, form 2 kolom)
+// ─────────────────────────────────────────────────────────────
+function Modal({open=true,title,subtitle,icon,size="md",onClose,footer,footClass="",children,dismiss=true,zIndex=700}) {
+  const ref=React.useRef(null);
+  React.useEffect(()=>{
+    if(!open) return;
+    const prev=document.body.style.overflow;
+    document.body.style.overflow="hidden";
+    const onKey=e=>{if(e.key==="Escape"&&dismiss&&onClose){onClose();}};
+    document.addEventListener("keydown",onKey);
+    const t=setTimeout(()=>{
+      const el=ref.current?.querySelector("[data-autofocus],input:not([disabled]):not([type=checkbox]),textarea,select");
+      if(el&&window.matchMedia("(min-width:641px)").matches) el.focus({preventScroll:true});
+    },80);
+    return()=>{document.body.style.overflow=prev;document.removeEventListener("keydown",onKey);clearTimeout(t);};
+  },[open]);
+  if(!open) return null;
+  const mw={sm:440,md:560,lg:780,xl:940}[size]||560;
+  return <div className="mdl-wrap" style={{zIndex}} onMouseDown={e=>{if(e.target===e.currentTarget&&dismiss&&onClose)onClose();}}>
+    <div ref={ref} className={`mdl mdl-${size}`} role="dialog" aria-modal="true" aria-label={typeof title==="string"?title:undefined} style={{"--mw":mw+"px",fontFamily:F.sans,color:C.t0}}>
+      <div className="grabber"/>
+      <header className="mdl-head">
+        {icon&&<span className="mdl-ico">{icon}</span>}
+        <div style={{flex:1,minWidth:0}}>
+          <h2 className="mdl-title">{title}</h2>
+          {subtitle&&<p className="mdl-sub">{subtitle}</p>}
+        </div>
+        {onClose&&<button className="mdl-x press" aria-label="Tutup" onClick={onClose}><X size={19}/></button>}
+      </header>
+      <div className="mdl-body">{children}</div>
+      {footer&&<footer className={"mdl-foot "+footClass}>{footer}</footer>}
+    </div>
+  </div>;
+}
+function Sel({label,value,onChange,children,disabled}) {
+  return <div>
+    {label&&<div style={{fontSize:12.5,fontWeight:600,color:C.t1,marginBottom:6}}>{label}</div>}
+    <select value={value} onChange={onChange} disabled={disabled}
+      style={{width:"100%",minHeight:46,padding:"11px 12px",background:C.bg3,border:`1.5px solid ${C.bo1}`,borderRadius:12,color:C.t0,fontSize:15,fontFamily:F.sans}}>{children}</select>
+  </div>;
+}
+
+// ─────────────────────────────────────────────────────────────
+//  FORM PRODUK (tambah & edit) — modal
+// ─────────────────────────────────────────────────────────────
+function ProductFormModal({open,editing,editId,form,setForm,prods,biz,onSave,onClose,toast}) {
+  if(!open) return null;
+  const addons=form.addons||[];
+  const bizId=form.business||biz;
+  const set=k=>e=>setForm(x=>({...x,[k]:e.target.value}));
+  const addAddon=()=>{
+    const q=(form._addonSearch||"").trim().toLowerCase(); if(!q) return;
+    const found=prods.find(p=>p.business===bizId&&(p.barcode.toLowerCase().includes(q)||p.name.toLowerCase().includes(q))&&p.id!==editId);
+    if(!found){toast("Produk tidak ditemukan","warn");return;}
+    if(addons.includes(found.id)){toast("Sudah ada","warn");return;}
+    setForm(x=>({...x,addons:[...addons,found.id],_addonSearch:""}));
+    toast("Add-on ditambahkan: "+found.name);
+  };
+  const price=+form.price||0,hpp=+form.hpp||0;
+  const days=form.expireDate?Math.ceil((new Date(form.expireDate)-new Date())/86400000):null;
+  const chip=(bg,cl,t)=><span style={{padding:"5px 11px",borderRadius:20,background:bg,color:cl,fontSize:12.5,fontWeight:700}}>{t}</span>;
+  return <Modal open size="lg" dismiss={false} onClose={onClose}
+    icon={editing?<Pencil size={20}/>:<Plus size={20}/>}
+    title={editing?"Edit produk":"Produk baru"} subtitle={BIZ[bizId]?.name}
+    footer={<><Btn outline onClick={onClose}>Batal</Btn><Btn onClick={onSave}><Check size={17}/>{editing?"Simpan perubahan":"Simpan produk"}</Btn></>}>
+    <div className="fgrid">
+      <Inp label="Barcode *" value={form.barcode||""} disabled={editing} onChange={set("barcode")} mono/>
+      <Inp label="Kategori" value={form.category||""} onChange={set("category")}/>
+      <div className="full"><Inp label="Nama produk *" value={form.name||""} onChange={set("name")}/></div>
+    </div>
+    <div className="fgrid m2" style={{marginTop:14}}>
+      <Inp label="Harga jual *" type="number" suffix="Rp" value={form.price||""} onChange={set("price")}/>
+      <Inp label="HPP / modal" type="number" suffix="Rp" value={form.hpp||""} onChange={set("hpp")}/>
+      <Inp label="Stok *" type="number" value={form.stock===undefined?"":form.stock} onChange={set("stock")}/>
+      <Inp label="Kedaluwarsa" type="date" value={form.expireDate||""} onChange={set("expireDate")}/>
+    </div>
+    {(price>0&&hpp>0||days!==null)&&<div style={{display:"flex",gap:8,flexWrap:"wrap",marginTop:14}}>
+      {price>0&&hpp>0&&chip(C.g1,C.g,`Margin ${((price-hpp)/price*100).toFixed(1)}%`)}
+      {price>0&&hpp>0&&chip(C.cy1,C.cy,`Laba ${rp(price-hpp)}/pcs`)}
+      {days!==null&&(days<0?chip(C.r1,C.r,"Sudah kadaluarsa"):days<=30?chip(C.a1,C.a,`${days} hari lagi`):chip(C.g1,C.g,`${days} hari lagi`))}
+    </div>}
+    <div className="fsec">
+      <div className="fsec-title"><Plus size={16} color={C.vi}/>Add-on (opsional)</div>
+      <p style={{fontSize:13,color:C.t2,lineHeight:1.5,marginBottom:12}}>Saat produk ini di-scan, kasir akan ditawari produk add-on berikut.</p>
+      <div style={{display:"flex",gap:8,marginBottom:10}}>
+        <div style={{flex:1}}><Inp value={form._addonSearch||""} onChange={set("_addonSearch")} placeholder="Cari nama atau barcode" icon={<Search size={16}/>}
+          onKeyDown={e=>{if(e.key==="Enter"){e.preventDefault();addAddon();}}}/></div>
+        <Btn outline onClick={addAddon}>Tambah</Btn>
+      </div>
+      {addons.length>0
+        ? <div style={{display:"flex",flexDirection:"column",gap:8}}>
+            {addons.map(adId=>{const ap=prods.find(x=>x.id===adId);if(!ap) return null;
+              return <div key={adId} style={{display:"flex",alignItems:"center",gap:10,padding:"9px 12px",background:C.bg3,borderRadius:12}}>
+                <div style={{flex:1,minWidth:0}}>
+                  <div style={{fontSize:14,fontWeight:600,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{ap.name}</div>
+                  <div className="mn" style={{fontSize:12,color:C.t2,marginTop:1}}>{ap.barcode} · {rp(ap.price)}</div>
+                </div>
+                <button aria-label={"Hapus add-on "+ap.name} onClick={()=>setForm(x=>({...x,addons:(x.addons||[]).filter(i=>i!==adId)}))} className="press"
+                  style={{width:36,height:36,border:"none",background:C.r1,color:C.r,borderRadius:10,display:"grid",placeItems:"center"}}><X size={17}/></button>
+              </div>;})}
+          </div>
+        : <div style={{padding:"14px",background:C.bg3,borderRadius:12,fontSize:13,color:C.t2,textAlign:"center"}}>Belum ada add-on</div>}
+    </div>
+  </Modal>;
+}
+
+// ─────────────────────────────────────────────────────────────
+//  INVOICE — mobile: sheet + tombol bawah | desktop: dialog 2 kolom (invoice + panel aksi)
+// ─────────────────────────────────────────────────────────────
 function Invoice({receipt,biz,onClose,onNew}) {
-  const b=BIZ[biz];
+  const b=BIZ[biz]||{};
+  const items=receipt.items||[];
+  const qty=items.reduce((s,i)=>s+i.qty,0);
+  const [copied,setCopied]=React.useState(false);
   const printInvoice=()=>{
     const w=window.open("","_blank","width=420,height=700");
     w.document.write(`<!DOCTYPE html><html><head><meta charset="utf-8"/><title>Invoice ${receipt.id}</title>
@@ -775,65 +944,77 @@ function Invoice({receipt,biz,onClose,onNew}) {
       </body></html>`);
     w.document.close();setTimeout(()=>{w.print();},400);
   };
-  return <div style={{position:"fixed",inset:0,background:"rgba(12,16,46,.55)",zIndex:600,
-    display:"flex",alignItems:"flex-end",justifyContent:"center",fontFamily:F.sans}} onClick={onClose}>
-    <div style={{width:"100%",maxWidth:420,background:C.bg2,borderRadius:"22px 22px 0 0",
-      border:`1px solid ${C.bo1}`,borderBottom:"none",animation:"slideUp .3s ease",
-      maxHeight:"92vh",overflowY:"auto",paddingBottom:24}} onClick={e=>e.stopPropagation()}>
-      <div style={{width:36,height:4,background:C.b1,borderRadius:2,margin:"16px auto 0"}}/>
-      <div style={{textAlign:"center",padding:"14px 20px 10px"}}>
-        <div style={{fontSize:22,marginBottom:4}}><Ico e="🧾" size={22}/></div>
-        <div style={{fontSize:13,fontWeight:800,letterSpacing:2,color:C.g}}>INVOICE</div>
-        <div className="mn" style={{fontSize:10,color:C.t2,marginTop:2}}>{receipt.id}</div>
-        <div style={{marginTop:6,display:"flex",justifyContent:"center"}}><BizChip biz={biz}/></div>
+  const text=[`*${b.name||"JE Grup"}*`,`Invoice ${receipt.id}`,receipt.date,"",
+    ...items.map(i=>`${i.name}\n  ${i.qty} x ${rp(i.price)} = ${rp(i.price*i.qty)}`),"",
+    ...(receipt.discount>0?[`Diskon: -${rp(receipt.discount)}`]:[]),
+    `*Total: ${rp(receipt.total)}*`,`Pembayaran: ${receipt.payment||"Tunai"}`,"","Terima kasih telah berbelanja!"].join("\n");
+  const wa=()=>window.open("https://wa.me/?text="+encodeURIComponent(text),"_blank");
+  const copy=async()=>{try{await navigator.clipboard.writeText(text);setCopied(true);setTimeout(()=>setCopied(false),1800);}catch{}};
+  const meta=[["Tanggal",receipt.date],["Kasir",receipt.kasir],receipt.namaPembeli&&receipt.namaPembeli!=="Umum"?["Pembeli",receipt.namaPembeli]:null,["Pembayaran",receipt.payment||"Tunai"]].filter(Boolean);
+  return <Modal open size="lg" onClose={onClose} icon={<Receipt size={20}/>} title="Invoice" subtitle={receipt.id}
+    footClass="hide-desktop"
+    footer={<>
+      <div className="mdl-row">
+        <Btn outline onClick={printInvoice}><Printer size={17}/>Cetak</Btn>
+        <Btn outline onClick={wa}>WhatsApp</Btn>
       </div>
-      <div style={{margin:"0 16px",background:C.bg3,borderRadius:12,border:`1px solid ${C.bo0}`,overflow:"hidden"}}>
-        <div style={{padding:"10px 14px",borderBottom:`1px solid ${C.bo0}`}}>
-          {([["Tanggal",receipt.date],["Kasir",receipt.kasir],[receipt.namaPembeli&&receipt.namaPembeli!=="Umum"?"Pembeli":null,receipt.namaPembeli],["Pembayaran",receipt.payment||"Tunai"],["No. Invoice",receipt.id]]).filter(([l])=>l).map(([l,v])=>(
-            <div key={l} style={{display:"flex",justifyContent:"space-between",fontSize:12,marginBottom:4}}>
-              <span style={{color:C.t2}}>{l}</span>
-              <span className="mn" style={{fontWeight:600,fontSize:11}}>{v}</span>
-            </div>))}
-        </div>
-        <div style={{padding:"10px 14px"}}>
-          <div style={{fontSize:12,fontWeight:700,color:C.t3,textTransform:"none",letterSpacing:0,marginBottom:8}}>Daftar Barang</div>
-          {receipt.items.map((item,i)=>(
-            <div key={i} style={{display:"flex",alignItems:"flex-start",gap:8,marginBottom:8,paddingBottom:8,borderBottom:`1px solid ${C.bo0}`}}>
-              <div style={{flex:1,minWidth:0}}>
-                <div style={{fontSize:12.5,fontWeight:600,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{item.name}</div>
-                <div className="mn" style={{fontSize:10.5,color:C.t2,marginTop:1}}>{item.qty} × {rp(item.price)}</div>
-              </div>
-              <div className="mn" style={{fontSize:13,fontWeight:700,color:C.t0,flexShrink:0}}>{rp(item.price*item.qty)}</div>
-            </div>))}
-        </div>
-        <div style={{padding:"10px 14px",background:C.bg4,borderTop:`1px solid ${C.bo0}`}}>
-          {receipt.discount>0&&<div style={{display:"flex",justifyContent:"space-between",fontSize:12,color:C.t2,marginBottom:4}}>
-            <span>Diskon</span><span className="mn" style={{color:C.r}}>− {rp(receipt.discount)}</span></div>}
-          <div style={{display:"flex",justifyContent:"space-between",alignItems:"baseline"}}>
-            <span style={{fontSize:13,fontWeight:700}}>TOTAL PEMBAYARAN</span>
-            <span className="mn" style={{fontSize:22,fontWeight:800,color:C.g}}>{rp(receipt.total)}</span>
+      {onNew?<Btn size="lg" onClick={onNew}>Transaksi baru</Btn>:<Btn size="lg" onClick={onClose}>Tutup</Btn>}
+    </>}>
+    <div className="inv-layout">
+      <article className="inv-paper">
+        <div style={{display:"flex",alignItems:"center",gap:12,paddingBottom:14,borderBottom:`1px dashed ${C.bo2}`}}>
+          <BrandMark size={40}/>
+          <div style={{flex:1,minWidth:0}}>
+            <div style={{fontSize:16,fontWeight:800,letterSpacing:"-.01em"}}>{b.name||"JE Grup"}</div>
+            <div style={{fontSize:12.5,color:C.t2}}>{b.desc}</div>
           </div>
-          <div style={{fontSize:11,color:C.t2,marginTop:4}}>{receipt.items.reduce((s,i)=>s+i.qty,0)} item · {receipt.items.length} produk</div>
+          <BizChip biz={biz} sm/>
         </div>
-      </div>
-      <div style={{textAlign:"center",padding:"10px 20px 0",fontSize:11,color:C.t3}}>Terima kasih telah berbelanja di {b?.name}!</div>
-      <div style={{display:"flex",gap:8,padding:"14px 16px 0"}}>
-        <button onClick={printInvoice} className="press"
-          style={{flex:1,padding:"13px",background:`${C.pri}`,
-            border:"none",borderRadius:11,color:C.on,fontSize:13,fontWeight:800,fontFamily:"inherit"}}>
-          <Ico e="🖨️"/> Cetak Invoice</button>
-        <button onClick={onNew} className="press"
-          style={{flex:1,padding:"13px",background:C.bg3,border:`1px solid ${C.bo1}`,
-            borderRadius:11,color:C.t0,fontSize:13,fontWeight:700,fontFamily:"inherit"}}>
-          Transaksi Baru →</button>
-      </div>
-      <div style={{padding:"8px 16px 0"}}>
-        <button onClick={onClose} style={{width:"100%",padding:"9px",background:"transparent",
-          border:`1px solid ${C.bo0}`,borderRadius:9,color:C.t3,fontSize:12,fontFamily:"inherit"}}>Tutup</button>
-      </div>
+        <div className="inv-meta">
+          {meta.map(([l,v])=><div key={l}><div style={{fontSize:12,color:C.t2}}>{l}</div><div className="mn" style={{fontSize:13.5,fontWeight:700,marginTop:1}}>{v}</div></div>)}
+        </div>
+        <div className="inv-rows">
+          <div className="inv-row inv-headrow"><span>Barang</span><span className="hide-mobile" style={{textAlign:"right"}}>Qty</span><span className="hide-mobile" style={{textAlign:"right"}}>Harga</span><span style={{textAlign:"right"}}>Jumlah</span></div>
+          {items.map((it,i)=><div key={i} className="inv-row">
+            <span style={{minWidth:0}}>
+              <span style={{display:"block",fontWeight:600,fontSize:14}}>{it.name}</span>
+              <span className="hide-desktop mn" style={{display:"block",fontSize:12,color:C.t2,marginTop:1}}>{it.qty} × {rp(it.price)}</span>
+            </span>
+            <span className="hide-mobile mn" style={{textAlign:"right"}}>{it.qty}</span>
+            <span className="hide-mobile mn" style={{textAlign:"right"}}>{rp(it.price)}</span>
+            <span className="mn" style={{textAlign:"right",fontWeight:700}}>{rp(it.price*it.qty)}</span>
+          </div>)}
+        </div>
+        <div style={{paddingTop:12,borderTop:`1px dashed ${C.bo2}`,marginTop:4}}>
+          {receipt.discount>0&&<>
+            <div style={{display:"flex",justifyContent:"space-between",fontSize:13.5,color:C.t2,marginBottom:4}}><span>Subtotal</span><span className="mn">{rp(receipt.subtotal||receipt.total+receipt.discount)}</span></div>
+            <div style={{display:"flex",justifyContent:"space-between",fontSize:13.5,color:C.r,marginBottom:6}}><span>Diskon</span><span className="mn">− {rp(receipt.discount)}</span></div>
+          </>}
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"baseline"}}>
+            <span style={{fontSize:14,fontWeight:700}}>Total</span>
+            <span className="mn" style={{fontSize:26,fontWeight:800,letterSpacing:"-.02em"}}>{rp(receipt.total)}</span>
+          </div>
+          <div style={{fontSize:12.5,color:C.t2,marginTop:4}}>{items.length} produk · {qty} item</div>
+        </div>
+        <p style={{textAlign:"center",fontSize:12.5,color:C.t2,marginTop:16}}>Terima kasih telah berbelanja di {b.name||"JE Grup"}!</p>
+      </article>
+      <aside className="inv-side hide-mobile">
+        <div style={{fontSize:13,fontWeight:800,marginBottom:12}}>Aksi</div>
+        <div style={{display:"flex",flexDirection:"column",gap:8}}>
+          <Btn full onClick={printInvoice}><Printer size={17}/>Cetak invoice</Btn>
+          <Btn full outline onClick={wa}>Kirim lewat WhatsApp</Btn>
+          <Btn full outline onClick={copy}>{copied?"Tersalin ✓":"Salin ringkasan"}</Btn>
+        </div>
+        <Divider my={16}/>
+        <div style={{display:"flex",flexDirection:"column",gap:8}}>
+          {onNew&&<Btn full color={C.g} onClick={onNew}>Transaksi baru</Btn>}
+          <Btn full ghost onClick={onClose}>Tutup</Btn>
+        </div>
+      </aside>
     </div>
-  </div>;
+  </Modal>;
 }
+
 
 // ─────────────────────────────────────────────────────────────
 //  STOCK CHECK
@@ -2193,13 +2374,13 @@ function AppInner() {
   const [expandedTrx,setExpandedTrx]=useState({}); // {trxId: true}
   const [lapFrom,setLapFrom]=useState("");
   const [lapTo,setLapTo]=useState("");
-  const [gsUrl,setGsUrl]=useState(()=>localStorage.getItem("je_gs_url")||"");
-  const [gsLoad,setGsLoad]=useState(false);
+    const [gsLoad,setGsLoad]=useState(false);
   const [copyDone,setCopyDone]=useState(false);
   const [uModal,setUModal]=useState(false);
   const [uForm,setUForm]=useState({});
   const [editUid,setEditUid]=useState(null);
   const [pModal,setPModal]=useState(false);
+  const [invTrx,setInvTrx]=useState(null);
   const [pForm,setPForm]=useState({});
   const [editPid,setEditPid]=useState(null);
   const [showPriceDrawer,setShowPriceDrawer]=useState(false);
@@ -2913,83 +3094,54 @@ function AppInner() {
         onNew={()=>{setReceipt(receiptQueue[0]||null);setReceiptQueue(q=>q.slice(1));scanRef.current?.focus();}}/>}
       {/* Stock check */}
       {showStock&&<StockCheckModal prods={kasirProds()} biz={null} onClose={()=>setShowStock(false)}/> }
-      {showKasirStok&&<KasirStokPanel
-        prods={kasirProds()} biz={null}
-        onClose={()=>setShowKasirStok(false)}
-        onAdjust={(p,delta)=>doQuickAdj(p,delta)}
-        onAddToCart={(p)=>{addToCart(p);toast("✓ "+p.name+" → keranjang");}}
-      />}
       {showLowStock&&<LowStockPopup prods={prods} onClose={()=>setShowLowStock(false)}/>}
       {showExpirePopup&&<ExpirePopup nearExpiry={nearExpiry} expiredProds={expiredProds} onClose={()=>setShowExpirePopup(false)}/>}
 
       {/* Checkout modal */}
-      {showCheckout&&<div style={{position:"fixed",inset:0,background:"rgba(12,16,46,.55)",zIndex:500,display:"flex",alignItems:"flex-end",justifyContent:"center"}} onClick={()=>setShowCheckout(false)}>
-        <div style={{width:"100%",maxWidth:420,background:C.bg2,borderRadius:"22px 22px 0 0",border:`1px solid ${C.bo1}`,borderBottom:"none",animation:"slideUp .25s ease",padding:"16px 18px 32px"}} onClick={e=>e.stopPropagation()}>
-          <div style={{width:36,height:4,background:C.b1,borderRadius:2,margin:"0 auto 16px"}}/>
-          <h3 style={{fontSize:15,fontWeight:800,marginBottom:14}}><Ico e="💳"/> Konfirmasi Pembayaran</h3>
-          {/* Nama Pembeli */}
-          <div style={{marginBottom:12}}>
-            <div style={{fontSize:12,fontWeight:700,color:C.t2,textTransform:"none",letterSpacing:0,marginBottom:6}}>Nama Pembeli (Opsional)</div>
-            <div style={{position:"relative"}}>
-              <span style={{position:"absolute",left:12,top:"50%",transform:"translateY(-50%)",fontSize:14,pointerEvents:"none",color:C.t2}}><Ico e="🧑"/></span>
-              <input value={namaPembeli} onChange={e=>setNamaPembeli(e.target.value)}
-                placeholder="Kosongkan = Umum / Tunai"
-                style={{width:"100%",padding:"11px 13px 11px 36px",background:C.bg3,
-                  border:`1.5px solid ${namaPembeli?C.pri+"88":C.bo0}`,borderRadius:10,
-                  color:C.t0,fontSize:13,fontFamily:F.sans,boxSizing:"border-box",transition:"border-color .15s"}}
-                onFocus={e=>e.target.style.borderColor=C.pri+"88"}
-                onBlur={e=>e.target.style.borderColor=namaPembeli?C.pri+"88":C.bo0}/>
-            </div>
-          </div>
-          {/* Subtotal */}
-          <div style={{display:"flex",justifyContent:"space-between",fontSize:13,marginBottom:8}}>
-            <span style={{color:C.t2}}>Subtotal</span>
-            <span className="mn">{rp(subtotal)}</span>
-          </div>
-          {/* Discount */}
-          <div style={{padding:"10px 12px",background:C.bg3,borderRadius:10,border:`1px solid ${C.bo0}`,marginBottom:10}}>
-            <div style={{fontSize:12,fontWeight:700,color:C.t2,textTransform:"none",letterSpacing:0,marginBottom:8}}>Diskon (Opsional)</div>
-            <div style={{display:"flex",gap:6}}>
-              <div style={{display:"flex",borderRadius:8,overflow:"hidden",border:`1px solid ${C.bo0}`,flexShrink:0}}>
-                {[["pct","%"],["rp","Rp"]].map(([t,l])=>(
-                  <button key={t} onClick={()=>setDiscount(x=>({...x,type:t}))}
-                    style={{padding:"8px 12px",background:discount.type===t?C.g:C.bg4,border:"none",
-                      color:discount.type===t?"#000":C.t2,fontWeight:700,fontSize:12,fontFamily:F.sans}}>{l}</button>))}
+      <Modal open={showCheckout} size="lg" dismiss={false} onClose={()=>setShowCheckout(false)} icon={<CreditCard size={20}/>} title="Konfirmasi pembayaran"
+        subtitle={`${cart.reduce((s,c)=>s+c.qty,0)} item`}
+        footer={<><Btn outline onClick={()=>setShowCheckout(false)}>Batal</Btn><Btn size="lg" onClick={doCheckout}><Check size={18}/>Bayar {rp(total)}</Btn></>}>
+        <div className="split">
+          <div style={{display:"flex",flexDirection:"column",gap:18,minWidth:0}}>
+            <Inp label="Nama pembeli (opsional)" icon={<User size={17}/>} value={namaPembeli} onChange={e=>setNamaPembeli(e.target.value)} placeholder="Kosongkan untuk Umum"/>
+            <div>
+              <div style={{fontSize:12.5,fontWeight:600,color:C.t1,marginBottom:6}}>Diskon (opsional)</div>
+              <div style={{display:"flex",gap:8}}>
+                <div style={{display:"flex",borderRadius:12,overflow:"hidden",border:`1.5px solid ${C.bo1}`,flexShrink:0}}>
+                  {[["pct","%"],["rp","Rp"]].map(([t,l])=>(
+                    <button key={t} onClick={()=>setDiscount(x=>({...x,type:t}))} aria-pressed={discount.type===t}
+                      style={{minWidth:52,minHeight:46,background:discount.type===t?C.pri:C.bg3,border:"none",color:discount.type===t?C.on:C.t2,fontWeight:700,fontSize:14}}>{l}</button>))}
+                </div>
+                <div style={{flex:1}}><Inp type="number" value={discount.value} onChange={e=>setDiscount(x=>({...x,value:e.target.value}))} placeholder={discount.type==="pct"?"0–100":"0"}/></div>
               </div>
-              <input type="number" value={discount.value} onChange={e=>setDiscount(x=>({...x,value:e.target.value}))}
-                placeholder={discount.type==="pct"?"0-100":"0"}
-                style={{flex:1,padding:"8px 12px",background:C.bg4,border:`1px solid ${C.bo0}`,borderRadius:8,color:C.t0,fontSize:14,fontFamily:F.mono}}/>
+              {discAmt>0&&<div style={{marginTop:8,fontSize:13,color:C.r,fontWeight:600}}>Potongan {rp(discAmt)}</div>}
             </div>
-            {discAmt>0&&<div style={{marginTop:8,fontSize:12,color:C.r,fontWeight:600}}>Diskon: − {rp(discAmt)}</div>}
-          </div>
-          {/* Payment method */}
-          <div style={{marginBottom:14}}>
-            <div style={{fontSize:12,fontWeight:700,color:C.t2,textTransform:"none",letterSpacing:0,marginBottom:8}}>Metode Pembayaran</div>
-            <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
-              {PAYMENT_METHODS.map(m=>(
-                <button key={m} onClick={()=>setPayMethod(m)}
-                  style={{padding:"7px 14px",borderRadius:8,fontSize:12,fontWeight:600,cursor:"pointer",
-                    background:payMethod===m?C.g1:"transparent",border:`1.5px solid ${payMethod===m?C.g:C.bo0}`,
-                    color:payMethod===m?C.g:C.t2,fontFamily:F.sans}}>{m}</button>))}
+            <div>
+              <div style={{fontSize:12.5,fontWeight:600,color:C.t1,marginBottom:8}}>Metode pembayaran</div>
+              <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
+                {PAYMENT_METHODS.map(m=><button key={m} onClick={()=>setPayMethod(m)} className={`chip${payMethod===m?" on":""}`} aria-pressed={payMethod===m}>{m}</button>)}
+              </div>
             </div>
           </div>
-          {/* Total */}
-          <div style={{padding:"12px 14px",background:C.bg4,borderRadius:12,border:`1px solid ${C.bo0}`,marginBottom:14}}>
-            <div style={{display:"flex",justifyContent:"space-between",alignItems:"baseline"}}>
-              <span style={{fontSize:13,fontWeight:700}}>TOTAL</span>
-              <span className="mn" style={{fontSize:26,fontWeight:800,color:C.g}}>{rp(total)}</span>
+          <aside className="split-side">
+            <div style={{fontSize:13,fontWeight:800,marginBottom:10}}>Ringkasan</div>
+            <div style={{maxHeight:180,overflowY:"auto",display:"flex",flexDirection:"column",gap:8,marginBottom:12}}>
+              {cart.map(c=><div key={c.barcode} style={{display:"flex",justifyContent:"space-between",gap:10,fontSize:13.5}}>
+                <span style={{minWidth:0}}><span style={{display:"block",fontWeight:600,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{c.name}</span>
+                  <span className="mn" style={{fontSize:12,color:C.t2}}>{c.qty} × {rp(c.price)}</span></span>
+                <span className="mn" style={{fontWeight:700,flexShrink:0}}>{rp(c.price*c.qty)}</span></div>)}
             </div>
-            <div style={{fontSize:11,color:C.t2,marginTop:4}}>{payMethod} · {cart.reduce((s,c)=>s+c.qty,0)} item</div>
-          </div>
-          <div style={{display:"flex",gap:8}}>
-            <button onClick={doCheckout} className="press"
-              style={{flex:2,padding:"14px",background:`${C.pri}`,border:"none",borderRadius:12,color:C.on,fontSize:14,fontWeight:800,fontFamily:F.sans}}>
-              <Ico e="✓"/> Bayar {rp(total)}</button>
-            <button onClick={()=>setShowCheckout(false)}
-              style={{flex:1,padding:"14px",background:"transparent",border:`1px solid ${C.bo0}`,borderRadius:12,color:C.t2,fontSize:13,fontFamily:F.sans}}>Batal</button>
-          </div>
+            <div style={{borderTop:`1px dashed ${C.bo2}`,paddingTop:10}}>
+              <div style={{display:"flex",justifyContent:"space-between",fontSize:13.5,color:C.t2,marginBottom:4}}><span>Subtotal</span><span className="mn">{rp(subtotal)}</span></div>
+              {discAmt>0&&<div style={{display:"flex",justifyContent:"space-between",fontSize:13.5,color:C.r,marginBottom:4}}><span>Diskon</span><span className="mn">− {rp(discAmt)}</span></div>}
+              <div style={{display:"flex",justifyContent:"space-between",alignItems:"baseline",marginTop:6}}>
+                <span style={{fontSize:14,fontWeight:700}}>Total</span>
+                <span className="mn" style={{fontSize:26,fontWeight:800,letterSpacing:"-.02em"}}>{rp(total)}</span></div>
+              {user.access.length>1&&new Set(cart.map(c=>c.business)).size>1&&<div style={{marginTop:10,fontSize:12.5,color:C.t2,lineHeight:1.45}}>Keranjang berisi dua toko, jadi struk dibuat terpisah per toko.</div>}
+            </div>
+          </aside>
         </div>
-      </div>}
+      </Modal>
 
       {/* Main layout */}
       <div style={{flex:1,display:"flex",overflow:"hidden"}}>
@@ -3025,8 +3177,6 @@ function AppInner() {
               </div>
               <button onClick={()=>kasirScan(scanIn)} className="press"
                 style={{padding:"12px 16px",background:bc,border:"none",borderRadius:12,color:C.on,fontWeight:800,fontSize:14,flexShrink:0}}>+</button>
-              <button onClick={()=>setShowKasirStok(true)} className="press" title="Lihat & Kelola Stok"
-                style={{padding:"12px 14px",background:C.bg3,border:`1.5px solid ${C.bo1}`,borderRadius:12,color:C.t1,fontSize:14,flexShrink:0}}><Ico e="📦"/></button>
             </div>
           </div>
           {/* Cart */}
@@ -3082,9 +3232,6 @@ function AppInner() {
             <button onClick={()=>setCart([])} style={{padding:"7px",background:"transparent",border:`1px solid ${C.bo0}`,borderRadius:8,color:C.t3,fontSize:11,fontFamily:F.sans}}>Bersihkan</button>
           </div>
           <Divider my={8}/>
-          <button onClick={()=>setShowKasirStok(true)} className="press"
-            style={{width:"100%",padding:"8px",background:C.bg3,border:`1px solid ${C.bo1}`,borderRadius:9,color:C.t1,fontSize:11,fontWeight:700,marginBottom:8,fontFamily:F.sans}}>
-            <Ico e="📦"/> Stok & Kelola ({kasirProds().length})</button>
           <div style={{fontSize:12,color:C.t3,textTransform:"none",letterSpacing:0,marginBottom:6,fontWeight:700}}>Terbaru</div>
           {trxs.filter(t=>user.access.includes(t.business)).slice(0,5).map(t=><div key={t.id}
             style={{display:"flex",justifyContent:"space-between",marginBottom:4,fontSize:11}}>
@@ -3094,11 +3241,8 @@ function AppInner() {
         </div>
       </div>
       {/* Mobile bottom bar */}
-      <div style={{background:`${C.bg2}f8`,backdropFilter:"blur(16px)",borderTop:`1px solid ${C.bo0}`,
+      <div className="hide-desktop" style={{background:`${C.bg2}f8`,backdropFilter:"blur(16px)",borderTop:`1px solid ${C.bo0}`,
         padding:"10px 12px",paddingBottom:`calc(10px + var(--safe-b))`,flexShrink:0,display:"flex",alignItems:"center",gap:8}}>
-        <button onClick={()=>setShowKasirStok(true)} className="press"
-          title="Lihat & Kelola Stok"
-          style={{padding:"11px 12px",background:C.bg3,border:`1.5px solid ${C.bo1}`,borderRadius:11,color:C.t1,fontSize:16,flexShrink:0}}><Ico e="📦"/></button>
         <div style={{flex:1}}>
           <div style={{fontSize:10,color:C.t2,fontWeight:600}}>Total</div>
           <div className="mn" style={{fontSize:22,fontWeight:800,color:C.t0,lineHeight:1.2}}>{rp(total)}</div>
@@ -3190,31 +3334,21 @@ function AppInner() {
         </Card>
 
         {/* 🆕 FORM PRODUK BARU (Jika tidak ditemukan saat scan) */}
-        {isNewProduct && (
-          <Card accent={C.vi} style={{ animation: "fadeUp .2s ease", marginBottom: 15 }}>
-            <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 12 }}>
-              <h3 style={{ fontSize: 14, fontWeight: 800, color: C.vi }}>🆕 Daftarkan Produk Baru</h3>
-              <button onClick={() => setIsNewProduct(false)} style={{ background: "transparent", border: "none", color: C.t3, fontSize: 20 }}>×</button>
-            </div>
-            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-              <Inp label="Barcode" value={newPForm.barcode} onChange={e => setNewPForm(x => ({ ...x, barcode: e.target.value }))} mono />
-              <Inp label="Nama Produk" value={newPForm.name} onChange={e => setNewPForm(x => ({ ...x, name: e.target.value }))} />
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
-                <Inp label="Kategori" value={newPForm.category} onChange={e => setNewPForm(x => ({ ...x, category: e.target.value }))} />
-                <Inp label="Harga Jual" type="number" value={newPForm.price} onChange={e => setNewPForm(x => ({ ...x, price: e.target.value }))} suffix="Rp" />
-              </div>
-              <Inp label="Stok Awal" type="number" value={newPForm.stock} onChange={e => setNewPForm(x => ({ ...x, stock: e.target.value }))} />
-              <div style={{ display: "flex", gap: 8, marginTop: 5 }}>
-                <Btn onClick={saveNewProduct} full color={C.vi}><Ico e="✓"/> Simpan & Daftarkan</Btn>
-                <Btn onClick={() => setIsNewProduct(false)} outline>Batal</Btn>
-              </div>
-            </div>
-          </Card>
-        )}
+        <Modal open={!!isNewProduct} size="md" dismiss={false} onClose={()=>setIsNewProduct(false)} icon={<Plus size={20}/>} title="Daftarkan produk baru"
+          footer={<><Btn outline onClick={()=>setIsNewProduct(false)}>Batal</Btn><Btn color={C.vi} onClick={saveNewProduct}><Check size={17}/>Simpan produk</Btn></>}>
+          <div className="fgrid">
+            <Inp label="Barcode" value={newPForm.barcode} onChange={e=>setNewPForm(x=>({...x,barcode:e.target.value}))} mono/>
+            <Inp label="Kategori" value={newPForm.category} onChange={e=>setNewPForm(x=>({...x,category:e.target.value}))}/>
+            <div className="full"><Inp label="Nama produk" value={newPForm.name} onChange={e=>setNewPForm(x=>({...x,name:e.target.value}))}/></div>
+            <Inp label="Harga jual" type="number" suffix="Rp" value={newPForm.price} onChange={e=>setNewPForm(x=>({...x,price:e.target.value}))}/>
+            <Inp label="Stok awal" type="number" value={newPForm.stock} onChange={e=>setNewPForm(x=>({...x,stock:e.target.value}))}/>
+          </div>
+        </Modal>
 
         {/* 📦 UPDATE STOK (Untuk produk yang sudah ada) */}
         {stokTarget && !isNewProduct && (
-          <Card accent={bc} style={{animation:"fadeUp .2s ease"}}>
+          <Modal open size="md" dismiss={false} onClose={()=>{setStokTarget(null);stokScanRef.current?.focus();}} icon={<Package size={20}/>} title="Tambah stok" subtitle={stokTarget.name}
+            footer={<><Btn outline onClick={()=>{setStokTarget(null);stokScanRef.current?.focus();}}>Batal</Btn><Btn onClick={doAddStock}><Plus size={17}/>Tambah stok</Btn></>}>
             <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:12}}>
               <div style={{flex:1,minWidth:0}}>
                 <div style={{fontSize:15,fontWeight:800,marginBottom:4,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{stokTarget.name}</div>
@@ -3250,11 +3384,7 @@ function AppInner() {
               <span>Stok: <b style={{color:C.t0}}>{stokTarget.stock}</b> → <b style={{color:C.g,fontSize:13}}>{stokTarget.stock+parseInt(stokQ)}</b></span>
               {stokPrice&&+stokPrice>0&&<span>Harga baru: <b style={{color:C.a}}>{rp(stokPrice)}</b></span>}
             </div>}
-            <div style={{display:"flex",gap:8}}>
-              <Btn onClick={doAddStock} full>+ Tambah Stok</Btn>
-              <Btn onClick={()=>{setStokTarget(null);stokScanRef.current?.focus();}} outline>Batal</Btn>
-            </div>
-          </Card>
+          </Modal>
         )}
 
         <button onClick={()=>setShowOpnamePanel(true)} className="press"
@@ -3391,7 +3521,7 @@ function AppInner() {
     const TABS=[
       {id:"dashboard",l:"Dashboard",ic:LayoutDashboard},{id:"users",l:"Pengguna",ic:Users},{id:"products",l:"Produk",ic:Package},
       {id:"laporan",l:"Laporan",ic:Wallet},{id:"absensi",l:"Absensi",ic:Clock},{id:"stoklog",l:"Log Stok",ic:ClipboardList},
-      {id:"returns",l:"Retur",ic:Undo2},{id:"actlog",l:"Aktivitas",ic:Activity},{id:"sheets",l:"Sheets",ic:Link2},{id:"opname",l:"Opname",ic:ClipboardCheck},
+      {id:"returns",l:"Retur",ic:Undo2},{id:"actlog",l:"Aktivitas",ic:Activity},{id:"opname",l:"Opname",ic:ClipboardCheck},
     ];
     const BNAV_TABS=[
       {id:"dashboard",ic:LayoutDashboard,label:"Dashboard"},
@@ -3404,7 +3534,6 @@ function AppInner() {
       {id:"stoklog",ic:ClipboardList,label:"Log Stok"},
       {id:"returns",ic:Undo2,label:"Retur"},
       {id:"actlog",ic:Activity,label:"Aktivitas"},
-      {id:"sheets",ic:Link2,label:"Sheets"},
       {id:"opname",ic:ClipboardCheck,label:"Opname"},
     ];
     const isMoreTab=MORE_TABS.some(t=>t.id===adminTab);
@@ -3416,82 +3545,51 @@ function AppInner() {
       <Header title="Admin Panel" user={user} online={online} onLogout={doLogout} lowStockCount={lowStockCount} onToggleTheme={toggleTheme} isDark={isDark} onLowStockClick={()=>setShowLowStock(true)} expireCount={nearExpiry.length} expiredCount={expiredProds.length} onExpireClick={()=>setShowExpirePopup(true)}/>
 
       {/* Change password modal */}
-      {cpwdModal&&<div style={{position:"fixed",inset:0,background:"rgba(12,16,46,.55)",zIndex:500,display:"flex",alignItems:"flex-end",justifyContent:"center"}} onClick={()=>setCpwdModal(null)}>
-        <div style={{width:"100%",maxWidth:420,background:C.bg2,borderRadius:"22px 22px 0 0",padding:"18px 20px 32px",border:`1px solid ${C.bo1}`,borderBottom:"none",animation:"slideUp .25s ease"}} onClick={e=>e.stopPropagation()}>
-          <div style={{width:36,height:4,background:C.b1,borderRadius:2,margin:"0 auto 16px"}}/>
-          <h3 style={{fontSize:14,fontWeight:800,marginBottom:14,color:C.a}}><Ico e="🔑"/> Ganti Password</h3>
-          <p style={{fontSize:12,color:C.t2,marginBottom:14}}>Untuk: <b style={{color:C.t0}}>{users.find(u=>u.id===cpwdModal)?.name}</b></p>
-          <div style={{display:"flex",flexDirection:"column",gap:10}}>
-            {user.role!=="admin"&&<div>
-              <div style={{fontSize:12,fontWeight:700,color:C.t2,textTransform:"none",letterSpacing:0,marginBottom:4}}>Password Lama</div>
-              <input type="password" value={cpwdForm.old} onChange={e=>setCpwdForm(x=>({...x,old:e.target.value}))} style={IS}
-                onFocus={e=>e.target.style.borderColor=C.pri+"88"} onBlur={e=>e.target.style.borderColor=C.bo0}/>
-            </div>}
-            <div>
-              <div style={{fontSize:12,fontWeight:700,color:C.t2,textTransform:"none",letterSpacing:0,marginBottom:4}}>Password Baru *</div>
-              <input type="password" value={cpwdForm.n1} onChange={e=>setCpwdForm(x=>({...x,n1:e.target.value}))} style={IS}
-                onFocus={e=>e.target.style.borderColor=C.pri+"88"} onBlur={e=>e.target.style.borderColor=C.bo0}/>
-            </div>
-            <div>
-              <div style={{fontSize:12,fontWeight:700,color:C.t2,textTransform:"none",letterSpacing:0,marginBottom:4}}>Konfirmasi Password *</div>
-              <input type="password" value={cpwdForm.n2} onChange={e=>setCpwdForm(x=>({...x,n2:e.target.value}))} style={IS}
-                onFocus={e=>e.target.style.borderColor=C.pri+"88"} onBlur={e=>e.target.style.borderColor=C.bo0}/>
-            </div>
-          </div>
-          <div style={{display:"flex",gap:8,marginTop:16}}>
-            <Btn onClick={doChangePassword} full>Simpan</Btn>
-            <Btn onClick={()=>setCpwdModal(null)} outline>Batal</Btn>
-          </div>
-        </div>
-      </div>}
+      <ProductFormModal open={pModal} editing={editPid!==null} editId={editPid} form={pForm} setForm={setPForm} prods={prods} biz={adminBiz}
+        onSave={saveProd} onClose={()=>{setPModal(false);setEditPid(null);setInlineAddMode(false);}} toast={toast}/>
+      {invTrx&&<Invoice receipt={invTrx} biz={invTrx.business} onClose={()=>setInvTrx(null)}/>}
 
-      {/* User modal */}
-      {uModal&&<div style={{position:"fixed",inset:0,background:"rgba(12,16,46,.55)",zIndex:500,display:"flex",alignItems:"flex-end",justifyContent:"center"}} onClick={()=>setUModal(false)}>
-        <div style={{width:"100%",maxWidth:500,background:C.bg2,borderRadius:"22px 22px 0 0",padding:"18px 20px 32px",border:`1px solid ${C.bo1}`,borderBottom:"none",animation:"slideUp .25s ease",maxHeight:"90vh",overflowY:"auto"}} onClick={e=>e.stopPropagation()}>
-          <div style={{width:36,height:4,background:C.b1,borderRadius:2,margin:"0 auto 16px"}}/>
-          <h3 style={{fontSize:14,fontWeight:800,marginBottom:16,color:C.g}}>{editUid===null?<><Ico e="➕"/> Tambah Pengguna</>:<><Ico e="✏️"/> Edit Pengguna</>}</h3>
-          <div style={{display:"flex",flexDirection:"column",gap:10}}>
-            <div>
-              <div style={{fontSize:12,fontWeight:700,color:C.t2,textTransform:"none",letterSpacing:0,marginBottom:4}}>Nama Lengkap *</div>
-              <input value={uForm.name||""} onChange={e=>setUForm(x=>({...x,name:e.target.value}))} style={IS} onFocus={e=>e.target.style.borderColor=C.pri+"88"} onBlur={e=>e.target.style.borderColor=C.bo0}/>
-            </div>
-            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
-              <div>
-                <div style={{fontSize:12,fontWeight:700,color:C.t2,textTransform:"none",letterSpacing:0,marginBottom:4}}>Username *</div>
-                <input value={uForm.username||""} onChange={e=>setUForm(x=>({...x,username:e.target.value}))} disabled={editUid!==null} style={{...IS,color:editUid!==null?C.t2:C.t0}} onFocus={e=>editUid===null&&(e.target.style.borderColor=C.pri+"88")} onBlur={e=>e.target.style.borderColor=C.bo0}/>
-              </div>
-              <div>
-                <div style={{fontSize:12,fontWeight:700,color:C.t2,textTransform:"none",letterSpacing:0,marginBottom:4}}>Password *</div>
-                <input type="password" value={uForm.password||""} onChange={e=>setUForm(x=>({...x,password:e.target.value}))} style={IS} onFocus={e=>e.target.style.borderColor=C.pri+"88"} onBlur={e=>e.target.style.borderColor=C.bo0}/>
-              </div>
-              <div>
-                <div style={{fontSize:12,fontWeight:700,color:C.t2,textTransform:"none",letterSpacing:0,marginBottom:4}}>Avatar Emoji</div>
-                <input value={uForm.avatar||""} onChange={e=>setUForm(x=>({...x,avatar:e.target.value}))} style={IS} onFocus={e=>e.target.style.borderColor=C.pri+"88"} onBlur={e=>e.target.style.borderColor=C.bo0}/>
-              </div>
-              <div>
-                <div style={{fontSize:12,fontWeight:700,color:C.t2,textTransform:"none",letterSpacing:0,marginBottom:4}}>Role</div>
-                <select value={uForm.role||"kasir"} onChange={e=>setUForm(x=>({...x,role:e.target.value}))} style={{...IS,fontFamily:F.sans}}>
-                  <option value="kasir">Kasir</option><option value="stok">Stok</option><option value="admin">Admin</option>
-                </select>
-              </div>
-            </div>
-            <div>
-              <div style={{fontSize:12,fontWeight:700,color:C.t2,textTransform:"none",letterSpacing:0,marginBottom:8}}>Akses Bisnis *</div>
-              <div style={{display:"flex",gap:8}}>
-                {Object.values(BIZ).map(b2=>{const chk=uForm.access?.includes(b2.id),isJ=b2.id==="JS_CLOTHING";
-                  return <button key={b2.id} onClick={()=>setUForm(x=>({...x,access:chk?x.access.filter(a=>a!==b2.id):[...(x.access||[]),b2.id]}))}
-                    style={{flex:1,padding:"10px",borderRadius:10,cursor:"pointer",fontWeight:700,fontSize:12,background:chk?(isJ?C.b1:C.p1):"transparent",border:`2px solid ${chk?(isJ?C.b:C.p):C.bo0}`,color:chk?(isJ?C.b:C.p):C.t2,fontFamily:F.sans}}>
-                    <Ico e={b2.icon}/> {b2.name}</button>;})}
-              </div>
-            </div>
-            <div style={{display:"flex",alignItems:"center",gap:8}}>
-              <input type="checkbox" id="uac" checked={!!uForm.active} onChange={e=>setUForm(x=>({...x,active:e.target.checked}))} style={{width:16,height:16,accentColor:C.pri}}/>
-              <label htmlFor="uac" style={{fontSize:12.5,cursor:"pointer"}}>Akun Aktif</label>
+      <Modal open={!!cpwdModal} size="sm" dismiss={false} onClose={()=>setCpwdModal(null)} icon={<KeyRound size={20}/>} title="Ganti password"
+        subtitle={users.find(u=>u.id===cpwdModal)?.name}
+        footer={<><Btn outline onClick={()=>setCpwdModal(null)}>Batal</Btn><Btn onClick={doChangePassword}>Simpan</Btn></>}>
+        <div style={{display:"flex",flexDirection:"column",gap:14}}>
+          {user.role!=="admin"&&<Inp label="Password lama" type="password" value={cpwdForm.old} onChange={e=>setCpwdForm(x=>({...x,old:e.target.value}))}/>}
+          <Inp label="Password baru *" type="password" value={cpwdForm.n1} onChange={e=>setCpwdForm(x=>({...x,n1:e.target.value}))}/>
+          <Inp label="Konfirmasi password *" type="password" value={cpwdForm.n2} onChange={e=>setCpwdForm(x=>({...x,n2:e.target.value}))}/>
+        </div>
+      </Modal>
+
+      <Modal open={!!uModal} size="md" dismiss={false} onClose={()=>setUModal(false)} icon={<User size={20}/>}
+        title={editUid===null?"Tambah pengguna":"Edit pengguna"}
+        footer={<><Btn outline onClick={()=>setUModal(false)}>Batal</Btn><Btn onClick={saveUser}>Simpan</Btn></>}>
+        <div className="fgrid">
+          <div className="full"><Inp label="Nama lengkap *" value={uForm.name||""} onChange={e=>setUForm(x=>({...x,name:e.target.value}))}/></div>
+          <Inp label="Username *" value={uForm.username||""} disabled={editUid!==null} onChange={e=>setUForm(x=>({...x,username:e.target.value}))}/>
+          <Inp label="Password *" type="password" value={uForm.password||""} onChange={e=>setUForm(x=>({...x,password:e.target.value}))}/>
+          <Sel label="Role" value={uForm.role||"kasir"} onChange={e=>setUForm(x=>({...x,role:e.target.value}))}>
+            <option value="kasir">Kasir</option><option value="stok">Stok</option><option value="admin">Admin</option>
+          </Sel>
+          <div>
+            <div style={{fontSize:12.5,fontWeight:600,color:C.t1,marginBottom:6}}>Status akun</div>
+            <button type="button" role="switch" aria-checked={!!uForm.active} onClick={()=>setUForm(x=>({...x,active:!x.active}))} className="press"
+              style={{display:"flex",alignItems:"center",gap:12,minHeight:46,width:"100%",padding:"0 12px",background:C.bg3,border:`1.5px solid ${C.bo1}`,borderRadius:12,color:C.t0,fontSize:15,fontWeight:600,textAlign:"left"}}>
+              <span style={{width:40,height:24,borderRadius:12,background:uForm.active?C.g:C.bg4,position:"relative",flexShrink:0,transition:"background .2s"}}>
+                <span style={{position:"absolute",top:3,left:uForm.active?19:3,width:18,height:18,borderRadius:"50%",background:uForm.active?C.on:C.t2,transition:"left .2s"}}/></span>
+              {uForm.active?"Aktif":"Nonaktif"}</button>
+          </div>
+          <div className="full">
+            <div style={{fontSize:12.5,fontWeight:600,color:C.t1,marginBottom:6}}>Akses bisnis *</div>
+            <div style={{display:"flex",gap:10}}>
+              {Object.values(BIZ).map(b2=>{const chk=uForm.access?.includes(b2.id),isJ=b2.id==="JS_CLOTHING",cl=isJ?C.b:C.p;
+                return <button key={b2.id} type="button" aria-pressed={!!chk} className="press"
+                  onClick={()=>setUForm(x=>({...x,access:chk?x.access.filter(a=>a!==b2.id):[...(x.access||[]),b2.id]}))}
+                  style={{flex:1,minHeight:48,borderRadius:12,fontWeight:700,fontSize:14,display:"flex",alignItems:"center",justifyContent:"center",gap:8,
+                    background:chk?(isJ?C.b1:C.p1):"transparent",border:`2px solid ${chk?cl:C.bo1}`,color:chk?cl:C.t2}}>
+                  <Ico e={b2.icon} size={17}/>{b2.name}</button>;})}
             </div>
           </div>
-          <div style={{display:"flex",gap:8,marginTop:16}}><Btn onClick={saveUser} full>Simpan</Btn><Btn onClick={()=>setUModal(false)} outline>Batal</Btn></div>
         </div>
-      </div>}
+      </Modal>
 
       {showLowStock&&<LowStockPopup prods={prods} onClose={()=>setShowLowStock(false)}/>}
       {showExpirePopup&&<ExpirePopup nearExpiry={nearExpiry} expiredProds={expiredProds} onClose={()=>setShowExpirePopup(false)}/>}
@@ -3597,8 +3695,8 @@ function AppInner() {
               <div style={{fontSize:12,fontWeight:700,color:C.t2,textTransform:"none",letterSpacing:0}}><Ico e="🎯"/> Kelola Target</div>
               <button onClick={()=>setTargetModal(true)} className="press" style={{padding:"5px 12px",background:C.g1,border:`1px solid ${C.g}33`,borderRadius:7,color:C.g,fontSize:11,fontWeight:700,fontFamily:F.sans}}>+ Set Target</button>
             </div>
-            {targetModal&&<div style={{background:C.bg3,borderRadius:10,padding:"12px 14px",marginBottom:12,border:`1px solid ${C.bo0}`}}>
-              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:8,marginBottom:10}}>
+            <Modal open={!!targetModal} size="md" onClose={()=>setTargetModal(false)} icon={<Target size={20}/>} title="Set target penjualan">
+              <div className="fgrid" style={{marginBottom:16}}>
                 <div>
                   <div style={{fontSize:12,fontWeight:700,color:C.t2,marginBottom:4,textTransform:"none",letterSpacing:0}}>Bisnis</div>
                   <select value={targetForm.business} onChange={e=>setTargetForm(x=>({...x,business:e.target.value}))} style={{width:"100%",padding:"10px",background:C.bg2,border:`1.5px solid ${C.bo0}`,borderRadius:8,color:C.t0,fontSize:12,fontFamily:F.sans}}>
@@ -3625,7 +3723,7 @@ function AppInner() {
                 }}>Simpan</Btn>
                 <Btn onClick={()=>setTargetModal(false)} outline>Batal</Btn>
               </div>
-            </div>}
+            </Modal>
             {targets.length===0?<p style={{fontSize:12,color:C.t3}}>Belum ada target tersimpan</p>
             :targets.map(t=><div key={t.id} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"7px 0",borderTop:`1px solid ${C.bo0}`,fontSize:12}}>
               <div><BizChip biz={t.business} sm/><span style={{marginLeft:8,color:C.t2}}>{t.period}</span></div>
@@ -3850,163 +3948,6 @@ function AppInner() {
             <button onClick={()=>{const bc=adminScanQ.trim();const found=prods.find(p=>p.barcode===bc&&p.business===adminBiz)||prods.find(p=>p.name.toLowerCase().includes(bc.toLowerCase())&&p.business===adminBiz);if(found){openEditP(found);setAdminScanQ("");}else toast("Tidak ditemukan","warn");}} className="press"
               style={{padding:"10px 14px",background:C.b,border:"none",borderRadius:9,color:"#fff",fontWeight:700,fontSize:12,flexShrink:0}}>Cari</button>
           </div>
-          {/* ─── Form Tambah (inline di atas) ─── */}
-          <div id="prod-form-anchor"/>
-          {pModal&&inlineAddMode&&<div style={{background:C.bg2,borderRadius:14,border:`2px solid ${C.g}55`,padding:"14px 14px 12px",animation:"fadeUp .2s ease"}}>
-            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
-              <span style={{fontSize:12,fontWeight:800,color:C.g}}><Ico e="➕"/> Produk Baru</span>
-              <button onClick={()=>{setPModal(false);setInlineAddMode(false);}} style={{background:"transparent",border:"none",color:C.t3,fontSize:18,cursor:"pointer",lineHeight:1}}>×</button>
-            </div>
-            
-            {/* ─── Core fields ─── */}
-            <div style={{display:"flex",flexDirection:"column",gap:8}}>
-              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
-                <div style={{gridColumn:"span 2"}}>
-                  <div style={{fontSize:12,fontWeight:700,color:C.t2,textTransform:"none",letterSpacing:0,marginBottom:4}}>Barcode *</div>
-                  <input value={pForm.barcode||""} disabled={editPid!==null} onChange={e=>setPForm(x=>({...x,barcode:e.target.value}))}
-                    style={{...IS,width:"100%",boxSizing:"border-box",color:editPid!==null?C.t2:C.t0}}
-                    onFocus={e=>editPid===null&&(e.target.style.borderColor=C.pri+"88")} onBlur={e=>e.target.style.borderColor=C.bo0}/>
-                </div>
-                <div style={{gridColumn:"span 2"}}>
-                  <div style={{fontSize:12,fontWeight:700,color:C.t2,textTransform:"none",letterSpacing:0,marginBottom:4}}>Nama Produk *</div>
-                  <input value={pForm.name||""} onChange={e=>setPForm(x=>({...x,name:e.target.value}))}
-                    style={{...IS,width:"100%",boxSizing:"border-box"}}
-                    onFocus={e=>e.target.style.borderColor=C.pri+"88"} onBlur={e=>e.target.style.borderColor=C.bo0}/>
-                </div>
-                <div>
-                  <div style={{fontSize:12,fontWeight:700,color:C.t2,textTransform:"none",letterSpacing:0,marginBottom:4}}>Kategori</div>
-                  <input value={pForm.category||""} onChange={e=>setPForm(x=>({...x,category:e.target.value}))}
-                    style={{...IS,width:"100%",boxSizing:"border-box"}}
-                    onFocus={e=>e.target.style.borderColor=C.pri+"88"} onBlur={e=>e.target.style.borderColor=C.bo0}/>
-                </div>
-                <div>
-                  <div style={{fontSize:12,fontWeight:700,color:C.t2,textTransform:"none",letterSpacing:0,marginBottom:4}}>Stok *</div>
-                  <input type="number" value={pForm.stock||""} onChange={e=>setPForm(x=>({...x,stock:e.target.value}))}
-                    style={{...IS,width:"100%",boxSizing:"border-box"}}
-                    onFocus={e=>e.target.style.borderColor=C.pri+"88"} onBlur={e=>e.target.style.borderColor=C.bo0}/>
-                </div>
-              </div>
-
-              {/* ─── Expire date ─── */}
-              <div style={{display:"flex",flexDirection:"column",gap:4}}>
-                <div style={{fontSize:12,fontWeight:700,color:C.r,textTransform:"none",letterSpacing:0}}>
-                  <Ico e="⏰"/> Tanggal Expire <span style={{color:C.t3,fontWeight:400,fontSize:8}}>(opsional)</span>
-                </div>
-                <input type="date" value={pForm.expireDate||""} onChange={e=>setPForm(x=>({...x,expireDate:e.target.value}))}
-                  style={{...IS,width:"100%",boxSizing:"border-box",
-                    borderColor:pForm.expireDate?C.r+"55":C.bo0}}
-                  onFocus={e=>e.target.style.borderColor=C.r+"88"}
-                  onBlur={e=>e.target.style.borderColor=pForm.expireDate?C.r+"55":C.bo0}/>
-                {pForm.expireDate&&(()=>{
-                  const days=Math.ceil((new Date(pForm.expireDate)-new Date())/86400000);
-                  const col=days<0?C.r:days<=30?C.r:days<=90?C.a:C.g;
-                  return <div style={{fontSize:10,color:col,fontWeight:600}}>
-                    {days<0?`Sudah kadaluarsa ${Math.abs(days)} hari lalu`:
-                     days===0?"Expire hari ini":
-                     days<=30?`${days} hari lagi`:
-                     days<=90?`${days} hari lagi`:
-                     `${days} hari lagi`}
-                  </div>;
-                })()}
-              </div>
-              {/* ─── Price drawer ─── */}
-              <button onClick={()=>setShowPriceDrawer(x=>!x)} className="press"
-                style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"9px 12px",
-                  background:C.bg3,border:`1px solid ${C.bo0}`,borderRadius:9,cursor:"pointer",fontFamily:F.sans,width:"100%",textAlign:"left"}}>
-                <span style={{fontSize:11.5,fontWeight:700,color:C.t1}}>
-                  <Ico e="💰"/> Harga & HPP
-                  {pForm.price&&+pForm.price>0&&<span className="mn" style={{color:C.g,marginLeft:6}}>{rp(pForm.price)}</span>}
-                  {pForm.hpp&&+pForm.hpp>0&&<span className="mn" style={{color:C.a,marginLeft:4}}>/ {rp(pForm.hpp)}</span>}
-                </span>
-                <span style={{fontSize:12,color:C.t2,transition:"transform .2s",transform:showPriceDrawer?"rotate(180deg)":"rotate(0deg)",display:"inline-block"}}>▾</span>
-              </button>
-              {showPriceDrawer&&<div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,animation:"fadeUp .15s ease"}}>
-                <div>
-                  <div style={{fontSize:12,fontWeight:700,color:C.g,textTransform:"none",letterSpacing:0,marginBottom:4}}>Harga Jual *</div>
-                  <input type="number" value={pForm.price||""} onChange={e=>setPForm(x=>({...x,price:e.target.value}))}
-                    style={{...IS,width:"100%",boxSizing:"border-box"}}
-                    onFocus={e=>e.target.style.borderColor=C.pri+"88"} onBlur={e=>e.target.style.borderColor=C.bo0}/>
-                </div>
-                <div>
-                  <div style={{fontSize:12,fontWeight:700,color:C.a,textTransform:"none",letterSpacing:0,marginBottom:4}}>HPP / Modal</div>
-                  <input type="number" value={pForm.hpp||""} onChange={e=>setPForm(x=>({...x,hpp:e.target.value}))}
-                    style={{...IS,width:"100%",boxSizing:"border-box",borderColor:C.a+"44"}}
-                    onFocus={e=>e.target.style.borderColor=C.a+"88"} onBlur={e=>e.target.style.borderColor=C.a+"44"}/>
-                </div>
-                {pForm.price&&pForm.hpp&&+pForm.price>0&&+pForm.hpp>0&&(
-                  <div style={{gridColumn:"span 2",padding:"6px 10px",background:C.g2,borderRadius:7,fontSize:11,display:"flex",gap:12,flexWrap:"wrap"}}>
-                    <span style={{color:C.t2}}>Margin: <b style={{color:C.g}}>{((+pForm.price-+pForm.hpp)/+pForm.price*100).toFixed(1)}%</b></span>
-                    <span style={{color:C.t2}}>Laba: <b style={{color:C.cy}}>{rp(+pForm.price-+pForm.hpp)}</b></span>
-                  </div>)}
-              </div>}
-              {/* ─── Add-on ─── */}
-              <div style={{marginTop:10,paddingTop:10,borderTop:`1px solid ${C.bo0}`}}>
-              <div style={{fontSize:12,fontWeight:700,color:C.vi,textTransform:"none",letterSpacing:0,marginBottom:8}}>
-                <Ico e="➕"/> Konfigurasi Add-on (Opsional)
-              </div>
-              <p style={{fontSize:11.5,color:C.t2,marginBottom:10,lineHeight:1.6}}>
-                Saat produk ini di-scan kasir, sistem akan menawarkan produk add-on berikut.
-              </p>
-              {/* Search and add addon */}
-              <div style={{display:"flex",gap:7,marginBottom:8}}>
-                <input
-                  placeholder="Cari produk add-on (nama/barcode)..."
-                  style={{...IS,flex:1,fontSize:12}}
-                  value={pForm._addonSearch||""}
-                  onChange={e=>setPForm(x=>({...x,_addonSearch:e.target.value}))}
-                  onKeyDown={e=>{
-                    if(e.key!=="Enter") return;
-                    const q=(pForm._addonSearch||"").toLowerCase();
-                    const found=prods.find(p=>p.business===(pForm.business||adminBiz)&&
-                      (p.barcode.includes(q)||p.name.toLowerCase().includes(q))&&
-                      p.id!==(editPid));
-                    if(!found){toast("Produk tidak ditemukan","warn");return;}
-                    const cur=pForm.addons||[];
-                    if(cur.includes(found.id)){toast("Sudah ada","warn");return;}
-                    setPForm(x=>({...x,addons:[...cur,found.id],_addonSearch:""}));
-                    toast("✓ Add-on ditambahkan: "+found.name);
-                  }}
-                />
-                <button onClick={()=>{
-                  const q=(pForm._addonSearch||"").toLowerCase();
-                  if(!q) return;
-                  const found=prods.find(p=>p.business===(pForm.business||adminBiz)&&
-                    (p.barcode.includes(q)||p.name.toLowerCase().includes(q))&&
-                    p.id!==(editPid));
-                  if(!found){toast("Produk tidak ditemukan","warn");return;}
-                  const cur=pForm.addons||[];
-                  if(cur.includes(found.id)){toast("Sudah ada","warn");return;}
-                  setPForm(x=>({...x,addons:[...cur,found.id],_addonSearch:""}));
-                  toast("✓ Add-on: "+found.name);
-                }} className="press"
-                  style={{padding:"10px 14px",background:C.vi1,border:`1px solid ${C.vi}33`,borderRadius:9,color:C.vi,fontSize:12,fontWeight:700,flexShrink:0}}>+ Tambah</button>
-              </div>
-              {/* Current addons list */}
-              {(pForm.addons||[]).length>0
-                ?<div style={{display:"flex",flexDirection:"column",gap:6}}>
-                  {(pForm.addons||[]).map(adId=>{
-                    const ap=prods.find(x=>x.id===adId);
-                    if(!ap) return null;
-                    return <div key={adId} style={{display:"flex",alignItems:"center",gap:8,padding:"8px 10px",
-                      background:C.bg3,borderRadius:9,border:`1px solid ${C.vi}22`}}>
-                      <div style={{flex:1,minWidth:0}}>
-                        <div style={{fontSize:12.5,fontWeight:600,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{ap.name}</div>
-                        <div className="mn" style={{fontSize:10,color:C.t2,marginTop:1}}>{ap.barcode} · {rp(ap.price)}</div>
-                      </div>
-                      <button onClick={()=>setPForm(x=>({...x,addons:(x.addons||[]).filter(i=>i!==adId)}))}
-                        style={{background:"transparent",border:"none",color:C.r,fontSize:16,cursor:"pointer",padding:"0 4px",lineHeight:1}}>×</button>
-                    </div>;})}
-                </div>
-                :<div style={{padding:"10px 12px",background:C.bg3,borderRadius:8,border:`1px solid ${C.bo0}`,fontSize:12,color:C.t3,textAlign:"center"}}>
-                  Belum ada add-on — tambah produk di atas
-                </div>}
-            </div>
-              <div style={{display:"flex",gap:7,marginTop:10}}>
-                <Btn onClick={saveProd} full size="sm"><Ico e="✓"/> Simpan</Btn>
-                <Btn onClick={()=>{setPModal(false);setEditPid(null);setInlineAddMode(false);}} outline size="sm">Batal</Btn>
-              </div>
-            </div>
-          </div>}
           {/* Desktop table */}
           <div className="hide-mobile">
             <Card noPad style={{overflow:"hidden"}}>
@@ -4068,81 +4009,7 @@ function AppInner() {
                         <button onClick={()=>fbDeleteProduct(p.id,p.name,p.business,user.name).then(()=>toast("Produk dihapus")).catch(e=>toast(e.message,"err"))} className="press" style={{padding:"3px 9px",background:C.r1,border:`1px solid ${C.r}22`,borderRadius:6,color:C.r,fontSize:10}}>Hapus</button>
                       </td>
                     </tr>
-                    {/* ─── Inline edit form (desktop) ─── */}
-                    {editPid===p.id&&pModal&&!inlineAddMode&&<tr id={"prod-inline-"+p.id}>
-                      <td colSpan={9} style={{padding:"0 0 8px 0",background:C.bg1}}>
-                        <div style={{margin:"0 8px",background:C.bg2,borderRadius:12,border:`2px solid ${C.g}44`,padding:"14px",animation:"fadeUp .2s ease"}}>
-                          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
-                            <span style={{fontSize:12,fontWeight:800,color:C.g}}><Ico e="✏️"/> Edit: {p.name}</span>
-                            <button onClick={()=>{setPModal(false);setEditPid(null);}} style={{background:"transparent",border:"none",color:C.t3,fontSize:18,cursor:"pointer",lineHeight:1}}>×</button>
-                          </div>
-                          <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:8,marginBottom:8}}>
-                            <div style={{gridColumn:"span 2"}}>
-                              <div style={{fontSize:12,fontWeight:700,color:C.t2,textTransform:"none",letterSpacing:0,marginBottom:3}}>Nama Produk *</div>
-                              <input value={pForm.name||""} onChange={e=>setPForm(x=>({...x,name:e.target.value}))}
-                                style={{...IS,width:"100%",boxSizing:"border-box",padding:"9px 11px"}}
-                                onFocus={e=>e.target.style.borderColor=C.pri+"88"} onBlur={e=>e.target.style.borderColor=C.bo0}/>
-                            </div>
-                            <div>
-                              <div style={{fontSize:12,fontWeight:700,color:C.t2,textTransform:"none",letterSpacing:0,marginBottom:3}}>Kategori</div>
-                              <input value={pForm.category||""} onChange={e=>setPForm(x=>({...x,category:e.target.value}))}
-                                style={{...IS,width:"100%",boxSizing:"border-box",padding:"9px 11px"}}
-                                onFocus={e=>e.target.style.borderColor=C.pri+"88"} onBlur={e=>e.target.style.borderColor=C.bo0}/>
-                            </div>
-                            <div>
-                              <div style={{fontSize:12,fontWeight:700,color:C.t2,textTransform:"none",letterSpacing:0,marginBottom:3}}>Stok *</div>
-                              <input type="number" value={pForm.stock||""} onChange={e=>setPForm(x=>({...x,stock:e.target.value}))}
-                                style={{...IS,width:"100%",boxSizing:"border-box",padding:"9px 11px"}}
-                                onFocus={e=>e.target.style.borderColor=C.pri+"88"} onBlur={e=>e.target.style.borderColor=C.bo0}/>
-                            </div>
-                          </div>
-                          {/* Expire date */}
-                          <div style={{marginBottom:8}}>
-                            <div style={{fontSize:12,fontWeight:700,color:C.r,textTransform:"none",letterSpacing:0,marginBottom:3}}>
-                              <Ico e="⏰"/> Expire <span style={{color:C.t3,fontWeight:400}}>(opsional)</span>
-                            </div>
-                            <input type="date" value={pForm.expireDate||""} onChange={e=>setPForm(x=>({...x,expireDate:e.target.value}))}
-                              style={{...IS,width:"100%",boxSizing:"border-box",padding:"8px 10px",borderColor:pForm.expireDate?C.r+"55":C.bo0}}
-                              onFocus={e=>e.target.style.borderColor=C.r+"88"} onBlur={e=>e.target.style.borderColor=pForm.expireDate?C.r+"55":C.bo0}/>
-                            {pForm.expireDate&&(()=>{const d=Math.ceil((new Date(pForm.expireDate)-new Date())/86400000);const col=d<0?C.r:d<=90?C.a:C.g;
-                              return <div style={{fontSize:10,color:col,fontWeight:600,marginTop:3}}>{d<0?`Kadaluarsa ${Math.abs(d)}h lalu`:d===0?"Hari ini":`${d} hari lagi`}</div>;})()}
-                          </div>
-                          {/* Price drawer */}
-                          <button onClick={()=>setShowPriceDrawer(x=>!x)} className="press"
-                            style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"8px 11px",
-                              background:C.bg3,border:`1px solid ${C.bo0}`,borderRadius:8,cursor:"pointer",fontFamily:F.sans,width:"100%",textAlign:"left",marginBottom:6,boxSizing:"border-box"}}>
-                            <span style={{fontSize:11,fontWeight:700,color:C.t1}}>
-                              <Ico e="💰"/> Harga & HPP
-                              {pForm.price&&+pForm.price>0&&<span className="mn" style={{color:C.g,marginLeft:6}}>{rp(pForm.price)}</span>}
-                              {pForm.hpp&&+pForm.hpp>0&&<span className="mn" style={{color:C.a,marginLeft:4}}>/ HPP {rp(pForm.hpp)}</span>}
-                            </span>
-                            <span style={{fontSize:11,color:C.t2,transition:"transform .2s",transform:showPriceDrawer?"rotate(180deg)":"none",display:"inline-block"}}>▾</span>
-                          </button>
-                          {showPriceDrawer&&<div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:8,marginBottom:8,animation:"fadeUp .15s ease"}}>
-                            <div>
-                              <div style={{fontSize:12,fontWeight:700,color:C.g,textTransform:"none",letterSpacing:0,marginBottom:3}}>Harga Jual</div>
-                              <input type="number" value={pForm.price||""} onChange={e=>setPForm(x=>({...x,price:e.target.value}))}
-                                style={{...IS,width:"100%",boxSizing:"border-box",padding:"9px 11px"}}
-                                onFocus={e=>e.target.style.borderColor=C.pri+"88"} onBlur={e=>e.target.style.borderColor=C.bo0}/>
-                            </div>
-                            <div>
-                              <div style={{fontSize:12,fontWeight:700,color:C.a,textTransform:"none",letterSpacing:0,marginBottom:3}}>HPP / Modal</div>
-                              <input type="number" value={pForm.hpp||""} onChange={e=>setPForm(x=>({...x,hpp:e.target.value}))}
-                                style={{...IS,width:"100%",boxSizing:"border-box",padding:"9px 11px",borderColor:C.a+"44"}}
-                                onFocus={e=>e.target.style.borderColor=C.a+"88"} onBlur={e=>e.target.style.borderColor=C.a+"44"}/>
-                            </div>
-                            {pForm.price&&pForm.hpp&&+pForm.price>0&&+pForm.hpp>0&&<div style={{display:"flex",alignItems:"center",padding:"0 4px",fontSize:11,flexDirection:"column",justifyContent:"center",gap:2}}>
-                              <span style={{color:C.g,fontWeight:700}}>{((+pForm.price-+pForm.hpp)/+pForm.price*100).toFixed(1)}%</span>
-                              <span style={{color:C.t3,fontSize:9}}>margin</span>
-                            </div>}
-                          </div>}
-                          <div style={{display:"flex",gap:7}}>
-                            <Btn onClick={saveProd} size="sm"><Ico e="✓"/> Simpan</Btn>
-                            <Btn onClick={()=>{setPModal(false);setEditPid(null);}} outline size="sm">Batal</Btn>
-                          </div>
-                        </div>
-                      </td>
-                    </tr>};})}
+                    ;})}
                   </tbody>
                 </table>
               </TableWrap>
@@ -4206,78 +4073,6 @@ function AppInner() {
                     {editPid===p.id&&pModal?"Sedang diedit":"Edit"}</button>
                   <button onClick={()=>fbDeleteProduct(p.id,p.name,p.business,user.name).then(()=>toast("Produk dihapus")).catch(e=>toast(e.message,"err"))} className="press" style={{padding:"11px 16px",background:C.r1,border:`1.5px solid ${C.r}33`,borderRadius:10,color:C.r,fontSize:13,fontFamily:F.sans}}><Ico e="🗑"/></button>
                 </div>
-                {/* Inline edit form (mobile) */}
-                {editPid===p.id&&pModal&&!inlineAddMode&&<div id={"prod-inline-"+p.id} style={{marginTop:10,background:C.bg3,borderRadius:12,border:`2px solid ${C.g}44`,padding:"12px",animation:"fadeUp .2s ease"}}>
-                  <div style={{fontSize:11,fontWeight:800,color:C.g,marginBottom:10}}><Ico e="✏️"/> Edit Produk</div>
-                  <div style={{display:"flex",flexDirection:"column",gap:8}}>
-                    <div>
-                      <div style={{fontSize:12,fontWeight:700,color:C.t2,textTransform:"none",letterSpacing:0,marginBottom:3}}>Nama Produk *</div>
-                      <input value={pForm.name||""} onChange={e=>setPForm(x=>({...x,name:e.target.value}))}
-                        style={{...IS,width:"100%",boxSizing:"border-box"}}
-                        onFocus={e=>e.target.style.borderColor=C.pri+"88"} onBlur={e=>e.target.style.borderColor=C.bo0}/>
-                    </div>
-                    <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
-                      <div>
-                        <div style={{fontSize:12,fontWeight:700,color:C.t2,textTransform:"none",letterSpacing:0,marginBottom:3}}>Kategori</div>
-                        <input value={pForm.category||""} onChange={e=>setPForm(x=>({...x,category:e.target.value}))}
-                          style={{...IS,width:"100%",boxSizing:"border-box"}}
-                          onFocus={e=>e.target.style.borderColor=C.pri+"88"} onBlur={e=>e.target.style.borderColor=C.bo0}/>
-                      </div>
-                      <div>
-                        <div style={{fontSize:12,fontWeight:700,color:C.t2,textTransform:"none",letterSpacing:0,marginBottom:3}}>Stok *</div>
-                        <input type="number" value={pForm.stock||""} onChange={e=>setPForm(x=>({...x,stock:e.target.value}))}
-                          style={{...IS,width:"100%",boxSizing:"border-box"}}
-                          onFocus={e=>e.target.style.borderColor=C.pri+"88"} onBlur={e=>e.target.style.borderColor=C.bo0}/>
-                      </div>
-                    </div>
-                    {/* Expire date */}
-                    <div>
-                      <div style={{fontSize:12,fontWeight:700,color:C.r,textTransform:"none",letterSpacing:0,marginBottom:3}}>
-                        <Ico e="⏰"/> Expire <span style={{color:C.t3,fontWeight:400}}>(opsional)</span>
-                      </div>
-                      <input type="date" value={pForm.expireDate||""} onChange={e=>setPForm(x=>({...x,expireDate:e.target.value}))}
-                        style={{...IS,width:"100%",boxSizing:"border-box",borderColor:pForm.expireDate?C.r+"55":C.bo0}}
-                        onFocus={e=>e.target.style.borderColor=C.r+"88"} onBlur={e=>e.target.style.borderColor=pForm.expireDate?C.r+"55":C.bo0}/>
-                      {pForm.expireDate&&(()=>{const d=Math.ceil((new Date(pForm.expireDate)-new Date())/86400000);const col=d<0?C.r:d<=90?C.a:C.g;
-                        return <div style={{fontSize:10,color:col,fontWeight:600,marginTop:3}}>{d<0?`${Math.abs(d)}h lalu`:d===0?"Hari ini":`${d} hari lagi`}</div>;})()}
-                    </div>
-                    {/* Price drawer */}
-                    <button onClick={()=>setShowPriceDrawer(x=>!x)} className="press"
-                      style={{display:"flex",alignItems:"center",justifyContent:"space-between",
-                        padding:"9px 12px",background:C.bg2,border:`1px solid ${C.bo0}`,
-                        borderRadius:9,cursor:"pointer",fontFamily:F.sans,width:"100%",textAlign:"left",boxSizing:"border-box"}}>
-                      <span style={{fontSize:11,fontWeight:700,color:C.t1}}>
-                        <Ico e="💰"/> Harga & HPP
-                        {pForm.price&&+pForm.price>0&&<span className="mn" style={{color:C.g,marginLeft:5}}>{rp(pForm.price)}</span>}
-                        {pForm.hpp&&+pForm.hpp>0&&<span className="mn" style={{color:C.a,marginLeft:4}}>/ {rp(pForm.hpp)}</span>}
-                      </span>
-                      <span style={{fontSize:11,color:C.t2,transition:"transform .2s",transform:showPriceDrawer?"rotate(180deg)":"none",display:"inline-block"}}>▾</span>
-                    </button>
-                    {showPriceDrawer&&<div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,animation:"fadeUp .15s ease"}}>
-                      <div>
-                        <div style={{fontSize:12,fontWeight:700,color:C.g,textTransform:"none",letterSpacing:0,marginBottom:3}}>Harga Jual</div>
-                        <input type="number" value={pForm.price||""} onChange={e=>setPForm(x=>({...x,price:e.target.value}))}
-                          style={{...IS,width:"100%",boxSizing:"border-box"}}
-                          onFocus={e=>e.target.style.borderColor=C.pri+"88"} onBlur={e=>e.target.style.borderColor=C.bo0}/>
-                      </div>
-                      <div>
-                        <div style={{fontSize:12,fontWeight:700,color:C.a,textTransform:"none",letterSpacing:0,marginBottom:3}}>HPP / Modal</div>
-                        <input type="number" value={pForm.hpp||""} onChange={e=>setPForm(x=>({...x,hpp:e.target.value}))}
-                          style={{...IS,width:"100%",boxSizing:"border-box",borderColor:C.a+"44"}}
-                          onFocus={e=>e.target.style.borderColor=C.a+"88"} onBlur={e=>e.target.style.borderColor=C.a+"44"}/>
-                      </div>
-                      {pForm.price&&pForm.hpp&&+pForm.price>0&&+pForm.hpp>0&&(
-                        <div style={{gridColumn:"span 2",padding:"6px 10px",background:C.g2,borderRadius:7,fontSize:11,display:"flex",gap:12}}>
-                          <span style={{color:C.t2}}>Margin: <b style={{color:C.g}}>{((+pForm.price-+pForm.hpp)/+pForm.price*100).toFixed(1)}%</b></span>
-                          <span style={{color:C.t2}}>Laba: <b style={{color:C.cy}}>{rp(+pForm.price-+pForm.hpp)}</b></span>
-                        </div>)}
-                    </div>}
-                    <div style={{display:"flex",gap:7,marginTop:2}}>
-                      <Btn onClick={saveProd} full size="sm"><Ico e="✓"/> Simpan</Btn>
-                      <Btn onClick={()=>{setPModal(false);setEditPid(null);}} outline size="sm">Batal</Btn>
-                    </div>
-                  </div>
-                </div>}
               </div>;})}
           </div>
         </div>}
@@ -4655,6 +4450,8 @@ function AppInner() {
                             :<button onClick={e=>{e.stopPropagation();if(window.confirm("Retur transaksi ini?\nStok akan dikembalikan."))doRetur(t);}} className="press"
                               style={{flex:1,padding:"9px",background:C.a1,border:`1.5px solid ${C.a}33`,
                                 borderRadius:9,color:C.a,fontSize:12,fontWeight:700,fontFamily:F.sans}}>↩ Retur</button>}
+                          <button onClick={e=>{e.stopPropagation();setInvTrx(t);}} className="press"
+                            style={{flex:1,padding:"9px",background:C.pri1,border:`1.5px solid ${C.pri}33`,borderRadius:9,color:C.pri,fontSize:12,fontWeight:700,fontFamily:F.sans}}><Ico e="🧾"/> Invoice</button>
                           <button onClick={e=>{e.stopPropagation();toggleExpand(t.id);}} className="press"
                             style={{padding:"9px 16px",background:C.bg3,border:`1px solid ${C.bo0}`,
                               borderRadius:9,color:C.t2,fontSize:12,fontFamily:F.sans}}>Tutup</button>
@@ -4920,68 +4717,6 @@ function AppInner() {
                 </tr>)}</tbody>
               </table>
             </TableWrap>
-          </Card>
-        </div>}
-
-        {/* ── SHEETS ── */}
-        {adminTab==="sheets"&&<div style={{maxWidth:640,display:"flex",flexDirection:"column",gap:10}}>
-          <h2 style={{fontSize:15,fontWeight:800}}>Google Sheets Sync</h2>
-          <Card>
-            <div style={{fontSize:12,fontWeight:700,color:C.g,textTransform:"none",letterSpacing:0,marginBottom:12}}><Ico e="📋"/> Cara Setup</div>
-            {[{n:1,t:"Buat Spreadsheet Baru",d:"Buka sheets.google.com, beri nama 'Kasir JE Grup'"},
-              {n:2,t:"Buka Apps Script",d:"Menu Ekstensi → Apps Script, hapus kode lama"},
-              {n:3,t:"Paste Kode",d:"Klik tombol salin di bawah dan paste ke editor script"},
-              {n:4,t:"Deploy",d:"Deploy → New Deployment → Web App → Execute as: Me → Access: Anyone"},
-              {n:5,t:"Simpan URL",d:"Salin URL Web App dan paste di kolom bawah ini"}].map(s=>(
-              <div key={s.n} style={{display:"flex",gap:10,marginBottom:10}}>
-                <div style={{width:20,height:20,borderRadius:"50%",background:C.g1,color:C.g,display:"flex",alignItems:"center",justifyContent:"center",fontSize:10,fontWeight:800,flexShrink:0}}>{s.n}</div>
-                <div><div style={{fontSize:12.5,fontWeight:600}}>{s.t}</div><div style={{fontSize:11,color:C.t2}}>{s.d}</div></div>
-              </div>))}
-          </Card>
-          <Card noPad style={{overflow:"hidden"}}>
-            <div style={{padding:"10px 14px",borderBottom:`1px solid ${C.bo0}`,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-              <span style={{fontSize:12,fontWeight:700,color:C.t2,textTransform:"none"}}>Kode Apps Script</span>
-              <button onClick={()=>{navigator.clipboard.writeText(APPSCRIPT_CODE.trim());setCopyDone(true);setTimeout(()=>setCopyDone(false),2000);toast("✓ Kode disalin!");}} className="press"
-                style={{padding:"4px 10px",background:copyDone?C.g1:C.bg4,border:`1px solid ${copyDone?C.g:C.bo1}`,borderRadius:7,color:copyDone?C.g:C.t1,fontSize:10,fontWeight:700}}>{copyDone?"Tersalin":"Salin Kode"}</button>
-            </div>
-            <pre style={{padding:"12px 14px",fontSize:10,fontFamily:F.mono,color:C.t2,overflowX:"auto",maxHeight:200,background:C.bg0}}>{APPSCRIPT_CODE.trim()}</pre>
-          </Card>
-          <Card>
-            <div style={{fontSize:12,fontWeight:700,color:C.t2,textTransform:"none",marginBottom:10}}>URL Web App</div>
-            <div style={{display:"flex",gap:8,marginBottom:10}}>
-              <input value={gsUrl} onChange={e=>{setGsUrl(e.target.value);localStorage.setItem("je_gs_url",e.target.value);}} placeholder="https://script.google.com/macros/s/.../exec"
-                style={{flex:1,padding:"11px 13px",background:C.bg3,border:`1.5px solid ${C.bo0}`,borderRadius:10,color:C.t0,fontSize:12,fontFamily:F.mono}}/>
-              <Btn onClick={async()=>{
-                if(!gsUrl){toast("Masukkan URL dulu","warn");return;}
-                setGsLoad(true);
-                try{const ok=await syncToSheets(gsUrl,users,prods,trxs,slogs,attend); ok?toast("✅ Berhasil ekspor!"):toast("Gagal ekspor","err");}
-                catch{toast("Koneksi gagal","err");}
-                setGsLoad(false);
-              }} disabled={gsLoad}>{gsLoad?"Memproses...":"↑ Ekspor Data"}</Btn>
-            </div>
-            <div style={{fontSize:11,color:C.a}}><Ico e="💡"/> Gunakan fitur ini untuk backup database atau membuat laporan di Excel.</div>
-          </Card>
-          <Card style={{marginTop:10}}>
-             <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-               <div style={{fontSize:11,color:C.t3}}>Project: <b>{loadConfig()?.projectId||"-"}</b></div>
-               <div style={{display:"flex",gap:8,alignItems:"center"}}>
-                 <button onClick={()=>{
-                   if("serviceWorker" in navigator){
-                     navigator.serviceWorker.getRegistration().then(reg=>{
-                       if(reg){reg.update().then(()=>{
-                         if(reg.waiting){setUpdateReady(true);toast("🆕 Update tersedia! Klik banner untuk pasang.","ok");}
-                         else toast("✅ Sudah versi terbaru","ok");
-                       });}
-                     });
-                   } else toast("Service Worker tidak tersedia","warn");
-                 }} className="press"
-                   style={{padding:"4px 12px",background:C.b1,border:`1px solid ${C.b}33`,borderRadius:8,color:C.b,fontSize:11,fontWeight:700}}>
-                   ↻ Cek Update
-                 </button>
-                 <button onClick={()=>{if(window.confirm("Hapus config Firebase? Anda akan keluar.")) {clearConfig();window.location.reload();}}}
-                   style={{background:"transparent",border:"none",color:C.r,fontSize:10,textDecoration:"underline",cursor:"pointer"}}>Reset Firebase</button>
-               </div>
-             </div>
           </Card>
         </div>}
 
