@@ -1265,57 +1265,154 @@ function SimplePieChart({data}) {
 // ─────────────────────────────────────────────────────────────
 function LowStockPopup({prods,onClose}) {
   const [page, setPage] = React.useState(1);
-  const perPage = 6;
-  const list = prods.filter(p=>p.stock<10).sort((a,b)=>a.stock-b.stock);
-  const habis = list.filter(p=>p.stock===0).length;
-  const totalPages = Math.max(1, Math.ceil(list.length / perPage));
-  const curPage = Math.min(page, totalPages);
-  const paginated = list.slice((curPage - 1) * perPage, curPage * perPage);
+  const [perPage, setPerPage] = React.useState(6);
+  const [search, setSearch] = React.useState("");
+  const [filterBiz, setFilterBiz] = React.useState("ALL");
+  const [filterStatus, setFilterStatus] = React.useState("ALL"); // ALL, HABIS, MENIPIS
+
+  const allLow = prods.filter(p=>p.stock<10);
+  const totalHabis = allLow.filter(p=>p.stock===0).length;
+  const totalMenipis = allLow.length - totalHabis;
+
+  const filtered = allLow
+    .filter(p => filterBiz==="ALL" || p.business===filterBiz)
+    .filter(p => filterStatus==="ALL" ? true : filterStatus==="HABIS" ? p.stock===0 : p.stock>0)
+    .filter(p => !search.trim() || p.name.toLowerCase().includes(search.toLowerCase()) || (p.barcode||"").toLowerCase().includes(search.toLowerCase()))
+    .sort((a,b)=>a.stock-b.stock);
+
+  const totalPages = Math.max(1, Math.ceil(filtered.length / perPage));
+  const curPage = Math.min(Math.max(1, page), totalPages);
+  const paginated = filtered.slice((curPage - 1) * perPage, curPage * perPage);
+
+  // Generate nomor halaman dengan ellipsis cerdas (misal 1 ... 4 5 6 ... 10)
+  const getPageNumbers = () => {
+    const pages = [];
+    if (totalPages <= 5) {
+      for (let i = 1; i <= totalPages; i++) pages.push(i);
+    } else {
+      if (curPage <= 3) {
+        pages.push(1, 2, 3, 4, "...", totalPages);
+      } else if (curPage >= totalPages - 2) {
+        pages.push(1, "...", totalPages - 3, totalPages - 2, totalPages - 1, totalPages);
+      } else {
+        pages.push(1, "...", curPage - 1, curPage, curPage + 1, "...", totalPages);
+      }
+    }
+    return pages;
+  };
 
   return <Modal open size="md" onClose={onClose} icon={<AlertTriangle size={20}/>} title="Stok menipis"
-    subtitle={list.length?`${list.length} produk perlu ditambah stok`:undefined}
-    footer={<div style={{display:"flex",justifyContent:"space-between",alignItems:"center",width:"100%",gap:10,flexWrap:"wrap"}}>
-      {totalPages > 1 ? (
-        <div style={{display:"flex",alignItems:"center",gap:6}}>
-          <button className="press" disabled={curPage <= 1} onClick={()=>setPage(p=>Math.max(1, p-1))}
-            style={{minHeight:36,padding:"0 10px",borderRadius:8,border:`1.5px solid ${C.bo1}`,background:curPage<=1?C.bg3:"transparent",color:curPage<=1?C.t3:C.t0,fontSize:13,fontWeight:600,display:"inline-flex",alignItems:"center",gap:4}}>
-            <ChevronLeft size={16}/> Prev
-          </button>
-          <span className="mn" style={{fontSize:12.5,fontWeight:600,color:C.t2,padding:"0 4px"}}>
-            {curPage} / {totalPages}
-          </span>
-          <button className="press" disabled={curPage >= totalPages} onClick={()=>setPage(p=>Math.min(totalPages, p+1))}
-            style={{minHeight:36,padding:"0 10px",borderRadius:8,border:`1.5px solid ${C.bo1}`,background:curPage>=totalPages?C.bg3:"transparent",color:curPage>=totalPages?C.t3:C.t0,fontSize:13,fontWeight:600,display:"inline-flex",alignItems:"center",gap:4}}>
-            Next <ChevronRight size={16}/>
-          </button>
+    subtitle={`${allLow.length} produk butuh restock (${totalHabis} habis, ${totalMenipis} menipis)`}
+    footer={
+      <div style={{display:"flex",flexDirection:"column",gap:10,width:"100%"}}>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:10,flexWrap:"wrap"}}>
+          {/* Info baris & Page size selector */}
+          <div style={{display:"flex",alignItems:"center",gap:8,fontSize:12.5,color:C.t2}}>
+            <span>Tampilkan</span>
+            <select value={perPage} onChange={e=>{setPerPage(Number(e.target.value));setPage(1);}}
+              style={{padding:"4px 8px",borderRadius:8,background:C.bg3,border:`1.5px solid ${C.bo1}`,color:C.t0,fontSize:12.5,fontWeight:700,fontFamily:F.sans}}>
+              {[5, 6, 10, 20].map(n=><option key={n} value={n}>{n} baris</option>)}
+            </select>
+            {filtered.length>0&&<span className="mn" style={{marginLeft:2}}>({(curPage-1)*perPage+1}–{Math.min(curPage*perPage, filtered.length)} dari {filtered.length})</span>}
+          </div>
+
+          {/* Tombol Tutup */}
+          <Btn outline onClick={onClose}>Tutup</Btn>
         </div>
-      ) : <div/>}
-      <Btn outline onClick={onClose}>Tutup</Btn>
-    </div>}>
-    {list.length===0
+
+        {/* Nomor halaman & tombol Prev/Next */}
+        {totalPages > 1 && (
+          <div style={{display:"flex",justifyContent:"center",alignItems:"center",gap:5,paddingTop:4,borderTop:`1px solid ${C.bo0}`,flexWrap:"wrap"}}>
+            <button className="press" disabled={curPage <= 1} onClick={()=>setPage(p=>Math.max(1, p-1))}
+              style={{minHeight:32,padding:"0 9px",borderRadius:8,border:`1px solid ${C.bo1}`,background:curPage<=1?C.bg3:"transparent",color:curPage<=1?C.t3:C.t0,fontSize:12,fontWeight:700,display:"inline-flex",alignItems:"center",gap:3}}>
+              <ChevronLeft size={14}/> Prev
+            </button>
+
+            {getPageNumbers().map((num, idx) => (
+              num === "..." ? (
+                <span key={`dots-${idx}`} style={{padding:"0 4px",color:C.t3,fontSize:12}}>…</span>
+              ) : (
+                <button key={num} onClick={()=>setPage(num)} className="press"
+                  style={{minWidth:32,height:32,borderRadius:8,border:`1.5px solid ${curPage===num?C.pri:C.bo1}`,
+                    background:curPage===num?C.pri:"transparent",color:curPage===num?C.on:C.t0,
+                    fontSize:12.5,fontWeight:700,display:"grid",placeItems:"center"}}>
+                  {num}
+                </button>
+              )
+            ))}
+
+            <button className="press" disabled={curPage >= totalPages} onClick={()=>setPage(p=>Math.min(totalPages, p+1))}
+              style={{minHeight:32,padding:"0 9px",borderRadius:8,border:`1px solid ${C.bo1}`,background:curPage>=totalPages?C.bg3:"transparent",color:curPage>=totalPages?C.t3:C.t0,fontSize:12,fontWeight:700,display:"inline-flex",alignItems:"center",gap:3}}>
+              Next <ChevronRight size={14}/>
+            </button>
+          </div>
+        )}
+      </div>
+    }>
+    {allLow.length===0
       ? <EmptyState icon={<Check size={24} strokeWidth={2}/>} title="Semua stok aman" hint="Tidak ada produk dengan stok di bawah 10."/>
       : <>
-        <div style={{display:"flex",gap:8,marginBottom:10,flexWrap:"wrap",alignItems:"center",justifyContent:"space-between"}}>
-          <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
-            {habis>0&&<span style={{padding:"5px 11px",borderRadius:20,background:C.r1,color:C.r,fontSize:12.5,fontWeight:700}}>{habis} habis</span>}
-            {list.length-habis>0&&<span style={{padding:"5px 11px",borderRadius:20,background:C.a1,color:C.a,fontSize:12.5,fontWeight:700}}>{list.length-habis} menipis</span>}
-          </div>
-          {totalPages > 1 && <span className="mn" style={{fontSize:12,color:C.t2}}>Menampilkan {(curPage-1)*perPage+1}–{Math.min(curPage*perPage, list.length)} dari {list.length}</span>}
-        </div>
-        {paginated.map((p,i)=><div key={p.id} style={{display:"flex",alignItems:"center",gap:12,padding:"12px 0",borderTop:i>0?`1px solid ${C.bo0}`:undefined}}>
-          <span style={{width:38,height:38,borderRadius:11,flexShrink:0,display:"grid",placeItems:"center",background:p.stock===0?C.r1:C.a1,color:p.stock===0?C.r:C.a}}>
-            {p.stock===0?<Ban size={18}/>:<Package size={18}/>}</span>
-          <div style={{flex:1,minWidth:0}}>
-            <div style={{fontWeight:600,fontSize:14,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{p.name}</div>
-            <div style={{display:"flex",gap:8,marginTop:3,flexWrap:"wrap",alignItems:"center"}}>
-              <span className="mn" style={{fontSize:12,color:C.t2}}>{p.barcode}</span><BizChip biz={p.business} sm/>
+        {/* Filter & Search Bar */}
+        <div style={{display:"flex",flexDirection:"column",gap:10,marginBottom:12}}>
+          <Inp placeholder="Cari nama atau barcode…" value={search} onChange={e=>{setSearch(e.target.value);setPage(1);}}
+            icon={<Search size={16}/>} style={{minHeight:40,fontSize:13.5,padding:"8px 12px 8px 38px"}}/>
+
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:8,flexWrap:"wrap"}}>
+            {/* Filter Status: Semua, Habis, Menipis */}
+            <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
+              {[
+                ["ALL", `Semua (${allLow.length})`, C.pri],
+                ["HABIS", `Habis (${totalHabis})`, C.r],
+                ["MENIPIS", `Menipis (${totalMenipis})`, C.a],
+              ].map(([key, label, col]) => (
+                <button key={key} onClick={()=>{setFilterStatus(key);setPage(1);}} className="press"
+                  style={{padding:"4px 10px",borderRadius:20,border:`1px solid ${filterStatus===key?col:C.bo1}`,
+                    background:filterStatus===key?`${col}1F`:"transparent",color:filterStatus===key?col:C.t2,
+                    fontSize:12,fontWeight:700}}>
+                  {label}
+                </button>
+              ))}
+            </div>
+
+            {/* Filter Bisnis */}
+            <div style={{display:"flex",gap:4}}>
+              {["ALL", "JS_CLOTHING", "JB_STORE"].map(b => (
+                <button key={b} onClick={()=>{setFilterBiz(b);setPage(1);}} className="press"
+                  style={{padding:"3px 8px",borderRadius:6,border:`1px solid ${filterBiz===b?C.pri:C.bo0}`,
+                    background:filterBiz===b?C.pri1:"transparent",color:filterBiz===b?C.pri:C.t3,
+                    fontSize:11,fontWeight:700}}>
+                  {b==="ALL"?"Semua Toko":BIZ[b]?.name}
+                </button>
+              ))}
             </div>
           </div>
-          <div style={{textAlign:"right",flexShrink:0}}>
-            <div className="mn" style={{fontSize:22,fontWeight:800,color:p.stock===0?C.r:C.a,lineHeight:1}}>{p.stock}</div>
-            <div style={{fontSize:12,color:C.t2,marginTop:2}}>{p.stock===0?"habis":"tersisa"}</div>
+        </div>
+
+        {/* List Produk */}
+        {filtered.length===0 ? (
+          <div style={{padding:"24px 12px",textAlign:"center",color:C.t2,fontSize:13}}>
+            Tidak ada produk yang cocok dengan pencarian / filter.
           </div>
-        </div>)}
+        ) : (
+          <div style={{display:"flex",flexDirection:"column"}}>
+            {paginated.map((p,i)=><div key={p.id} style={{display:"flex",alignItems:"center",gap:12,padding:"10px 0",borderTop:i>0?`1px solid ${C.bo0}`:undefined}}>
+              <span style={{width:38,height:38,borderRadius:11,flexShrink:0,display:"grid",placeItems:"center",background:p.stock===0?C.r1:C.a1,color:p.stock===0?C.r:C.a}}>
+                {p.stock===0?<Ban size={18}/>:<Package size={18}/>}</span>
+              <div style={{flex:1,minWidth:0}}>
+                <div style={{fontWeight:600,fontSize:14,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{p.name}</div>
+                <div style={{display:"flex",gap:8,marginTop:2,flexWrap:"wrap",alignItems:"center"}}>
+                  <span className="mn" style={{fontSize:11.5,color:C.t2}}>{p.barcode}</span>
+                  <BizChip biz={p.business} sm/>
+                  <span className="mn" style={{fontSize:11.5,color:C.g,fontWeight:600}}>{rp(p.price)}</span>
+                </div>
+              </div>
+              <div style={{textAlign:"right",flexShrink:0}}>
+                <div className="mn" style={{fontSize:20,fontWeight:800,color:p.stock===0?C.r:C.a,lineHeight:1}}>{p.stock}</div>
+                <div style={{fontSize:11,color:C.t2,marginTop:2}}>{p.stock===0?"habis":"tersisa"}</div>
+              </div>
+            </div>)}
+          </div>
+        )}
       </>}
   </Modal>;
 }
