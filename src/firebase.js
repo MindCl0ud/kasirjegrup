@@ -329,3 +329,19 @@ export const fbApplyOpnameAdjustments = async (opnameId, actor) => {
   await batch.commit();
   await fbLogActivity(actor,"Opname Apply",`Sesi ${opnameId}: ${adjustments.length} produk disesuaikan`);
 };
+
+// ── Belanja operasional ──────────────────────────────
+export const subscribeExpenses = (cb, n=500) => onSnapshot(
+  query(collection(_db,"expenses"), orderBy("createdAt","desc"), limit(n)),
+  s => cb(s.docs.map(d => ({ ...d.data(), id:d.id }))), console.warn);
+
+export const fbAddExpense = async (exp, actor) => {
+  const id = exp.id || ("EXP-" + Date.now().toString(36) + Math.random().toString(36).slice(2,5)).toUpperCase();
+  await setDoc(doc(_db,"expenses",id), { ...exp, id, createdAt:serverTimestamp() });
+  await fbLogActivity(actor, "Belanja Operasional", `${exp.category}: Rp ${Number(exp.amount).toLocaleString("id-ID")}${exp.description ? " — " + exp.description : ""}`, exp.business);
+};
+
+export const fbDeleteExpense = async (id, label, business, actor) => {
+  await deleteDoc(doc(_db,"expenses",id));
+  await fbLogActivity(actor, "Hapus Belanja", label, business);
+};
