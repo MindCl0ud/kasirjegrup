@@ -301,6 +301,14 @@ const makeCSS = () => `
     .fbtn{flex-shrink:0;min-height:38px;font-size:13px!important;padding:0 14px!important;white-space:nowrap;}
   }
 
+  .pgrid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;}
+  @media(min-width:641px){.pgrid{grid-template-columns:repeat(auto-fill,minmax(168px,1fr));gap:12px;}}
+  .tile:not(:disabled):hover{border-color:${C.pri}!important;}
+  .catalog-scroll{flex:1;overflow-y:auto;min-height:0;padding:12px 12px calc(150px + var(--safe-b));}
+  @media(min-width:641px){.catalog-scroll{padding:16px 16px 20px;}}
+  .cartbar{position:fixed;left:10px;right:10px;bottom:calc(66px + var(--safe-b));z-index:250;display:flex;align-items:center;gap:12px;
+    background:${C.bg2};border:1px solid ${C.bo1};border-radius:18px;padding:9px 10px 9px 12px;box-shadow:${C.sh2};}
+
   /* ── Kartu & chip ── */
   .mcard{background:${C.bg2};border-radius:16px;border:1px solid ${C.bo0};padding:14px 15px;box-shadow:${C.sh};transition:transform .12s,background .1s;}
   .mcard:active{transform:scale(.985);background:${C.bg3};}
@@ -425,6 +433,20 @@ function EmptyState({icon,title,hint,pad=36}) {
     <div style={{fontSize:14.5,fontWeight:700,color:C.t1}}>{title}</div>
     {hint&&<div style={{fontSize:13,color:C.t2,maxWidth:300,lineHeight:1.5}}>{hint}</div>}
   </div>;
+}
+function ProductTile({p,inCart,showBiz,onAdd}) {
+  const out=p.stock<=0, low=p.stock>0&&p.stock<10;
+  return <button onClick={()=>onAdd(p)} disabled={out} className="press tile" aria-label={`Tambah ${p.name}, ${rp(p.price)}${out?", stok habis":""}`}
+    style={{position:"relative",textAlign:"left",background:C.bg2,border:`1.5px solid ${inCart?C.pri:C.bo0}`,borderRadius:14,padding:"11px 12px",display:"flex",flexDirection:"column",gap:6,minHeight:118,
+      opacity:out?.55:1,boxShadow:C.sh,cursor:out?"not-allowed":"pointer",color:C.t0}}>
+    <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:6,minHeight:22}}>
+      {showBiz?<BizChip biz={p.business} sm/>:<span/>}
+      {inCart>0&&<span className="mn" style={{minWidth:24,height:24,padding:"0 7px",borderRadius:12,background:C.pri,color:C.on,fontSize:12.5,fontWeight:800,display:"grid",placeItems:"center"}}>{inCart}</span>}
+    </div>
+    <div style={{fontSize:14,fontWeight:700,lineHeight:1.3,display:"-webkit-box",WebkitLineClamp:2,WebkitBoxOrient:"vertical",overflow:"hidden",flex:1}}>{p.name}</div>
+    <div className="mn" style={{fontSize:15.5,fontWeight:800,color:C.pri}}>{rp(p.price)}</div>
+    <div style={{fontSize:12,fontWeight:600,color:out?C.r:low?C.a:C.t2}}>{out?"Habis":`Stok ${p.stock}`}</div>
+  </button>;
 }
 function Divider({my=10}) { return <div style={{height:1,background:C.bo0,margin:`${my}px 0`}}/>; }
 function RoleTag({role}) {
@@ -2129,13 +2151,13 @@ function syncSheet(sh,rows,headers){
 // ─────────────────────────────────────────────────────────────
 //  MAIN APP
 // ─────────────────────────────────────────────────────────────
-function AdminSidebar({tabs,active,onSelect}) {
+function AdminSidebar({tabs,active,onSelect,label="Menu admin",storeKey=storeKey,defaultW=defaultW}) {
   const MIN=208,MAX=380,RAIL=68,SNAP=150;
-  const [w,setW]=React.useState(()=>{const v=parseInt(localStorage.getItem("je_sidew"),10);return v>=RAIL&&v<=MAX?v:248;});
+  const [w,setW]=React.useState(()=>{const v=parseInt(localStorage.getItem(storeKey),10);return v>=RAIL&&v<=MAX?v:defaultW;});
   const [drag,setDrag]=React.useState(false);
   const ref=React.useRef(null);
   const rail=w<=RAIL;
-  const commit=v=>{setW(v);try{localStorage.setItem("je_sidew",String(v));}catch{}};
+  const commit=v=>{setW(v);try{localStorage.setItem(storeKey,String(v));}catch{}};
   const fromX=x=>{const left=ref.current?.getBoundingClientRect().left||0;const raw=x-left;return raw<SNAP?RAIL:Math.min(MAX,Math.max(MIN,raw));};
   const down=e=>{e.preventDefault();e.currentTarget.setPointerCapture(e.pointerId);document.body.style.userSelect="none";setDrag(true);};
   const move=e=>{if(drag)setW(fromX(e.clientX));};
@@ -2143,13 +2165,13 @@ function AdminSidebar({tabs,active,onSelect}) {
   const key=e=>{
     if(e.key==="ArrowLeft")commit(rail?RAIL:(w-16<SNAP?RAIL:Math.max(MIN,w-16)));
     else if(e.key==="ArrowRight")commit(rail?MIN:Math.min(MAX,w+16));
-    else if(e.key==="Home")commit(248);
+    else if(e.key==="Home")commit(defaultW);
     else return;
     e.preventDefault();
   };
   return <div ref={ref} className="hide-mobile" style={{width:w,flexShrink:0,position:"relative",background:C.bg2,borderRight:`1px solid ${C.bo0}`,
     transition:drag?"none":"width .18s ease",display:"flex",flexDirection:"column",minHeight:0}}>
-    <nav aria-label="Menu admin" style={{flex:1,overflowY:"auto",overflowX:"hidden",padding:rail?"12px 10px":"12px"}}>
+    <nav aria-label={label} style={{flex:1,overflowY:"auto",overflowX:"hidden",padding:rail?"12px 10px":"12px"}}>
       {tabs.map(t=>{const on=active===t.id;
         return <button key={t.id} onClick={()=>onSelect(t.id)} title={rail?t.l:undefined} aria-label={rail?t.l:undefined} aria-current={on?"page":undefined} className="press sbtn"
           style={{display:"flex",alignItems:"center",gap:12,width:"100%",height:44,padding:rail?0:"0 12px",justifyContent:rail?"center":"flex-start",marginBottom:2,
@@ -2159,13 +2181,13 @@ function AdminSidebar({tabs,active,onSelect}) {
         </button>;})}
     </nav>
     <div style={{padding:rail?"10px":"10px 12px",borderTop:`1px solid ${C.bo0}`}}>
-      <button onClick={()=>commit(rail?248:RAIL)} className="press sbtn" aria-label={rail?"Perluas menu":"Ciutkan menu"} title={rail?"Perluas menu":undefined}
+      <button onClick={()=>commit(rail?defaultW:RAIL)} className="press sbtn" aria-label={rail?"Perluas menu":"Ciutkan menu"} title={rail?"Perluas menu":undefined}
         style={{display:"flex",alignItems:"center",gap:12,width:"100%",height:40,padding:rail?0:"0 12px",justifyContent:rail?"center":"flex-start",border:"none",borderRadius:10,background:undefined,color:C.t2,fontSize:13,fontWeight:600}}>
         {rail?<PanelLeftOpen size={19}/>:<><PanelLeftClose size={19}/>Ciutkan menu</>}
       </button>
     </div>
     <div role="separator" aria-orientation="vertical" aria-label="Ubah lebar menu" aria-valuenow={w} aria-valuemin={RAIL} aria-valuemax={MAX} tabIndex={0}
-      onPointerDown={down} onPointerMove={move} onPointerUp={up} onPointerCancel={up} onKeyDown={key} onDoubleClick={()=>commit(rail?248:RAIL)}
+      onPointerDown={down} onPointerMove={move} onPointerUp={up} onPointerCancel={up} onKeyDown={key} onDoubleClick={()=>commit(rail?defaultW:RAIL)}
       className={`sresize${drag?" on":""}`}/>
   </div>;
 }
@@ -2369,7 +2391,7 @@ function AppInner() {
   };
   const doLogout=()=>{
     setUser(null);setBiz(null);setScreen("login");setSessionStart(null);
-    setCart([]);setScanIn("");setStokTarget(null);setReceipt(null);setReceiptQueue([]);
+    setCart([]);setScanIn("");setStokTarget(null);setReceipt(null);setReceiptQueue([]);setKasirTab("kasir");setCartOpen(false);
     sessionStorage.removeItem("je_session");
   };
   const handlePulang=async()=>{await doCheckOut();setTimeout(doLogout,1500);};
@@ -2389,7 +2411,13 @@ function AppInner() {
   const [namaPembeli,setNamaPembeli]=useState("");
   const [showCheckout,setShowCheckout]=useState(false);
   const scanRef=useRef(null);
-  useEffect(()=>{if(screen==="kasir"&&!receipt&&!showCheckout)setTimeout(()=>scanRef.current?.focus(),100);},[screen,receipt,showCheckout]);
+  const [kasirTab,setKasirTab]=useState("kasir");
+  const [catBiz,setCatBiz]=useState("ALL");
+  const [catCat,setCatCat]=useState("ALL");
+  const [cartOpen,setCartOpen]=useState(false);
+  const [histRange,setHistRange]=useState("today");
+  const [histQ,setHistQ]=useState("");
+  useEffect(()=>{if(screen==="kasir"&&kasirTab==="kasir"&&!receipt&&!showCheckout&&window.innerWidth>640)setTimeout(()=>scanRef.current?.focus(),100);},[screen,kasirTab,receipt,showCheckout]);
   // ─── Stok state ───
   const [stokScan,setStokScan]=useState("");
   const [stokQ,setStokQ]=useState("");
@@ -2522,6 +2550,12 @@ function AppInner() {
       return [...prev,{id:p.id,barcode:p.barcode,name:p.name,price:p.price,hpp:p.hpp||0,stock:p.stock,qty,business:p.business}];
     });
   };
+  const kasirAdd=useCallback((p)=>{
+    if(p.stock===0){toast("Stok "+p.name+" habis!","warn");return;}
+    const availableAddons=(p.addons||[]).map(id=>prods.find(x=>x.id===id&&x.business===p.business&&x.stock>0)).filter(Boolean);
+    addToCart(p);
+    if(availableAddons.length>0) setAddonPrompt({mainItem:p,addons:availableAddons});
+  },[prods,toast]);
   const kasirScan=useCallback(async(bc)=>{
     bc=bc.trim();if(!bc) return;
     const ok=x=>user?.access?.includes(x.business);
@@ -3168,6 +3202,34 @@ function AppInner() {
     const bc=C.pri;
     const qrisBiz=[...new Set(cart.map(c=>c.business))];
     const qrisReady=payMethod==="QRIS"&&qrisBiz.length>0&&qrisBiz.every(x=>getQris(x));
+    const KTABS=[{id:"kasir",l:"Kasir",ic:ShoppingCart},{id:"riwayat",l:"Riwayat",ic:Receipt},{id:"opname",l:"Opname",ic:ClipboardCheck}];
+    const baseProds=kasirProds().filter(p=>catBiz==="ALL"||p.business===catBiz);
+    const catList=[...new Set(baseProds.map(p=>p.category).filter(Boolean))].sort();
+    const qL=scanIn.trim().toLowerCase();
+    const shown=baseProds.filter(p=>(catCat==="ALL"||p.category===catCat)&&(!qL||p.name.toLowerCase().includes(qL)||p.barcode.toLowerCase().includes(qL))).sort((a,b)=>a.name.localeCompare(b.name));
+    const qtyOf=p=>cart.find(c=>c.barcode===p.barcode)?.qty||0;
+    const cartItems=()=>cart.length===0
+      ?<EmptyState icon={<ShoppingCart size={24} strokeWidth={1.6}/>} title="Keranjang kosong" hint="Ketuk produk untuk menambahkannya ke keranjang."/>
+      :cart.map(item=><div key={item.barcode} className="card-in" style={{background:C.bg2,border:`1px solid ${C.bo0}`,borderRadius:14,padding:"11px 12px"}}>
+        <div style={{display:"flex",justifyContent:"space-between",gap:8,alignItems:"flex-start"}}>
+          <div style={{minWidth:0}}>
+            <div style={{fontWeight:700,fontSize:14,lineHeight:1.3}}>{item.name}</div>
+            <div className="mn" style={{fontSize:12,color:C.t2,marginTop:2}}><span style={{display:"inline-block",width:7,height:7,borderRadius:"50%",background:item.business==="JB_STORE"?C.p:C.b,marginRight:6}}/>{BIZ[item.business]?.name} · {item.barcode}</div>
+          </div>
+          <button onClick={()=>setCart(p=>p.filter(c=>c.barcode!==item.barcode))} aria-label={"Hapus "+item.name} className="press"
+            style={{width:34,height:34,flexShrink:0,border:"none",background:"transparent",color:C.t2,display:"grid",placeItems:"center",borderRadius:10}}><X size={17}/></button>
+        </div>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginTop:8}}>
+          <div style={{display:"flex",alignItems:"center",gap:6}}>
+            <button onClick={()=>setCart(p=>{const it=p.find(c=>c.barcode===item.barcode);return it.qty<=1?p.filter(c=>c.barcode!==item.barcode):p.map(c=>c.barcode===item.barcode?{...c,qty:c.qty-1}:c);})} aria-label="Kurangi" className="press"
+              style={{width:38,height:38,background:C.bg3,border:`1px solid ${C.bo1}`,borderRadius:10,color:C.t0,fontSize:18,display:"grid",placeItems:"center"}}>−</button>
+            <span className="mn" style={{minWidth:28,textAlign:"center",fontWeight:800,fontSize:15}}>{item.qty}</span>
+            <button onClick={()=>setCart(p=>p.map(c=>c.barcode===item.barcode&&c.qty<c.stock?{...c,qty:c.qty+1}:c))} aria-label="Tambah" className="press"
+              style={{width:38,height:38,background:C.bg3,border:`1px solid ${C.bo1}`,borderRadius:10,color:C.t0,fontSize:18,display:"grid",placeItems:"center"}}>+</button>
+          </div>
+          <div className="mn" style={{fontWeight:800,fontSize:15.5}}>{rp(item.price*item.qty)}</div>
+        </div>
+      </div>);
     const qrisMissing=payMethod==="QRIS"&&!qrisReady?qrisBiz.filter(x=>!getQris(x)).map(x=>BIZ[x]?.name).join(", "):"";
 
     return <div style={{fontFamily:F.sans,background:C.bg1,color:C.t0,height:"100vh",display:"flex",flexDirection:"column"}}>
@@ -3190,8 +3252,7 @@ function AppInner() {
       {receipt&&<Invoice receipt={receipt} biz={receipt.business}
         onClose={()=>{setReceipt(receiptQueue[0]||null);setReceiptQueue(q=>q.slice(1));scanRef.current?.focus();}}
         onNew={()=>{setReceipt(receiptQueue[0]||null);setReceiptQueue(q=>q.slice(1));scanRef.current?.focus();}}/>}
-      {showOpnamePanel&&opnameOverlay(()=>setShowOpnamePanel(false))}
-      <ExpenseFormModal open={expenseModal} onClose={()=>setExpenseModal(false)} onSave={saveExpense} access={user.access} user={user}/>
+      {invTrx&&<Invoice receipt={invTrx} biz={invTrx.business} onClose={()=>setInvTrx(null)}/>}
       {/* Stock check */}
       {showStock&&<StockCheckModal prods={kasirProds()} biz={null} onClose={()=>setShowStock(false)}/> }
       {showLowStock&&<LowStockPopup prods={prods} onClose={()=>setShowLowStock(false)}/>}
@@ -3245,121 +3306,109 @@ function AppInner() {
         </div>
       </Modal>
 
-      {/* Main layout */}
-      <div style={{flex:1,display:"flex",overflow:"hidden"}}>
-        <div style={{flex:1,display:"flex",flexDirection:"column",overflow:"hidden",minWidth:0}}>
-          {/* Scan bar */}
-          <div style={{padding:"10px 12px",background:C.bg2,borderBottom:`1px solid ${C.bo0}`,flexShrink:0,zIndex:100}}>
-            <div style={{display:"flex",gap:8}}>
-              <div style={{flex:1,position:"relative"}}>
-                <span style={{position:"absolute",left:12,top:"50%",transform:"translateY(-50%)",fontSize:15,pointerEvents:"none",color:C.t2}}><Ico e="📷"/></span>
-                <input ref={scanRef} value={scanIn} onChange={e=>setScanIn(e.target.value)}
-                  onKeyDown={e=>e.key==="Enter"&&kasirScan(scanIn)}
-                  placeholder="Scan atau cari produk"
-                  style={{width:"100%",padding:"12px 12px 12px 40px",background:C.bg3,border:`2px solid ${bc}44`,borderRadius:12,color:C.t0,fontSize:14,fontFamily:F.mono}}/>
-                
-                {/* Autocomplete Suggestions Kasir */}
-                {scanIn.trim().length > 1 && (
-                  <div style={{position:"absolute",top:"100%",left:0,right:0,zIndex:100,background:C.bg2,border:`1px solid ${C.bo1}`,borderRadius:12,marginTop:6,boxShadow:C.sh2,overflow:"hidden",animation:"fadeUp 0.2s ease"}}>
-                    {kasirProds().filter(p => p.name.toLowerCase().includes(scanIn.trim().toLowerCase()) || p.barcode.includes(scanIn.trim())).slice(0, 5).map((p, i) => (
-                      <div key={p.id} onClick={() => kasirScan(p.barcode)} className="hrow"
-                        style={{padding:"10px 14px",cursor:"pointer",borderTop:i>0?`1px solid ${C.bo0}`:undefined,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-                        <div>
-                          <div style={{fontWeight:600,fontSize:13}}>{p.name}</div>
-                          <div className="mn" style={{fontSize:10,color:C.t2,marginTop:2}}>{p.barcode} · Stok: {p.stock}</div>
-                        </div>
-                        <div className="mn" style={{color:C.g,fontWeight:700,fontSize:13}}>{rp(p.price)}</div>
-                      </div>
-                    ))}
-                    {kasirProds().filter(p => p.name.toLowerCase().includes(scanIn.trim().toLowerCase()) || p.barcode.includes(scanIn.trim())).length === 0 && (
-                      <div style={{padding:"12px 14px",fontSize:12,color:C.t3,textAlign:"center"}}>Produk tidak ditemukan</div>
-                    )}
+      {/* Layout kasir: sidebar menu | katalog produk | keranjang */}
+      <div className="admin-body">
+        <AdminSidebar tabs={KTABS} active={kasirTab} onSelect={setKasirTab} label="Menu kasir" storeKey="je_sidew_k" defaultW={216}/>
+        <div style={{flex:1,display:"flex",flexDirection:"column",minWidth:0,minHeight:0}}>
+          {kasirTab==="kasir"&&<div style={{flex:1,display:"flex",minHeight:0}}>
+            <section style={{flex:1,minWidth:0,display:"flex",flexDirection:"column",minHeight:0}}>
+              <div style={{padding:"10px 12px 8px",background:C.bg2,borderBottom:`1px solid ${C.bo0}`,display:"flex",flexDirection:"column",gap:8,flexShrink:0}}>
+                <div style={{position:"relative"}}>
+                  <span style={{position:"absolute",left:13,top:"50%",transform:"translateY(-50%)",color:C.t2,display:"flex",pointerEvents:"none"}}><ScanLine size={19}/></span>
+                  <input ref={scanRef} value={scanIn} onChange={e=>setScanIn(e.target.value)} onKeyDown={e=>e.key==="Enter"&&kasirScan(scanIn)}
+                    placeholder="Cari produk atau scan barcode" aria-label="Cari produk atau scan barcode"
+                    style={{width:"100%",minHeight:46,padding:"11px 44px 11px 42px",background:C.bg3,border:`1.5px solid ${C.bo1}`,borderRadius:12,color:C.t0,fontSize:15,fontFamily:F.sans}}/>
+                  {scanIn&&<button onClick={()=>{setScanIn("");scanRef.current?.focus();}} aria-label="Hapus pencarian" className="press"
+                    style={{position:"absolute",right:4,top:3,width:40,height:40,border:"none",background:"transparent",color:C.t2,display:"grid",placeItems:"center"}}><X size={18}/></button>}
+                </div>
+                {user.access.length>1&&<div style={{display:"flex",gap:6}}>
+                  {["ALL",...user.access].map(b=><button key={b} onClick={()=>{setCatBiz(b);setCatCat("ALL");}} className={`chip${catBiz===b?" on":""}`}>{b==="ALL"?"Semua toko":BIZ[b].name}</button>)}
+                </div>}
+                {catList.length>1&&<div style={{display:"flex",gap:6,flexWrap:"nowrap",overflowX:"auto",scrollbarWidth:"none",paddingBottom:2}}>
+                  {["ALL",...catList].map(c=><button key={c} onClick={()=>setCatCat(c)} className={`chip${catCat===c?" on":""}`} style={{minHeight:34,padding:"6px 13px",flexShrink:0,whiteSpace:"nowrap"}}>{c==="ALL"?"Semua kategori":c}</button>)}
+                </div>}
+              </div>
+              <div className="catalog-scroll">
+                {shown.length===0
+                  ?<EmptyState icon={<Search size={24} strokeWidth={1.6}/>} title="Produk tidak ditemukan" hint="Coba kata kunci lain atau ubah filter toko dan kategori."/>
+                  :<div className="pgrid">{shown.map(p=><ProductTile key={p.id} p={p} inCart={qtyOf(p)} showBiz={user.access.length>1} onAdd={kasirAdd}/>)}</div>}
+              </div>
+            </section>
+            <aside className="hide-mobile" style={{width:360,flexShrink:0,background:C.bg1,borderLeft:`1px solid ${C.bo0}`,display:"flex",flexDirection:"column",minHeight:0}}>
+              <div style={{padding:"14px 16px",background:C.bg2,borderBottom:`1px solid ${C.bo0}`,display:"flex",alignItems:"center",justifyContent:"space-between",gap:8}}>
+                <div><div style={{fontWeight:800,fontSize:15}}>Keranjang</div><div style={{fontSize:12.5,color:C.t2}}>{cart.length} produk · {cart.reduce((s,c)=>s+c.qty,0)} item</div></div>
+                {cart.length>0&&<Btn size="sm" ghost onClick={()=>setCart([])}><Trash2 size={15}/>Kosongkan</Btn>}
+              </div>
+              <div style={{flex:1,overflowY:"auto",padding:12,display:"flex",flexDirection:"column",gap:8,minHeight:0}}>{cartItems()}</div>
+              <div style={{padding:"14px 16px calc(14px + var(--safe-b))",background:C.bg2,borderTop:`1px solid ${C.bo0}`}}>
+                {user.access.length>1&&qrisBiz.length>1&&<div style={{display:"flex",flexDirection:"column",gap:5,marginBottom:10}}>
+                  {user.access.map(bz=>{const sub=cart.filter(c=>c.business===bz).reduce((s,c)=>s+c.price*c.qty,0),cl=bz==="JS_CLOTHING"?C.b:C.p;
+                    return sub>0&&<div key={bz} style={{display:"flex",justifyContent:"space-between",fontSize:12.5,fontWeight:700,color:cl}}><span>{BIZ[bz].name}</span><span className="mn">{rp(sub)}</span></div>;})}
+                </div>}
+                {discAmt>0&&<div style={{display:"flex",justifyContent:"space-between",fontSize:13,color:C.r,marginBottom:4}}><span>Diskon</span><span className="mn">− {rp(discAmt)}</span></div>}
+                <div style={{display:"flex",justifyContent:"space-between",alignItems:"baseline",marginBottom:12}}>
+                  <span style={{fontSize:14,fontWeight:700,color:C.t1}}>Total</span>
+                  <span className="mn" style={{fontSize:28,fontWeight:800,letterSpacing:"-.02em"}}>{rp(total)}</span>
+                </div>
+                <Btn full size="lg" disabled={!cart.length} onClick={()=>setShowCheckout(true)}><CreditCard size={19}/>Bayar</Btn>
+              </div>
+            </aside>
+          </div>}
+
+          {kasirTab==="riwayat"&&<div className="admin-content"><div style={{display:"flex",flexDirection:"column",gap:10,maxWidth:900,margin:"0 auto"}}>
+            {(()=>{
+              const hq=histQ.trim().toLowerCase();
+              const myTrx=trxs.filter(t=>user.access.includes(t.business)&&inRangeDate(parseD(t.date),histRange,"","")&&(!hq||(t.id||"").toLowerCase().includes(hq)||(t.namaPembeli||"").toLowerCase().includes(hq)));
+              const sumT=myTrx.filter(t=>!t.returned).reduce((s,t)=>s+t.total,0);
+              return <>
+                <div><h2 style={{fontSize:16,fontWeight:800}}>Riwayat transaksi</h2><p style={{fontSize:12.5,color:C.t2,marginTop:2}}>Buka invoice untuk cetak ulang atau kirim lewat WhatsApp.</p></div>
+                <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>{[["today","Hari ini"],["week","7 hari"],["all","Semua"]].map(([v,l])=><button key={v} onClick={()=>setHistRange(v)} className={`chip${histRange===v?" on":""}`}>{l}</button>)}</div>
+                <Inp value={histQ} onChange={e=>setHistQ(e.target.value)} placeholder="Cari ID atau nama pembeli" icon={<Search size={16}/>} style={{minHeight:42}}/>
+                <div className="stat-grid-3" style={{display:"grid",gap:10,gridTemplateColumns:"repeat(2,1fr)"}}>
+                  <Stat icon="🧾" label="Transaksi" value={myTrx.length} color={C.cy}/>
+                  <Stat icon="💰" label="Total penjualan" value={rp(sumT)} color={C.g}/>
+                </div>
+                {myTrx.length===0?<Card><EmptyState icon={<Receipt size={24} strokeWidth={1.6}/>} title="Belum ada transaksi" hint="Transaksi yang kamu selesaikan muncul di sini."/></Card>
+                :myTrx.slice(0,100).map(t=><Card key={t.id} style={{padding:"13px 15px"}}>
+                  <div style={{display:"flex",justifyContent:"space-between",gap:10,alignItems:"flex-start"}}>
+                    <div style={{minWidth:0}}>
+                      <div style={{display:"flex",gap:6,alignItems:"center",flexWrap:"wrap"}}><span className="mn" style={{fontSize:13,fontWeight:700}}>{t.id?.slice(-10)}</span><BizChip biz={t.business} sm/>{t.returned&&<span style={{padding:"1px 8px",borderRadius:20,background:C.a1,color:C.a,fontSize:11.5,fontWeight:700}}>Retur</span>}</div>
+                      <div style={{fontSize:12.5,color:C.t2,marginTop:4}}>{t.date} · {(t.items||[]).reduce((s,i)=>s+i.qty,0)} item · {t.payment||"Tunai"}{t.namaPembeli&&t.namaPembeli!=="Umum"?" · "+t.namaPembeli:""}</div>
+                    </div>
+                    <div style={{textAlign:"right",flexShrink:0}}>
+                      <div className="mn" style={{fontSize:16,fontWeight:800}}>{rp(t.total)}</div>
+                      <Btn size="sm" outline onClick={()=>setInvTrx(t)} style={{marginTop:6}}><Receipt size={15}/>Invoice</Btn>
+                    </div>
                   </div>
-                )}
-              </div>
-              <button onClick={()=>kasirScan(scanIn)} className="press"
-                style={{padding:"12px 16px",background:bc,border:"none",borderRadius:12,color:C.on,fontWeight:800,fontSize:14,flexShrink:0}}>+</button>
-              <button onClick={()=>setShowOpnamePanel(true)} className="press" aria-label="Opname stok" title="Opname stok"
-                style={{width:46,flexShrink:0,background:C.bg3,border:`1.5px solid ${C.bo1}`,borderRadius:12,color:C.t1,display:"grid",placeItems:"center"}}><ClipboardCheck size={20}/></button>
-              <button onClick={()=>setExpenseModal(true)} className="press" aria-label="Catat belanja operasional" title="Belanja operasional"
-                style={{width:46,flexShrink:0,background:C.bg3,border:`1.5px solid ${C.bo1}`,borderRadius:12,color:C.t1,display:"grid",placeItems:"center"}}><ShoppingBasket size={20}/></button>
-            </div>
-          </div>
-          {/* Cart */}
-          <div style={{flex:1,overflowY:"auto",padding:10,display:"flex",flexDirection:"column",gap:7,minHeight:0}}>
-            {cart.length===0 ? <div style={{display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",flex:1,gap:10,padding:"32px 16px"}}>
-              <div style={{fontSize:48,opacity:.08}}><Ico e="🛒" size={48}/></div>
-              <p style={{fontSize:13,fontWeight:600,color:C.t2}}>Keranjang kosong</p>
-              <p style={{fontSize:11.5,color:C.t3}}>Scan produk JS Clothing atau JB Store untuk mulai</p>
-            </div> : cart.map(item=><div key={item.barcode} style={{background:C.bg2,borderRadius:12,border:`1px solid ${C.bo0}`,padding:"10px 12px",display:"flex",alignItems:"center",gap:8,animation:"fadeUp .15s ease"}}>
-              <div style={{flex:1,minWidth:0}}>
-                <div style={{fontWeight:600,fontSize:12.5,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{item.name}</div>
-                <div className="mn" style={{color:C.t2,fontSize:10,marginTop:1}}><span style={{display:"inline-block",width:7,height:7,borderRadius:"50%",background:item.business==="JB_STORE"?C.p:C.b,marginRight:6}}/>{BIZ[item.business]?.name} · {item.barcode}</div>
-              </div>
-              <div style={{display:"flex",alignItems:"center",gap:4,flexShrink:0}}>
-                <button onClick={()=>setCart(p=>{const it=p.find(c=>c.barcode===item.barcode);return it.qty<=1?p.filter(c=>c.barcode!==item.barcode):p.map(c=>c.barcode===item.barcode?{...c,qty:c.qty-1}:c);})}
-                  className="press" style={{width:38,height:38,background:C.bg3,border:`1px solid ${C.bo1}`,borderRadius:10,color:C.t0,fontSize:16,display:"flex",alignItems:"center",justifyContent:"center"}}>−</button>
-                <span className="mn" style={{minWidth:24,textAlign:"center",fontWeight:700,fontSize:14}}>{item.qty}</span>
-                <button onClick={()=>setCart(p=>p.map(c=>c.barcode===item.barcode&&c.qty<c.stock?{...c,qty:c.qty+1}:c))}
-                  className="press" style={{width:38,height:38,background:C.bg3,border:`1px solid ${C.bo1}`,borderRadius:10,color:C.t0,fontSize:16,display:"flex",alignItems:"center",justifyContent:"center"}}>+</button>
-              </div>
-              <div className="mn" style={{fontWeight:700,color:C.t0,fontSize:14,minWidth:84,textAlign:"right",flexShrink:0}}>{rp(item.price*item.qty)}</div>
-              <button onClick={()=>setCart(p=>p.filter(c=>c.barcode!==item.barcode))}
-                style={{background:"transparent",border:"none",color:C.t3,fontSize:18,padding:"0 2px",flexShrink:0}}>×</button>
-            </div>)}
-          </div>
-        </div>
-        {/* Side panel tablet */}
-        <div className="hide-mobile" style={{width:220,background:C.bg2,borderLeft:`1px solid ${C.bo0}`,display:"flex",flexDirection:"column",padding:12,flexShrink:0}}>
-          <div style={{display:"flex",flexDirection:"column",gap:6,marginBottom:12}}>
-            {user.access.map(bz=>{const sub=cart.filter(c=>c.business===bz).reduce((s,c)=>s+c.price*c.qty,0),cl=bz==="JS_CLOTHING"?C.b:C.p;
-              return <div key={bz} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"8px 10px",borderRadius:10,background:bz==="JS_CLOTHING"?C.b1:C.p1,fontSize:12.5,fontWeight:700,color:cl}}>
-                <span><Ico e={BIZ[bz].icon} size={14}/> {BIZ[bz].name}</span><span className="mn">{rp(sub)}</span></div>;})}
-          </div>
-          <div style={{flex:1}}>
-            {[{l:"Produk",v:cart.length},{l:"Total Item",v:cart.reduce((s,c)=>s+c.qty,0)}].map(r=>(
-              <div key={r.l} style={{display:"flex",justifyContent:"space-between",marginBottom:7,fontSize:13}}>
-                <span style={{color:C.t2}}>{r.l}</span><span className="mn">{r.v}</span>
-              </div>))}
-            <Divider/>
-            {discAmt>0&&<div style={{display:"flex",justifyContent:"space-between",fontSize:12,color:C.r,marginBottom:5}}>
-              <span>Diskon</span><span className="mn">− {rp(discAmt)}</span>
-            </div>}
-            <div style={{display:"flex",justifyContent:"space-between",alignItems:"baseline",marginBottom:5}}>
-              <span style={{fontSize:13,color:C.t1}}>Total</span>
-              <span className="mn" style={{fontSize:22,fontWeight:800,color:C.t0}}>{rp(total)}</span>
-            </div>
-          </div>
-          <div style={{display:"flex",flexDirection:"column",gap:7,marginTop:12}}>
-            <button onClick={()=>{if(cart.length)setShowCheckout(true);}} disabled={!cart.length} className="press"
-              style={{padding:"14px",background:cart.length?`${C.pri}`:C.bg3,
-                border:"none",borderRadius:11,color:cart.length?C.on:C.t2,fontSize:13,fontWeight:800,cursor:cart.length?"pointer":"not-allowed"}}>
-              <Ico e="💳"/> Bayar</button>
-            <button onClick={()=>setCart([])} style={{padding:"7px",background:"transparent",border:`1px solid ${C.bo0}`,borderRadius:8,color:C.t3,fontSize:11,fontFamily:F.sans}}>Bersihkan</button>
-          </div>
-          <Divider my={8}/>
-          <div style={{fontSize:12,color:C.t3,textTransform:"none",letterSpacing:0,marginBottom:6,fontWeight:700}}>Terbaru</div>
-          {trxs.filter(t=>user.access.includes(t.business)).slice(0,5).map(t=><div key={t.id}
-            style={{display:"flex",justifyContent:"space-between",marginBottom:4,fontSize:11}}>
-            <span className="mn" style={{color:C.t2}}>{t.id?.slice(-8)}</span>
-            <span className="mn" style={{color:C.g}}>{rp(t.total)}</span>
-          </div>)}
+                </Card>)}
+              </>;
+            })()}
+          </div></div>}
+
+          {kasirTab==="opname"&&<div className="admin-content">{opnamePanelEl()}</div>}
         </div>
       </div>
-      {/* Mobile bottom bar */}
-      <div className="hide-desktop" style={{background:`${C.bg2}f8`,backdropFilter:"blur(16px)",borderTop:`1px solid ${C.bo0}`,
-        padding:"10px 12px",paddingBottom:`calc(10px + var(--safe-b))`,flexShrink:0,display:"flex",alignItems:"center",gap:8}}>
-        <div style={{flex:1}}>
-          <div style={{fontSize:10,color:C.t2,fontWeight:600}}>Total</div>
-          <div className="mn" style={{fontSize:22,fontWeight:800,color:C.t0,lineHeight:1.2}}>{rp(total)}</div>
-          {cart.length>0&&<div className="mn" style={{fontSize:9.5,color:C.t3}}>{cart.reduce((s,c)=>s+c.qty,0)} item</div>}
-        </div>
-        <button onClick={()=>{if(cart.length)setShowCheckout(true);}} disabled={!cart.length} className="press"
-          style={{padding:"13px 24px",background:cart.length?`${C.pri}`:C.bg3,
-            border:"none",borderRadius:13,color:cart.length?C.on:C.t2,fontSize:14,fontWeight:800,
-            flexShrink:0,boxShadow:undefined}}>
-          <Ico e="💳"/> Bayar</button>
-      </div>
+
+      {/* Mobile: bar keranjang + navigasi bawah */}
+      {kasirTab==="kasir"&&<div className="hide-desktop cartbar">
+        <button onClick={()=>setCartOpen(true)} aria-label="Lihat keranjang" className="press"
+          style={{flex:1,minWidth:0,display:"flex",alignItems:"center",gap:12,background:"transparent",border:"none",textAlign:"left",color:C.t0,padding:0}}>
+          <span style={{position:"relative",width:42,height:42,borderRadius:12,background:C.pri1,color:C.pri,display:"grid",placeItems:"center",flexShrink:0}}>
+            <ShoppingCart size={21}/>{cart.length>0&&<span className="mn" style={{position:"absolute",top:-6,right:-6,minWidth:20,height:20,padding:"0 5px",borderRadius:10,background:C.pri,color:C.on,fontSize:11.5,fontWeight:800,display:"grid",placeItems:"center",boxSizing:"border-box",border:`2px solid ${C.bg2}`}}>{cart.reduce((s,c)=>s+c.qty,0)}</span>}
+          </span>
+          <span style={{minWidth:0}}><span style={{display:"block",fontSize:12,color:C.t2,fontWeight:600}}>{cart.length?"Lihat keranjang":"Keranjang kosong"}</span><span className="mn" style={{display:"block",fontSize:20,fontWeight:800,lineHeight:1.15}}>{rp(total)}</span></span>
+        </button>
+        <Btn size="lg" disabled={!cart.length} onClick={()=>setShowCheckout(true)}>Bayar</Btn>
+      </div>}
+      <nav className="bnav" aria-label="Menu kasir">
+        {KTABS.map(t=>{const on=kasirTab===t.id;
+          return <button key={t.id} className={`bnavbtn${on?" active":""}`} onClick={()=>setKasirTab(t.id)} aria-current={on?"page":undefined}>
+            <span className="bnav-icon"><t.ic size={22} strokeWidth={on?2.2:1.8}/></span><span className="bnav-label">{t.l}</span></button>;})}
+      </nav>
+      <Modal open={cartOpen} size="md" onClose={()=>setCartOpen(false)} icon={<ShoppingCart size={20}/>} title="Keranjang" subtitle={`${cart.length} produk · ${cart.reduce((s,c)=>s+c.qty,0)} item`}
+        footer={<><Btn outline disabled={!cart.length} onClick={()=>setCart([])}>Kosongkan</Btn><Btn size="lg" disabled={!cart.length} onClick={()=>{setCartOpen(false);setShowCheckout(true);}}>Bayar {rp(total)}</Btn></>}>
+        <div style={{display:"flex",flexDirection:"column",gap:8}}>{cartItems()}</div>
+      </Modal>
     </div>;
   }
 
