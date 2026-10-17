@@ -2151,7 +2151,7 @@ function syncSheet(sh,rows,headers){
 // ─────────────────────────────────────────────────────────────
 //  MAIN APP
 // ─────────────────────────────────────────────────────────────
-function AdminSidebar({tabs,active,onSelect,label="Menu admin",storeKey=storeKey,defaultW=defaultW}) {
+function AdminSidebar({tabs,active,onSelect,label="Menu admin",storeKey="je_sidew",defaultW=248}) {
   const MIN=208,MAX=380,RAIL=68,SNAP=150;
   const [w,setW]=React.useState(()=>{const v=parseInt(localStorage.getItem(storeKey),10);return v>=RAIL&&v<=MAX?v:defaultW;});
   const [drag,setDrag]=React.useState(false);
