@@ -22,7 +22,7 @@ import {
   Briefcase, Factory, Sun, Moon, Flame, Lightbulb, ShoppingCart, Lock, BarChart3, TrendingUp, Link2, Tag,
   Shirt, Sparkles, Home, Printer, RefreshCw, Folder, FileText, Eye, EyeOff, Building2, LayoutDashboard,
   Undo2, Activity, Upload, PanelLeftClose, PanelLeftOpen, ChevronRight, LogOut, Bell, ArrowLeftRight, ArrowLeft, MoreHorizontal, WifiOff, Info,
-  QrCode, ChevronLeft, ShoppingBasket,
+  QrCode, ChevronLeft, ShoppingBasket, Megaphone, ExternalLink, ShoppingBag,
 } from "lucide-react";
 
 // ─────────────────────────────────────────────────────────────
@@ -575,7 +575,7 @@ function UpdateBanner({onUpdate}) {
 //  HEADER  — di HP hanya: logo, bisnis, bel peringatan, avatar.
 //  Tombol lain (tema, muat ulang, pulang, keluar) ada di sheet akun.
 // ─────────────────────────────────────────────────────────────
-function Header({title,biz,user,onLogout,onSwitchBiz,onAbsenPulang,hasCheckedIn,online,onToggleTheme,isDark,lowStockCount=0,onLowStockClick,expireCount=0,expiredCount=0,onExpireClick}) {
+function Header({title,biz,user,onLogout,onSwitchBiz,onAbsenPulang,hasCheckedIn,online,onToggleTheme,isDark,lowStockCount=0,onLowStockClick,expireCount=0,expiredCount=0,onExpireClick,onGoLanding}) {
   const b=BIZ[biz];
   const [sheet,setSheet]=React.useState(null);
   const alertN=lowStockCount+expireCount+expiredCount;
@@ -653,6 +653,7 @@ function Header({title,biz,user,onLogout,onSwitchBiz,onAbsenPulang,hasCheckedIn,
           </div>
           <Divider my={4}/>
           <div style={{display:"flex",flexDirection:"column",gap:2,paddingTop:6}}>
+            {onGoLanding&&<SheetRow icon={<ShoppingBag size={18}/>} label="Lihat Etalase Iklan Publik" sub="Buka landing page promosi" onClick={run(onGoLanding)}/>}
             {onAbsenPulang&&hasCheckedIn&&<SheetRow tone={C.a} icon={<Home size={18}/>} label="Absen pulang" sub="Catat jam pulang hari ini" onClick={run(onAbsenPulang)}/>}
             {canSwitch&&<SheetRow icon={<ArrowLeftRight size={18}/>} label="Ganti bisnis" sub={b?`Sekarang: ${b.name}`:undefined} onClick={run(onSwitchBiz)}/>}
             {onToggleTheme&&<SheetRow icon={isDark?<Sun size={18}/>:<Moon size={18}/>} label={isDark?"Mode terang":"Mode gelap"} onClick={()=>{onToggleTheme();}}/>}
@@ -956,6 +957,23 @@ function ProductFormModal({open,editing,editId,form,setForm,prods,biz,onSave,onC
       {price>0&&hpp>0&&chip(C.cy1,C.cy,`Laba ${rp(price-hpp)}/pcs`)}
       {days!==null&&(days<0?chip(C.r1,C.r,"Sudah kadaluarsa"):days<=30?chip(C.a1,C.a,`${days} hari lagi`):chip(C.g1,C.g,`${days} hari lagi`))}
     </div>}
+    <div style={{marginTop:16,padding:"12px 14px",background:C.bg3,borderRadius:12,border:`1.5px solid ${form.advertised?C.pri:C.bo0}`,display:"flex",alignItems:"center",justifyContent:"space-between",gap:12}}>
+      <div style={{display:"flex",alignItems:"center",gap:10}}>
+        <div style={{width:36,height:36,borderRadius:10,background:form.advertised?C.pri1:C.bg2,color:form.advertised?C.pri:C.t3,display:"grid",placeItems:"center",flexShrink:0}}>
+          <Megaphone size={18}/>
+        </div>
+        <div>
+          <div style={{fontSize:13.5,fontWeight:700,color:C.t0}}>Iklankan di Etalase Publik</div>
+          <div style={{fontSize:11.5,color:C.t2}}>Tampilkan produk ini di landing page promosi pelanggan</div>
+        </div>
+      </div>
+      <button type="button" role="switch" aria-checked={!!form.advertised}
+        onClick={()=>setForm(x=>({...x,advertised:!x.advertised}))}
+        className="press"
+        style={{width:46,height:26,borderRadius:13,background:form.advertised?C.pri:C.bg4,border:`1.5px solid ${form.advertised?C.pri:C.bo1}`,position:"relative",cursor:"pointer",padding:0,flexShrink:0,transition:"background .2s"}}>
+        <span style={{width:20,height:20,borderRadius:"50%",background:"#fff",position:"absolute",top:1.5,left:form.advertised?21:2,boxShadow:C.sh0,transition:"left .2s"}}/>
+      </button>
+    </div>
     <div className="fsec">
       <div className="fsec-title"><Plus size={16} color={C.vi}/>Add-on (opsional)</div>
       <p style={{fontSize:13,color:C.t2,lineHeight:1.5,marginBottom:12}}>Saat produk ini di-scan, kasir akan ditawari produk add-on berikut.</p>
@@ -2149,6 +2167,286 @@ function syncSheet(sh,rows,headers){
 `;
 
 // ─────────────────────────────────────────────────────────────
+//  LANDING PAGE IKLAN PRODUK (Anti-slop design taste & Sumba Tarum Palette)
+// ─────────────────────────────────────────────────────────────
+function ProductLandingPage({ prods, onLogin, onToggleTheme, isDark }) {
+  const [selectedBiz, setSelectedBiz] = React.useState("ALL");
+  const [searchWord, setSearchWord] = React.useState("");
+
+  // Produk yang diiklankan oleh admin (p.advertised === true)
+  // Fallback: Jika admin belum mengiklankan produk apapun, tampilkan beberapa produk unggulan otomatis
+  const advertisedList = React.useMemo(() => {
+    let list = prods.filter(p => p.advertised);
+    if (!list.length) {
+      list = prods.filter(p => p.stock > 0).slice(0, 8);
+    }
+    return list;
+  }, [prods]);
+
+  const filtered = React.useMemo(() => {
+    return advertisedList.filter(p => {
+      const matchBiz = selectedBiz === "ALL" || p.business === selectedBiz;
+      const matchQ = !searchWord || p.name.toLowerCase().includes(searchWord.toLowerCase()) || (p.category || "").toLowerCase().includes(searchWord.toLowerCase());
+      return matchBiz && matchQ;
+    });
+  }, [advertisedList, selectedBiz, searchWord]);
+
+  const jsCount = advertisedList.filter(p => p.business === "JS_CLOTHING").length;
+  const jbCount = advertisedList.filter(p => p.business === "JB_STORE").length;
+
+  return (
+    <div style={{minHeight:"100dvh",background:C.bg1,color:C.t0,display:"flex",flexDirection:"column",fontFamily:F.sans}}>
+      {/* ── Top Navbar ── */}
+      <header style={{
+        position:"sticky",top:0,zIndex:100,
+        background:isDarkTheme()?"rgba(15,19,48,0.85)":"rgba(255,255,255,0.88)",
+        backdropFilter:"blur(12px)",WebkitBackdropFilter:"blur(12px)",
+        borderBottom:`1px solid ${C.bo1}`,
+        padding:"0 20px",height:64,display:"flex",alignItems:"center",justifyContent:"space-between"
+      }}>
+        <div style={{display:"flex",alignItems:"center",gap:12}}>
+          <BrandMark size={36}/>
+          <div>
+            <div style={{fontSize:16,fontWeight:800,letterSpacing:"-.02em",lineHeight:1.1}}>JE GRUP CATALOG</div>
+            <div style={{fontSize:11,color:C.t2,fontWeight:600}}>JS Clothing &amp; JB Store</div>
+          </div>
+        </div>
+
+        <div style={{display:"flex",alignItems:"center",gap:10}}>
+          <button onClick={onToggleTheme} className="press" aria-label="Ganti mode tema"
+            style={{width:40,height:40,borderRadius:12,border:`1.5px solid ${C.bo1}`,background:C.bg2,color:C.t1,display:"grid",placeItems:"center"}}>
+            {isDark ? <Sun size={18}/> : <Moon size={18}/>}
+          </button>
+          <button onClick={onLogin} className="press"
+            style={{
+              padding:"0 18px",height:40,borderRadius:12,
+              background:C.pri,color:C.on,fontWeight:700,fontSize:13.5,
+              border:"none",display:"inline-flex",alignItems:"center",gap:7
+            }}>
+            <Lock size={15}/> Masuk Kasir
+          </button>
+        </div>
+      </header>
+
+      {/* ── Hero Section (Split View with Visual Cards) ── */}
+      <section style={{
+        position:"relative",overflow:"hidden",
+        padding:"48px 20px 40px",maxWidth:1200,margin:"0 auto",width:"100%"
+      }}>
+        {/* Subtle decorative glow */}
+        <div style={{
+          position:"absolute",top:-60,right:-40,width:340,height:340,
+          borderRadius:"50%",background:isDarkTheme()?"rgba(142,156,255,0.12)":"rgba(47,60,148,0.06)",
+          filter:"blur(60px)",pointerEvents:"none"
+        }}/>
+
+        <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit, minmax(320px, 1fr))",gap:32,alignItems:"center"}}>
+          <div>
+            <div style={{display:"inline-flex",alignItems:"center",gap:7,padding:"5px 12px",borderRadius:50,background:C.pri1,border:`1px solid ${C.pri}33`,color:C.pri,fontSize:12,fontWeight:800,marginBottom:16}}>
+              <Sparkles size={14}/> Koleksi Pilihan Terkurasi
+            </div>
+            <h1 style={{fontSize:"clamp(30px, 4.5vw, 46px)",fontWeight:800,letterSpacing:"-.03em",lineHeight:1.15,marginBottom:14}}>
+              Kualitas Konveksi &amp; Skincare Terbaik dari JE Grup.
+            </h1>
+            <p style={{fontSize:15.5,color:C.t1,lineHeight:1.6,maxWidth:480,marginBottom:24}}>
+              Eksplorasi pakaian konveksi premium dari <b>JS Clothing</b> serta perawatan kulit terpercaya dari <b>JB Store</b> langsung dari etalase resmi kami.
+            </p>
+            <div style={{display:"flex",gap:10,flexWrap:"wrap"}}>
+              <a href="#katalog" className="press"
+                style={{
+                  padding:"12px 24px",borderRadius:14,background:C.pri,color:C.on,
+                  fontWeight:700,fontSize:14,textDecoration:"none",display:"inline-flex",alignItems:"center",gap:8
+                }}>
+                <ShoppingBag size={17}/> Jelajahi Produk ({advertisedList.length})
+              </a>
+              <button onClick={onLogin} className="press"
+                style={{
+                  padding:"12px 20px",borderRadius:14,background:C.bg3,color:C.t0,
+                  border:`1.5px solid ${C.bo1}`,fontWeight:700,fontSize:14
+                }}>
+                Portal Pegawai
+              </button>
+            </div>
+          </div>
+
+          {/* Quick Business Highlights Cards */}
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14}}>
+            <div style={{
+              background:isDarkTheme()?"rgba(23,28,64,0.7)":"#FFFFFF",
+              border:`1.5px solid ${C.b}44`,borderRadius:20,padding:20,
+              boxShadow:C.sh,display:"flex",flexDirection:"column",justifyContent:"space-between"
+            }}>
+              <div>
+                <div style={{width:44,height:44,borderRadius:12,background:C.b1,color:C.b,display:"grid",placeItems:"center",marginBottom:14}}>
+                  <Shirt size={22}/>
+                </div>
+                <div style={{fontSize:16,fontWeight:800,marginBottom:4}}>JS Clothing</div>
+                <div style={{fontSize:12.5,color:C.t2,lineHeight:1.4}}>Konveksi baju kaos, kemeja, celana, dan jaket berkualitas tinggi.</div>
+              </div>
+              <div style={{marginTop:16,display:"flex",alignItems:"center",justifyContent:"space-between",fontSize:11.5,fontWeight:700,color:C.b}}>
+                <span>{jsCount} Produk Unggulan</span>
+                <ChevronRight size={16}/>
+              </div>
+            </div>
+
+            <div style={{
+              background:isDarkTheme()?"rgba(23,28,64,0.7)":"#FFFFFF",
+              border:`1.5px solid ${C.p}44`,borderRadius:20,padding:20,
+              boxShadow:C.sh,display:"flex",flexDirection:"column",justifyContent:"space-between"
+            }}>
+              <div>
+                <div style={{width:44,height:44,borderRadius:12,background:C.p1,color:C.p,display:"grid",placeItems:"center",marginBottom:14}}>
+                  <Sparkles size={22}/>
+                </div>
+                <div style={{fontSize:16,fontWeight:800,marginBottom:4}}>JB Store</div>
+                <div style={{fontSize:12.5,color:C.t2,lineHeight:1.4}}>Skincare resmi, serum, sunscreen, &amp; pelembab original terpercaya.</div>
+              </div>
+              <div style={{marginTop:16,display:"flex",alignItems:"center",justifyContent:"space-between",fontSize:11.5,fontWeight:700,color:C.p}}>
+                <span>{jbCount} Produk Unggulan</span>
+                <ChevronRight size={16}/>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Decorative Ikat Sumba Strip */}
+      <div className="ikat-band" aria-hidden="true"/>
+
+      {/* ── Catalog Filter & Grid ── */}
+      <section id="katalog" style={{flex:1,maxWidth:1200,margin:"0 auto",width:"100%",padding:"32px 20px 60px"}}>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-end",flexWrap:"wrap",gap:16,marginBottom:24}}>
+          <div>
+            <h2 style={{fontSize:22,fontWeight:800,letterSpacing:"-.02em"}}>Etalase Pilihan</h2>
+            <p style={{fontSize:13.5,color:C.t2,marginTop:3}}>Katalog produk yang sedang dipromosikan toko kami saat ini.</p>
+          </div>
+
+          <div style={{display:"flex",gap:8,alignItems:"center",flexWrap:"wrap"}}>
+            {/* Filter Pills */}
+            <div style={{display:"flex",gap:6,background:C.bg3,padding:4,borderRadius:12,border:`1px solid ${C.bo0}`}}>
+              {[
+                ["ALL", "Semua Bisnis"],
+                ["JS_CLOTHING", "👕 JS Clothing"],
+                ["JB_STORE", "✨ JB Store"]
+              ].map(([k, label]) => {
+                const active = selectedBiz === k;
+                return (
+                  <button key={k} onClick={() => setSelectedBiz(k)} className="press"
+                    style={{
+                      border:"none",borderRadius:8,padding:"7px 13px",fontSize:12.5,fontWeight:active?800:600,
+                      background:active?C.bg2:"transparent",color:active?C.pri:C.t2,
+                      boxShadow:active?C.sh:"none"
+                    }}>
+                    {label}
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* Search Box */}
+            <div style={{position:"relative",minWidth:200}}>
+              <Search size={15} style={{position:"absolute",left:12,top:"50%",transform:"translateY(-50%)",color:C.t2}}/>
+              <input value={searchWord} onChange={e=>setSearchWord(e.target.value)} placeholder="Cari produk..."
+                style={{
+                  padding:"8px 12px 8px 34px",background:C.bg2,border:`1.5px solid ${C.bo1}`,
+                  borderRadius:10,fontSize:13,color:C.t0,fontFamily:F.sans,width:"100%"
+                }}/>
+            </div>
+          </div>
+        </div>
+
+        {/* Product Grid */}
+        {filtered.length === 0 ? (
+          <div style={{
+            background:C.bg2,borderRadius:20,border:`1px solid ${C.bo0}`,padding:"48px 20px",
+            textAlign:"center",display:"flex",flexDirection:"column",alignItems:"center",gap:12
+          }}>
+            <div style={{width:54,height:54,borderRadius:16,background:C.bg3,color:C.t3,display:"grid",placeItems:"center"}}>
+              <Package size={26}/>
+            </div>
+            <div style={{fontSize:16,fontWeight:800}}>Tidak ada produk ditemukan</div>
+            <div style={{fontSize:13.5,color:C.t2,maxWidth:320}}>Coba ubah kata kunci pencarian atau ganti filter bisnis di atas.</div>
+          </div>
+        ) : (
+          <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill, minmax(260px, 1fr))",gap:18}}>
+            {filtered.map(p => {
+              const isJ = p.business === "JS_CLOTHING";
+              const tagColor = isJ ? C.b : C.p;
+              const tagBg = isJ ? C.b1 : C.p1;
+              return (
+                <div key={p.id} className="press"
+                  style={{
+                    background:C.bg2,border:`1.5px solid ${C.bo1}`,borderRadius:20,
+                    padding:18,display:"flex",flexDirection:"column",justifyContent:"space-between",
+                    boxShadow:C.sh,position:"relative",overflow:"hidden"
+                  }}>
+                  {/* Top Bar inside card */}
+                  <div>
+                    <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:8,marginBottom:12}}>
+                      <span style={{
+                        fontSize:11,fontWeight:800,padding:"3px 9px",borderRadius:20,
+                        background:tagBg,color:tagColor,display:"inline-flex",alignItems:"center",gap:4
+                      }}>
+                        {isJ ? <Shirt size={12}/> : <Sparkles size={12}/>}
+                        {BIZ[p.business]?.name || p.business}
+                      </span>
+                      {p.category && (
+                        <span style={{fontSize:11,color:C.t2,background:C.bg3,padding:"2px 8px",borderRadius:6,fontWeight:600}}>
+                          {p.category}
+                        </span>
+                      )}
+                    </div>
+
+                    <h3 style={{fontSize:16,fontWeight:800,lineHeight:1.3,marginBottom:6,color:C.t0}}>
+                      {p.name}
+                    </h3>
+                    <div style={{fontSize:11,color:C.t3,fontFamily:F.mono,marginBottom:14}}>
+                      SKU: {p.barcode}
+                    </div>
+                  </div>
+
+                  {/* Pricing and Action */}
+                  <div style={{borderTop:`1px solid ${C.bo0}`,paddingTop:14,display:"flex",alignItems:"flex-end",justifyContent:"space-between"}}>
+                    <div>
+                      <div style={{fontSize:11,color:C.t2,fontWeight:600,marginBottom:2}}>Harga Resmi</div>
+                      <div className="mn" style={{fontSize:18,fontWeight:850,color:C.g}}>
+                        {rp(p.price)}
+                      </div>
+                    </div>
+                    <div style={{textAlign:"right"}}>
+                      <span style={{
+                        fontSize:11,fontWeight:700,
+                        color:p.stock > 0 ? (p.stock < 10 ? C.a : C.g) : C.r
+                      }}>
+                        {p.stock > 0 ? `Tersedia (${p.stock})` : "Stok Habis"}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </section>
+
+      {/* ── Footer ── */}
+      <footer style={{
+        marginTop:"auto",borderTop:`1px solid ${C.bo1}`,background:C.bg2,
+        padding:"30px 20px calc(30px + env(safe-area-inset-bottom, 0px))",textAlign:"center"
+      }}>
+        <div style={{display:"flex",alignItems:"center",justifyContent:"center",gap:8,marginBottom:8}}>
+          <BrandMark size={28}/>
+          <span style={{fontSize:15,fontWeight:800}}>Kasir JE Grup</span>
+        </div>
+        <p style={{fontSize:13,color:C.t2}}>
+          &copy; {new Date().getFullYear()} JE Grup. Sistem terintegrasi JS Clothing &amp; JB Store.
+        </p>
+      </footer>
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────
 //  MAIN APP
 // ─────────────────────────────────────────────────────────────
 function AdminSidebar({tabs,active,onSelect,label="Menu admin",storeKey="je_sidew",defaultW=248}) {
@@ -2301,13 +2599,40 @@ function AppInner() {
     if(nRef.current) clearTimeout(nRef.current);
     setNotif({msg,type});nRef.current=setTimeout(()=>setNotif(null),3000);
   },[]);
-  // ─── Auth ───
-  const [screen,setScreen]=useState("login");
+  // ─── Auth & Navigation ───
+  const [screen,setScreen]=useState(()=>{
+    const hash = window.location.hash.toLowerCase();
+    if(hash==="#login") return "login";
+    if(hash==="#katalog"||hash==="#landing"||hash==="") return "landing";
+    return "landing";
+  });
   const [user,setUser]=useState(null);
   const [biz,setBiz]=useState(null);
   const [pending,setPending]=useState(null);
   const [faceReg,setFaceReg]=useState(null);
   const [sessionStart,setSessionStart]=useState(null);
+
+  // Sync window hash when screen changes & listen to hash navigation
+  useEffect(()=>{
+    if(screen==="landing") {
+      if(window.location.hash!=="#katalog"&&window.location.hash!=="#landing") window.location.hash="landing";
+    } else if(screen==="login") {
+      window.location.hash="login";
+    }
+  },[screen]);
+
+  useEffect(()=>{
+    const handleHash=()=>{
+      const h=window.location.hash.toLowerCase();
+      if(h==="#landing"||h==="#katalog") {
+        setScreen("landing");
+      } else if(h==="#login") {
+        if(!user) setScreen("login");
+      }
+    };
+    window.addEventListener("hashchange", handleHash);
+    return()=>window.removeEventListener("hashchange", handleHash);
+  },[user]);
   // Session timeout
   useEffect(()=>{
     if(!user||!sessionStart) return;
@@ -2410,6 +2735,8 @@ function AppInner() {
   const [payMethod,setPayMethod]=useState("Tunai");
   const [namaPembeli,setNamaPembeli]=useState("");
   const [showCheckout,setShowCheckout]=useState(false);
+  const [checkingOut,setCheckingOut]=useState(false);
+  const checkoutLockRef=useRef(false);
   const scanRef=useRef(null);
   const [kasirTab,setKasirTab]=useState("kasir");
   const [catBiz,setCatBiz]=useState("ALL");
@@ -2436,6 +2763,7 @@ function AppInner() {
   const [adminScanQ,setAdminScanQ]=useState("");
   const [adminBiz,setAdminBiz]=useState("JS_CLOTHING");
   const [searchQ,setSearchQ]=useState("");
+  const [filterAdvertised,setFilterAdvertised]=useState(false);
   const [showMoreDrawer,setShowMoreDrawer]=useState(false);
   const [reportBiz,setReportBiz]=useState("ALL");
   const [reportRange,setReportRange]=useState("month");
@@ -2582,7 +2910,10 @@ function AppInner() {
   };
 
   const doCheckout=useCallback(async()=>{
-    if(!cart.length) return;
+    if(!cart.length||checkoutLockRef.current) return;
+    checkoutLockRef.current = true;
+    setCheckingOut(true);
+
     const subtotal=cart.reduce((s,c)=>s+c.price*c.qty,0);
     const discAll=calcDiscount(subtotal);
     // Satu keranjang bisa berisi dua bisnis: transaksi dipecah per bisnis agar laporan & stok tetap terpisah.
@@ -2598,7 +2929,14 @@ function AppInner() {
         discLeft-=disc;
         const total=sub-disc;
         const totalHpp=items.reduce((s,c)=>s+(c.hpp||0)*c.qty,0);
-        const trx={id:"TRX-"+uid().toUpperCase(),date:nowStr(),kasir:user.name,kasirId:user.id,business:b,
+
+        // Idempotency: deterministically hash cart signature for session & use dedicated unique transaction token
+        const idemToken = `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`.toUpperCase();
+        const trxId = "TRX-" + idemToken;
+        const trx={
+          id:trxId,
+          idempotencyKey: `IDEM-${user.id}-${b}-${idemToken}`,
+          date:nowStr(),kasir:user.name,kasirId:user.id,business:b,
           namaPembeli:namaPembeli.trim()||"Umum",
           items:items.map(c=>({...c})),subtotal:sub,discount:disc,total,totalHpp,profit:total-totalHpp,payment:payMethod,returned:false};
         const stockUpdates=items.map(c=>({productId:c.id,newStock:c.stock-c.qty}));
@@ -2613,6 +2951,9 @@ function AppInner() {
     }catch(e){
       if(made.length) setCart(prev=>prev.filter(c=>!made.some(t=>t.items.some(i=>i.barcode===c.barcode))));
       toast("Gagal: "+e.message,"err");
+    }finally{
+      checkoutLockRef.current = false;
+      setCheckingOut(false);
     }
   },[cart,user,biz,discount,payMethod,namaPembeli,toast]);
 
@@ -2752,7 +3093,7 @@ function AppInner() {
 
   // ─── Admin: Product CRUD ───
   const openAddP=()=>{
-    setPForm({barcode:"",name:"",price:"",hpp:"",stock:"",category:"",business:adminBiz,expireDate:""});
+    setPForm({barcode:"",name:"",price:"",hpp:"",stock:"",category:"",business:adminBiz,expireDate:"",advertised:false});
     setEditPid(null);setPModal(true);setInlineAddMode(true);setShowPriceDrawer(false);
     // scroll to top of products section
     setTimeout(()=>document.getElementById("prod-form-anchor")?.scrollIntoView({behavior:"smooth",block:"start"}),50);
@@ -2760,7 +3101,7 @@ function AppInner() {
   const openEditP=p=>{
     // If same product clicked again → close
     if(editPid===p.id&&pModal){setPModal(false);setEditPid(null);setInlineAddMode(false);return;}
-    setPForm({...p,price:String(p.price),hpp:String(p.hpp||0),stock:String(p.stock),expireDate:p.expireDate||""});
+    setPForm({...p,price:String(p.price),hpp:String(p.hpp||0),stock:String(p.stock),expireDate:p.expireDate||"",advertised:!!p.advertised});
     setEditPid(p.id);setPModal(true);setInlineAddMode(false);
     // Show price drawer only if price/hpp already exist
     setShowPriceDrawer(!!(p.price||p.hpp));
@@ -2873,10 +3214,10 @@ function AppInner() {
     try{
       if(editPid===null){
         if(prods.find(p=>p.barcode===pForm.barcode)){toast("Barcode sudah ada!","err");return;}
-        await fbAddProduct({...pForm,id:NEXT_ID++,price:+pForm.price,hpp:+pForm.hpp||0,stock:+pForm.stock,expireDate:pForm.expireDate||null},user.name);
+        await fbAddProduct({...pForm,id:NEXT_ID++,price:+pForm.price,hpp:+pForm.hpp||0,stock:+pForm.stock,expireDate:pForm.expireDate||null,advertised:!!pForm.advertised},user.name);
         toast("✓ Produk ditambahkan");
       }else{
-        await fbUpdateProduct(editPid,{...pForm,id:editPid,price:+pForm.price,hpp:+pForm.hpp||0,stock:+pForm.stock,expireDate:pForm.expireDate||null},user.name);
+        await fbUpdateProduct(editPid,{...pForm,id:editPid,price:+pForm.price,hpp:+pForm.hpp||0,stock:+pForm.stock,expireDate:pForm.expireDate||null,advertised:!!pForm.advertised},user.name);
         toast("✓ Produk diperbarui");
       }
       setPModal(false);
@@ -3099,6 +3440,20 @@ function AppInner() {
   </div>;
 
   // ─────────────────────────────────────────────────────────────
+  //  LANDING PAGE (Katalog Iklan Produk Publik)
+  // ─────────────────────────────────────────────────────────────
+  if(screen==="landing") return <div style={{fontFamily:F.sans,background:C.bg1,color:C.t0,minHeight:"100dvh",display:"flex",flexDirection:"column"}}>
+    {UpdateBannerEl}
+    <style>{CSS}</style><Toast n={notif}/>
+    <ProductLandingPage
+      prods={prods}
+      onLogin={()=>setScreen("login")}
+      onToggleTheme={toggleTheme}
+      isDark={isDark}
+    />
+  </div>;
+
+  // ─────────────────────────────────────────────────────────────
   //  LOGIN
   // ─────────────────────────────────────────────────────────────
   if(screen==="login") return <div style={{fontFamily:F.sans,background:C.bg1,color:C.t0,minHeight:"100dvh",display:"flex",flexDirection:"column"}}>
@@ -3140,10 +3495,15 @@ function AppInner() {
           <div style={{display:"flex",gap:10}}><Crown size={17} color={C.vi} style={{flexShrink:0,marginTop:1}}/><span><b style={{color:C.t0}}>Admin</b> langsung masuk tanpa scan wajah.</span></div>
           <div style={{display:"flex",gap:10}}><ScanLine size={17} color={C.cy} style={{flexShrink:0,marginTop:1}}/><span><b style={{color:C.t0}}>Kasir dan stok</b> diverifikasi wajah, lalu absen tercatat otomatis.</span></div>
         </div>
-        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginTop:"auto",paddingTop:4}}>
-          {!hasEnvConfig&&<button onClick={()=>{clearConfig();setFbReady(false);setFbSetup(true);}} className="press" style={{background:"transparent",border:"none",color:C.t2,fontSize:13,fontWeight:600,minHeight:40,padding:"0 4px",textDecoration:"underline",textUnderlineOffset:3}}>Ganti Firebase</button>}
-          <button onClick={toggleTheme} className="press" style={{display:"inline-flex",alignItems:"center",gap:7,minHeight:40,padding:"0 14px",background:"transparent",border:`1.5px solid ${C.bo1}`,borderRadius:20,color:C.t1,fontSize:13,fontWeight:600}}>
-            {isDark?<Sun size={16}/>:<Moon size={16}/>}{isDark?"Mode terang":"Mode gelap"}</button>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginTop:"auto",paddingTop:4,flexWrap:"wrap",gap:8}}>
+          <button onClick={()=>setScreen("landing")} className="press" style={{display:"inline-flex",alignItems:"center",gap:6,background:"transparent",border:"none",color:C.pri,fontSize:13,fontWeight:700,minHeight:40,padding:"0 4px"}}>
+            <ShoppingBag size={16}/> Lihat Katalog Toko
+          </button>
+          <div style={{display:"flex",alignItems:"center",gap:8}}>
+            {!hasEnvConfig&&<button onClick={()=>{clearConfig();setFbReady(false);setFbSetup(true);}} className="press" style={{background:"transparent",border:"none",color:C.t2,fontSize:13,fontWeight:600,minHeight:40,padding:"0 4px",textDecoration:"underline",textUnderlineOffset:3}}>Ganti Firebase</button>}
+            <button onClick={toggleTheme} className="press" style={{display:"inline-flex",alignItems:"center",gap:7,minHeight:40,padding:"0 14px",background:"transparent",border:`1.5px solid ${C.bo1}`,borderRadius:20,color:C.t1,fontSize:13,fontWeight:600}}>
+              {isDark?<Sun size={16}/>:<Moon size={16}/>}{isDark?"Mode terang":"Mode gelap"}</button>
+          </div>
         </div>
       </section>
     </main>
@@ -3236,7 +3596,7 @@ function AppInner() {
       <style>{CSS}</style><Toast n={notif}/>
       <Header title="Kasir" user={user} online={online} onLogout={doLogout}
         onAbsenPulang={handlePulang} hasCheckedIn={hasCheckedIn}
-        onToggleTheme={toggleTheme} isDark={isDark} lowStockCount={lowStockCount} onLowStockClick={()=>setShowLowStock(true)} expireCount={nearExpiry.length} expiredCount={expiredProds.length} onExpireClick={()=>setShowExpirePopup(true)}/>
+        onToggleTheme={toggleTheme} isDark={isDark} lowStockCount={lowStockCount} onLowStockClick={()=>setShowLowStock(true)} expireCount={nearExpiry.length} expiredCount={expiredProds.length} onExpireClick={()=>setShowExpirePopup(true)} onGoLanding={()=>setScreen("landing")}/>
 
       {/* Invoice */}
       {addonPrompt&&<AddonPrompt
@@ -3262,7 +3622,7 @@ function AppInner() {
       <QrisModal open={qrisOpen} groups={qrisOpen?splitCart(cart,discAmt,biz):[]} onPaid={()=>{setQrisOpen(false);doCheckout();}} onCancel={()=>{setQrisOpen(false);setShowCheckout(true);}}/>
       <Modal open={showCheckout} size="lg" dismiss={false} onClose={()=>setShowCheckout(false)} icon={<CreditCard size={20}/>} title="Konfirmasi pembayaran"
         subtitle={`${cart.reduce((s,c)=>s+c.qty,0)} item`}
-        footer={<><Btn outline onClick={()=>setShowCheckout(false)}>Batal</Btn><Btn size="lg" onClick={qrisReady?()=>{setShowCheckout(false);setQrisOpen(true);}:doCheckout}>{qrisReady?<><QrCode size={18}/>Tampilkan QRIS</>:<><Check size={18}/>Bayar {rp(total)}</>}</Btn></>}>
+        footer={<><Btn outline disabled={checkingOut} onClick={()=>setShowCheckout(false)}>Batal</Btn><Btn size="lg" disabled={checkingOut} onClick={qrisReady?()=>{setShowCheckout(false);setQrisOpen(true);}:doCheckout}>{checkingOut?"Memproses…":qrisReady?<><QrCode size={18}/>Tampilkan QRIS</>:<><Check size={18}/>Bayar {rp(total)}</>}</Btn></>}>
         <div className="split">
           <div style={{display:"flex",flexDirection:"column",gap:18,minWidth:0}}>
             <Inp label="Nama pembeli (opsional)" icon={<User size={17}/>} value={namaPembeli} onChange={e=>setNamaPembeli(e.target.value)} placeholder="Kosongkan untuk Umum"/>
@@ -3426,7 +3786,7 @@ function AppInner() {
       {showExpirePopup&&<ExpirePopup nearExpiry={nearExpiry} expiredProds={expiredProds} onClose={()=>setShowExpirePopup(false)}/>}
       <Header biz={biz} user={user} online={online} onLogout={doLogout}
         onSwitchBiz={user?.access?.length>1?()=>{setStokTarget(null);setIsNewProduct(false);setScreen("bizselect");}:null}
-        onAbsenPulang={handlePulang} hasCheckedIn={hasCheckedIn} onToggleTheme={toggleTheme} isDark={isDark} onLowStockClick={()=>setShowLowStock(true)} expireCount={nearExpiry.length} expiredCount={expiredProds.length} onExpireClick={()=>setShowExpirePopup(true)}/>
+        onAbsenPulang={handlePulang} hasCheckedIn={hasCheckedIn} onToggleTheme={toggleTheme} isDark={isDark} onLowStockClick={()=>setShowLowStock(true)} expireCount={nearExpiry.length} expiredCount={expiredProds.length} onExpireClick={()=>setShowExpirePopup(true)} onGoLanding={()=>setScreen("landing")}/>
       <div style={{flex:1,overflowY:"auto",padding:10,display:"flex",flexDirection:"column",gap:10,minHeight:0}}>
         
         {/* Scan / Cari Barcode */}
@@ -3673,12 +4033,12 @@ function AppInner() {
       {id:"opname",ic:ClipboardCheck,label:"Opname"},
     ];
     const isMoreTab=MORE_TABS.some(t=>t.id===adminTab);
-    const adminPs=prods.filter(p=>p.business===adminBiz&&(!searchQ||p.name.toLowerCase().includes(searchQ.toLowerCase())||p.barcode.includes(searchQ)));
+    const adminPs=prods.filter(p=>p.business===adminBiz&&(!searchQ||p.name.toLowerCase().includes(searchQ.toLowerCase())||p.barcode.includes(searchQ))&&(filterAdvertised?p.advertised:true));
 
     return <div style={{fontFamily:F.sans,background:C.bg1,color:C.t0,height:"100vh",display:"flex",flexDirection:"column"}}>
       <style>{CSS}</style><Toast n={notif}/>
       {UpdateBannerEl}
-      <Header title="Admin Panel" user={user} online={online} onLogout={doLogout} lowStockCount={lowStockCount} onToggleTheme={toggleTheme} isDark={isDark} onLowStockClick={()=>setShowLowStock(true)} expireCount={nearExpiry.length} expiredCount={expiredProds.length} onExpireClick={()=>setShowExpirePopup(true)}/>
+      <Header title="Admin Panel" user={user} online={online} onLogout={doLogout} lowStockCount={lowStockCount} onToggleTheme={toggleTheme} isDark={isDark} onLowStockClick={()=>setShowLowStock(true)} expireCount={nearExpiry.length} expiredCount={expiredProds.length} onExpireClick={()=>setShowExpirePopup(true)} onGoLanding={()=>setScreen("landing")}/>
 
       {/* Change password modal */}
       <ExpenseFormModal open={expenseModal} onClose={()=>setExpenseModal(false)} onSave={saveExpense} access={user.access} user={user}/>
@@ -3991,6 +4351,14 @@ function AppInner() {
                 <Ico e={b2.icon}/> {b2.name}</button>;})}
             <input className="ptool-search" value={searchQ} onChange={e=>setSearchQ(e.target.value)} placeholder="Cari produk..."
               style={{padding:"7px 11px",background:C.bg2,border:`1px solid ${C.bo0}`,borderRadius:8,color:C.t0,fontSize:12,width:140,fontFamily:F.sans}}/>
+            <button onClick={()=>setFilterAdvertised(f=>!f)} className="press"
+              style={{padding:"7px 13px",background:filterAdvertised?C.pri1:C.bg3,border:`1.5px solid ${filterAdvertised?C.pri:C.bo0}`,borderRadius:8,color:filterAdvertised?C.pri:C.t1,fontSize:12,fontWeight:700,fontFamily:F.sans,display:"flex",alignItems:"center",gap:6}}>
+              <Megaphone size={14}/> {filterAdvertised?"Semua Produk":"Hanya Iklan"}
+            </button>
+            <button onClick={()=>setScreen("landing")} className="press hide-mobile"
+              style={{padding:"7px 11px",background:C.bg3,border:`1px solid ${C.bo0}`,borderRadius:8,color:C.t2,fontSize:12,fontWeight:600,fontFamily:F.sans,display:"flex",alignItems:"center",gap:5}}>
+              <ExternalLink size={13}/> Preview Etalase
+            </button>
             <button onClick={()=>downloadXLSX(adminPs,[
               {key:"barcode",label:"Barcode",w:14},{key:"name",label:"Nama Produk",w:28},
               {key:"category",label:"Kategori",w:16},{key:"hpp",label:"HPP (Rp)",fn:r=>r.hpp||0,num:true,w:16},
@@ -4120,7 +4488,7 @@ function AppInner() {
             <Card noPad style={{overflow:"hidden"}}>
               <TableWrap>
                 <table style={{width:"100%",borderCollapse:"collapse",fontSize:12,minWidth:580}}>
-                  <THead cols={["Barcode","Nama","Kategori","HPP","Harga Jual","Margin","Stok","Expire","Add-on","Aksi"]}/>
+                  <THead cols={["Barcode","Nama","Kategori","HPP","Harga Jual","Margin","Stok","Expire","Add-on","Iklan","Aksi"]}/>
                   <tbody>{adminPs.map((p,i)=>{const mg=p.price>0?((p.price-(p.hpp||0))/p.price*100).toFixed(0)+"%":"-";
                     return <tr key={p.id} className="hrow" style={{borderTop:`1px solid ${C.bo0}`,background:i%2===0?"transparent":C.bg0}}>
                       <td style={{padding:"14px 13px",fontFamily:F.mono,fontSize:10,color:C.t2}}>{p.barcode}</td>
@@ -4165,6 +4533,21 @@ function AppInner() {
                              title={(p.addons||[]).map(id=>prods.find(x=>x.id===id)?.name||id).join(", ")}>
                              +{(p.addons||[]).length} item</span>
                           :<span style={{fontSize:10,color:C.t3}}>—</span>}
+                      </td>
+                      <td style={{padding:"12px 13px"}}>
+                        <button onClick={async()=>{
+                          try{
+                            const next=!p.advertised;
+                            await fbUpdateProduct(p.id,{advertised:next},user.name);
+                            toast(next?`📢 ${p.name} diiklankan di etalase`:`${p.name} dicabut dari iklan`);
+                          }catch(err){toast("Gagal: "+err.message,"err");}
+                        }} className="press" title={p.advertised?"Klik untuk cabut dari iklan":"Klik untuk iklankan di etalase"}
+                          style={{padding:"4px 9px",borderRadius:20,fontSize:10.5,fontWeight:700,
+                            background:p.advertised?C.pri1:C.bg3,
+                            border:`1.5px solid ${p.advertised?C.pri:C.bo0}`,
+                            color:p.advertised?C.pri:C.t3,display:"inline-flex",alignItems:"center",gap:5,cursor:"pointer"}}>
+                          <Megaphone size={12}/> {p.advertised?"Aktif":"Off"}
+                        </button>
                       </td>
                       <td style={{padding:"14px 13px",whiteSpace:"nowrap"}}>
                         <button onClick={()=>openEditP(p)} className="press"
@@ -4232,6 +4615,16 @@ function AppInner() {
                   </div>
                 </div>
                 <div style={{display:"flex",gap:8}}>
+                  <button onClick={async()=>{
+                    try{
+                      const next=!p.advertised;
+                      await fbUpdateProduct(p.id,{advertised:next},user.name);
+                      toast(next?`📢 ${p.name} diiklankan`:`${p.name} dicabut dari iklan`);
+                    }catch(err){toast("Gagal: "+err.message,"err");}
+                  }} className="press"
+                    style={{padding:"11px 14px",background:p.advertised?C.pri1:C.bg3,border:`1.5px solid ${p.advertised?C.pri:C.bo0}`,borderRadius:10,color:p.advertised?C.pri:C.t2,fontSize:13,fontWeight:700,display:"flex",alignItems:"center",gap:6}}>
+                    <Megaphone size={16}/> {p.advertised?"Iklan ON":"Iklankan"}
+                  </button>
                   <button onClick={()=>openEditP(p)} className="press"
                     style={{flex:1,padding:"11px",
                       background:editPid===p.id&&pModal?C.g1:"transparent",
