@@ -353,7 +353,23 @@ const makeCSS = () => `
   .lp-card-in{animation:fadeUp .45s cubic-bezier(.16,1,.3,1) both;}
   .lp-card-in:nth-child(2n){animation-delay:.05s;}
   .lp-card-in:nth-child(3n){animation-delay:.1s;}
-  #katalog{scroll-margin-top:84px;}
+  #katalog,#tentang,#kontak{scroll-margin-top:90px;}
+  .lp-header-wrap{position:sticky;top:0;z-index:100;width:100%;padding:calc(12px + var(--safe-t)) 16px 8px;transition:padding .2s ease;}
+  @media(min-width:641px){.lp-header-wrap{padding:calc(14px + var(--safe-t)) 24px 8px;}}
+  .lp-navbar{max-width:1180px;margin:0 auto;height:60px;padding:0 14px 0 16px;
+    display:flex;align-items:center;justify-content:space-between;gap:12;
+    background:${isDarkTheme()?"rgba(18,23,58,0.72)":"rgba(255,255,255,0.78)"};
+    backdrop-filter:blur(20px) saturate(180%);-webkit-backdrop-filter:blur(20px) saturate(180%);
+    border:1px solid ${isDarkTheme()?"rgba(255,255,255,0.12)":"rgba(18,23,58,0.08)"};
+    border-radius:20px;box-shadow:${isDarkTheme()?"0 12px 32px rgba(0,0,0,0.35), inset 0 1px 0 rgba(255,255,255,0.1)":"0 10px 30px rgba(18,23,58,0.06), inset 0 1px 0 rgba(255,255,255,0.8)"};
+    transition:box-shadow .2s ease,border-color .2s ease;}
+  .lp-nav-pill{display:flex;align-items:center;gap:2px;background:${isDarkTheme()?"rgba(255,255,255,0.05)":"rgba(18,23,58,0.04)"};padding:3px;border-radius:14px;border:1px solid ${isDarkTheme()?"rgba(255,255,255,0.06)":"rgba(18,23,58,0.04)"};}
+  .nav-link{display:inline-flex;align-items:center;padding:7px 14px;border-radius:11px;font-size:13px;font-weight:600;color:${C.t2};text-decoration:none;transition:all .15s ease;}
+  .nav-link:hover{color:${C.t0};background:${isDarkTheme()?"rgba(255,255,255,0.08)":"rgba(255,255,255,0.9)"};box-shadow:${isDarkTheme()?"none":"0 2px 6px rgba(0,0,0,0.04)"};}
+  .lp-status-badge{display:inline-flex;align-items:center;gap:6px;padding:3px 9px 3px 7px;border-radius:20px;background:${C.g1};border:1px solid ${C.g}33;font-size:11.5px;font-weight:700;color:${C.g};}
+  .lp-status-dot{width:7px;height:7px;border-radius:50%;background:${C.g};box-shadow:0 0 8px ${C.g};animation:pulse 2s infinite ease-in-out;}
+  @media(max-width:820px){.lp-nav-links{display:none!important;}}
+  @media(max-width:480px){.lp-status-badge{display:none!important;}}
   @media(hover:none){.lp-shot:hover .lp-photo{transform:none;}.lp-lift:hover{transform:none;}}
   @media(prefers-reduced-motion:no-preference){html{scroll-behavior:smooth;}}
 `;
@@ -604,40 +620,44 @@ function Header({title,biz,user,onLogout,onSwitchBiz,onAbsenPulang,hasCheckedIn,
   const initial=(user?.name||"?").trim().charAt(0).toUpperCase();
 
   return <>
-    <header style={{background:C.bg2,borderBottom:`1px solid ${C.bo0}`,padding:"0 10px 0 14px",
+    <header style={{background:C.bg2,borderBottom:`1px solid ${C.bo0}`,padding:"0 12px 0 14px",
       minHeight:"calc(58px + env(safe-area-inset-top, 0px))",paddingTop:"env(safe-area-inset-top, 0px)",
-      display:"flex",alignItems:"center",justifyContent:"space-between",position:"sticky",top:0,zIndex:200,flexShrink:0,gap:8}}>
+      display:"flex",alignItems:"center",justifyContent:"space-between",position:"sticky",top:0,zIndex:200,flexShrink:0,gap:10,
+      backdropFilter:"blur(16px)",WebkitBackdropFilter:"blur(16px)"}}>
       <div style={{display:"flex",alignItems:"center",gap:10,minWidth:0}}>
         <BrandMark size={34}/>
         {b ? (canSwitch
           ? <button onClick={onSwitchBiz} className="press" aria-label={`Bisnis aktif ${b.name}. Ganti bisnis`}
-              style={{display:"flex",alignItems:"center",gap:8,minHeight:40,padding:"0 10px 0 4px",background:"transparent",border:"none",borderRadius:10,minWidth:0}}>
+              style={{display:"flex",alignItems:"center",gap:7,minHeight:42,padding:"4px 8px 4px 6px",background:"transparent",border:`1px solid transparent`,borderRadius:11,minWidth:0,transition:"background .15s, border-color .15s"}}>
               <span style={{minWidth:0,textAlign:"left"}}>
-                <span style={{display:"block",fontSize:15,fontWeight:800,color:C.t0,lineHeight:1.15,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{b.name}</span>
-                <span style={{display:"block",fontSize:11.5,fontWeight:600,color:bc,lineHeight:1.2}}>{b.desc}</span>
+                <span style={{display:"block",fontSize:14.5,fontWeight:800,color:C.t0,lineHeight:1.15,letterSpacing:"-.015em",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{b.name}</span>
+                <span style={{display:"block",fontSize:11,fontWeight:600,color:bc,lineHeight:1.2}}>{b.desc}</span>
               </span>
-              <ArrowLeftRight size={15} color={C.t3} aria-hidden="true"/>
+              <span style={{width:22,height:22,borderRadius:6,background:C.bg3,display:"grid",placeItems:"center",flexShrink:0,marginLeft:2}}>
+                <ArrowLeftRight size={13} color={C.t2} aria-hidden="true"/>
+              </span>
             </button>
           : <div style={{minWidth:0}}>
-              <div style={{fontSize:15,fontWeight:800,color:C.t0,lineHeight:1.15,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{b.name}</div>
-              <div style={{fontSize:11.5,fontWeight:600,color:bc,lineHeight:1.2}}>{b.desc}</div>
+              <div style={{fontSize:14.5,fontWeight:800,color:C.t0,lineHeight:1.15,letterSpacing:"-.015em",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{b.name}</div>
+              <div style={{fontSize:11,fontWeight:600,color:bc,lineHeight:1.2}}>{b.desc}</div>
             </div>)
           : <div style={{minWidth:0}}>
-              <div style={{fontSize:15,fontWeight:800,color:C.t0,lineHeight:1.15}}>{title||"Kasir JE Grup"}</div>
-              <div style={{fontSize:11.5,fontWeight:600,color:C.t2,lineHeight:1.2}}>JS Clothing · JB Store</div>
+              <div style={{fontSize:15,fontWeight:800,color:C.t0,lineHeight:1.15,letterSpacing:"-.015em"}}>{title||"Kasir JE Grup"}</div>
+              <div style={{fontSize:11,fontWeight:600,color:C.t2,lineHeight:1.2}}>JS Clothing · JB Store</div>
             </div>}
       </div>
-      <div style={{display:"flex",alignItems:"center",gap:2,flexShrink:0}}>
-        <div className="hide-mobile" style={{marginRight:8}}><OnlineDot online={online}/></div>
-        {!online&&<span className="hide-desktop" title="Offline" style={{display:"grid",placeItems:"center",width:32,color:C.a}}><WifiOff size={18} aria-label="Offline"/></span>}
-        <button className="hbtn press" onClick={()=>setSheet("alerts")} aria-label={alertN>0?`${alertN} peringatan`:"Peringatan"}>
-          <Bell size={21} strokeWidth={1.9}/>
-          {alertN>0&&<span className="mn" style={{position:"absolute",top:0,right:0,minWidth:19,height:19,padding:"0 4px",borderRadius:10,boxSizing:"border-box",
-            background:expiredCount>0?C.r:C.a,color:C.on,fontSize:11,fontWeight:800,display:"grid",placeItems:"center",
-            border:`2px solid ${C.bg2}`}}>{alertN>99?"99+":alertN}</span>}
+      <div style={{display:"flex",alignItems:"center",gap:4,flexShrink:0}}>
+        <div className="hide-mobile" style={{marginRight:6}}><OnlineDot online={online}/></div>
+        {!online&&<span className="hide-desktop" title="Offline" style={{display:"grid",placeItems:"center",width:32,height:32,color:C.a}}><WifiOff size={17} aria-label="Offline"/></span>}
+        <button className="hbtn press" onClick={()=>setSheet("alerts")} aria-label={alertN>0?`${alertN} peringatan`:"Peringatan"}
+          style={{borderRadius:11,transition:"background .15s"}}>
+          <Bell size={20} strokeWidth={1.85}/>
+          {alertN>0&&<span className="mn" style={{position:"absolute",top:3,right:3,minWidth:18,height:18,padding:"0 4px",borderRadius:9,boxSizing:"border-box",
+            background:expiredCount>0?C.r:C.a,color:C.on,fontSize:10.5,fontWeight:800,display:"grid",placeItems:"center",
+            border:`2px solid ${C.bg2}`,boxShadow:C.sh}}>{alertN>99?"99+":alertN}</span>}
         </button>
         <button onClick={()=>setSheet("account")} className="press" aria-label={`Akun ${user?.name||""}`}
-          style={{width:38,height:38,marginLeft:4,borderRadius:"50%",background:C.pri1,border:`1.5px solid ${C.pri}55`,color:C.pri,fontWeight:800,fontSize:15,display:"grid",placeItems:"center"}}>
+          style={{width:38,height:38,marginLeft:2,borderRadius:12,background:C.pri1,border:`1px solid ${C.pri}40`,color:C.pri,fontWeight:800,fontSize:14.5,letterSpacing:"-.02em",display:"grid",placeItems:"center"}}>
           {initial}</button>
       </div>
     </header>
@@ -2275,31 +2295,46 @@ function ProductLandingPage({ prods, cfg, user, onLogin, onToggleTheme, isDark }
 
   return (
     <div style={{minHeight:"100dvh",background:C.bg1,color:C.t0,display:"flex",flexDirection:"column",fontFamily:F.sans}}>
-      {/* ── Navbar ── */}
-      <header style={{position:"sticky",top:0,zIndex:100,height:64,padding:"0 20px",
-        display:"flex",alignItems:"center",justifyContent:"space-between",gap:12,
-        background:isDarkTheme()?"rgba(15,19,48,0.85)":"rgba(244,245,250,0.88)",
-        backdropFilter:"blur(12px)",WebkitBackdropFilter:"blur(12px)",borderBottom:`1px solid ${C.bo1}`}}>
-        <div style={{display:"flex",alignItems:"center",gap:11,minWidth:0}}>
-          <BrandMark size={36}/>
-          <div style={{minWidth:0}}>
-            <div style={{fontSize:15.5,fontWeight:800,letterSpacing:"-.02em",lineHeight:1.15,whiteSpace:"nowrap"}}>JE Grup</div>
-            <div style={{fontSize:11,color:C.t2,fontWeight:600,whiteSpace:"nowrap"}}>JS Clothing &amp; JB Store</div>
+      {/* ── Floating Modern Navbar ── */}
+      <div className="lp-header-wrap">
+        <header className="lp-navbar" role="banner">
+          <div style={{display:"flex",alignItems:"center",gap:12,minWidth:0}}>
+            <a href="#" style={{display:"flex",alignItems:"center",gap:10,textDecoration:"none",color:C.t0,minWidth:0}} aria-label="Beranda JE Grup">
+              <BrandMark size={35}/>
+              <div style={{minWidth:0}}>
+                <div style={{fontSize:15,fontWeight:800,letterSpacing:"-.025em",lineHeight:1.15,whiteSpace:"nowrap"}}>JE Grup</div>
+                <div style={{fontSize:11,color:C.t2,fontWeight:600,whiteSpace:"nowrap",letterSpacing:"-.01em"}}>JS Clothing &amp; JB Store</div>
+              </div>
+            </a>
+            <div className="lp-status-badge" title="Toko siap melayani pesan online">
+              <span className="lp-status-dot" aria-hidden="true"/>
+              <span>Buka Sekarang</span>
+            </div>
           </div>
-        </div>
-        <div style={{display:"flex",alignItems:"center",gap:9}}>
-          <button onClick={onToggleTheme} className="press" aria-label="Ganti mode tema"
-            style={{width:40,height:40,borderRadius:12,border:`1.5px solid ${C.bo1}`,background:C.bg2,color:C.t1,display:"grid",placeItems:"center"}}>
-            {isDark ? <Sun size={18}/> : <Moon size={18}/>}
-          </button>
-          <button onClick={onLogin} className="press"
-            style={{height:40,padding:"0 17px",borderRadius:12,background:C.pri,color:C.on,fontWeight:700,fontSize:13.5,
-              border:"none",display:"inline-flex",alignItems:"center",gap:7,whiteSpace:"nowrap"}}>
-            {user ? <LayoutDashboard size={15}/> : <Lock size={15}/>}
-            {user ? (user.role==="admin"?"Kembali ke Admin":"Kembali ke Kasir") : "Masuk Kasir"}
-          </button>
-        </div>
-      </header>
+
+          {/* Navigasi kapsul di tengah (desktop & tablet) */}
+          <nav className="lp-nav-links" aria-label="Navigasi cepat etalase">
+            <div className="lp-nav-pill">
+              <a href="#katalog" className="nav-link">Koleksi</a>
+              <a href="#tentang" className="nav-link">Keunggulan</a>
+              <a href="#kontak" className="nav-link">Kontak</a>
+            </div>
+          </nav>
+
+          <div style={{display:"flex",alignItems:"center",gap:8,flexShrink:0}}>
+            <button onClick={onToggleTheme} className="press" aria-label="Ganti mode tema"
+              style={{width:38,height:38,borderRadius:12,border:`1px solid ${C.bo1}`,background:C.bg2,color:C.t1,display:"grid",placeItems:"center",transition:"all .15s ease"}}>
+              {isDark ? <Sun size={17}/> : <Moon size={17}/>}
+            </button>
+            <button onClick={onLogin} className="press"
+              style={{height:38,padding:"0 15px",borderRadius:12,background:C.pri,color:C.on,fontWeight:700,fontSize:13,
+                border:"none",display:"inline-flex",alignItems:"center",gap:6,whiteSpace:"nowrap",boxShadow:C.sh,letterSpacing:"-.01em"}}>
+              {user ? <LayoutDashboard size={14}/> : <Lock size={14}/>}
+              {user ? (user.role==="admin"?"Admin":"Kasir") : "Masuk"}
+            </button>
+          </div>
+        </header>
+      </div>
 
       {/* ── Hero: split asimetris, teks + kolase foto ── */}
       <section style={{maxWidth:1180,width:"100%",margin:"0 auto",padding:"40px 20px 34px"}}>
@@ -2450,7 +2485,7 @@ function ProductLandingPage({ prods, cfg, user, onLogin, onToggleTheme, isDark }
       </section>
 
       {/* ── Kenapa belanja di sini: bento 1 lebar + 2 kecil ── */}
-      <section style={{maxWidth:1180,width:"100%",margin:"0 auto",padding:"8px 20px 56px"}}>
+      <section id="tentang" style={{maxWidth:1180,width:"100%",margin:"0 auto",padding:"8px 20px 56px"}}>
         <span style={eyebrow}><BadgeCheck size={14}/> Kenapa belanja di sini</span>
         <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(280px,1fr))",gap:16,marginTop:18}}>
           <div style={{gridColumn:"1 / -1",background:C.bg2,border:`1px solid ${C.bo1}`,borderRadius:20,overflow:"hidden"}}>
@@ -2479,7 +2514,7 @@ function ProductLandingPage({ prods, cfg, user, onLogin, onToggleTheme, isDark }
       </section>
 
       {/* ── Ajakan penutup ── */}
-      <section style={{maxWidth:1180,width:"100%",margin:"0 auto",padding:"0 20px 56px"}}>
+      <section id="kontak" style={{maxWidth:1180,width:"100%",margin:"0 auto",padding:"0 20px 56px"}}>
         <div style={{position:"relative",overflow:"hidden",borderRadius:24,background:"var(--ik1)",
           padding:"clamp(30px,5vw,52px)",display:"flex",flexWrap:"wrap",alignItems:"center",justifyContent:"space-between",gap:24}}>
           <div style={{position:"absolute",top:0,left:0,right:0,height:6,
