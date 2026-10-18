@@ -2306,10 +2306,6 @@ function ProductLandingPage({ prods, cfg, user, onLogin, onToggleTheme, isDark }
                 <div style={{fontSize:11,color:C.t2,fontWeight:600,whiteSpace:"nowrap",letterSpacing:"-.01em"}}>JS Clothing &amp; JB Store</div>
               </div>
             </a>
-            <div className="lp-status-badge" title="Toko siap melayani pesan online">
-              <span className="lp-status-dot" aria-hidden="true"/>
-              <span>Buka Sekarang</span>
-            </div>
           </div>
 
           {/* Navigasi kapsul di tengah (desktop & tablet) */}
