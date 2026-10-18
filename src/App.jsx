@@ -2222,15 +2222,23 @@ const waHref = (text) => {
 // Foto per produk: pakai p.photo (diisi di form produk), selain itu placeholder.
 const productPhoto = (p) => (p.photo ? driveImg(p.photo, 700) : picPhoto(p.barcode || p.id, 700, 700));
 
-function ProductLandingPage({ prods, onLogin, onToggleTheme, isDark }) {
+function ProductLandingPage({ prods, cfg, onLogin, onToggleTheme, isDark }) {
   const [selectedBiz, setSelectedBiz] = React.useState("ALL");
   const [searchWord, setSearchWord] = React.useState("");
 
-  // Produk yang diiklankan admin (p.advertised). Fallback: produk berstok, maksimal 8.
+  // Produk yang diiklankan admin (p.advertised), dipotong sesuai "jumlah tampil" per bisnis
+  // yang diatur di Admin Panel > Landing Page. Fallback: produk berstok, maksimal 8.
   const advertisedList = React.useMemo(() => {
-    const list = prods.filter(p => p.advertised);
-    return list.length ? list : prods.filter(p => p.stock > 0).slice(0, 8);
-  }, [prods]);
+    const adv = prods.filter(p => p.advertised);
+    const src = adv.length ? adv : prods.filter(p => p.stock > 0).slice(0, 8);
+    const lim = (cfg && cfg.limits) || {};
+    const seen = {};
+    return src.filter(p => {
+      const max = Number(lim[p.business] || 0);
+      seen[p.business] = (seen[p.business] || 0) + 1;
+      return max <= 0 || seen[p.business] <= max;
+    });
+  }, [prods, cfg]);
 
   const filtered = React.useMemo(() => advertisedList.filter(p => {
     const matchBiz = selectedBiz === "ALL" || p.business === selectedBiz;
@@ -3519,9 +3527,10 @@ function AppInner() {
   if(screen==="landing") return <div style={{fontFamily:F.sans,background:C.bg1,color:C.t0,minHeight:"100dvh",display:"flex",flexDirection:"column"}}>
     {UpdateBannerEl}
     <style>{CSS}</style><Toast n={notif}/>
-    <ProductLandingPage
-      prods={prods}
-      onLogin={()=>setScreen("login")}
+      <ProductLandingPage
+        prods={prods}
+        cfg={landingCfg}
+        onLogin={()=>setScreen("login")}
       onToggleTheme={toggleTheme}
       isDark={isDark}
     />
@@ -4717,15 +4726,31 @@ function AppInner() {
         {/* ── LANDING PAGE (ETALASE PUBLIK) ── */}
         {adminTab==="landing"&&(()=>{
           const lf=landingDraft||landingCfg;
+          const limits=lf.limits||{};
           const setLf=(k,v)=>setLandingDraft({...lf,[k]:v});
+          const setLimit=(b,v)=>setLandingDraft({...lf,limits:{JS_CLOTHING:0,JB_STORE:0,...limits,[b]:v}});
           const save=async()=>{
             try{
               const data={};
               PHOTO_FIELDS.forEach(([k])=>{data[k]=String(lf[k]||"").trim();});
               data.wa=String(lf.wa||"").replace(/[^\d+]/g,"");
+              data.limits={JS_CLOTHING:+limits.JS_CLOTHING||0,JB_STORE:+limits.JB_STORE||0};
               await fbSetLanding(data,user.name);
               toast("Etalase publik diperbarui");
             }catch(err){toast("Gagal: "+err.message,"err");}
+          };
+          const q=searchQ.trim().toLowerCase();
+          const bizProds=prods.filter(p=>p.business===adminBiz&&(!q||p.name.toLowerCase().includes(q)||p.barcode.includes(q)));
+          const bizShown=bizProds.filter(p=>p.advertised);
+          const shownCap=60;
+          const toggleAd=async(p,on)=>{
+            try{ await fbUpdateProduct(p.id,{advertised:on},user.name); toast(on?`Iklan aktif: ${p.name}`:`Dicabut dari iklan: ${p.name}`); }
+            catch(err){ toast("Gagal: "+err.message,"err"); }
+          };
+          const savePhoto=async(p,v)=>{
+            const val=v.trim(); if(val===(p.photo||"")) return;
+            try{ await fbUpdateProduct(p.id,{photo:val},user.name); toast("Foto diperbarui: "+p.name); }
+            catch(err){ toast("Gagal: "+err.message,"err"); }
           };
           const toolBtn={padding:"7px 11px",background:C.bg3,border:`1px solid ${C.bo0}`,borderRadius:8,color:C.t2,fontSize:12,fontWeight:600,fontFamily:F.sans,display:"flex",alignItems:"center",gap:5};
           return <div style={{display:"flex",flexDirection:"column",gap:10}}>
@@ -4759,7 +4784,56 @@ function AppInner() {
                 <input value={lf.wa||""} onChange={e=>setLf("wa",e.target.value)} placeholder={LANDING_WA} style={IS}/>
               </div>
             </Card>
-            <p style={{fontSize:11.5,color:C.t3,lineHeight:1.5}}>Produk yang tampil diatur di tab <b>Produk</b>: tekan tombol iklan (ikon megafon) di baris produk. Foto per produk diisi di form produk lewat kolom <b>Link foto produk</b>.</p>
+
+            {/* Produk yang tampil di etalase */}
+            <Card>
+              <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-end",flexWrap:"wrap",gap:10}}>
+                <div>
+                  <h3 style={{fontSize:13.5,fontWeight:800}}>Produk yang tampil</h3>
+                  <p style={{fontSize:11.5,color:C.t2,marginTop:3}}>Centang produk yang mau diiklankan dan tempel foto produknya (link Google Drive). Foto bisa juga diisi dari form produk.</p>
+                </div>
+                <div style={{display:"flex",gap:7,alignItems:"flex-end",flexWrap:"wrap"}}>
+                  {Object.values(BIZ).map(b2=>{const isJ=b2.id==="JS_CLOTHING",active=adminBiz===b2.id;
+                    return <button key={b2.id} onClick={()=>{setAdminBiz(b2.id);setSearchQ("");}} className="press"
+                      style={{padding:"7px 14px",borderRadius:9,cursor:"pointer",fontWeight:700,fontSize:12,background:active?(isJ?C.b1:C.p1):"transparent",border:`2px solid ${active?(isJ?C.b:C.p):C.bo0}`,color:active?(isJ?C.b:C.p):C.t2,fontFamily:F.sans}}>
+                      {b2.name}</button>;})}
+                  <div>
+                    <label style={{fontSize:11,fontWeight:700,color:C.t2,display:"block",marginBottom:4}}>Jumlah tampil (0 = semua)</label>
+                    <input type="number" min="0" value={limits[adminBiz]??""} onChange={e=>setLimit(adminBiz,e.target.value)}
+                      placeholder="0" style={{...IS,width:110,fontFamily:F.mono}}/>
+                  </div>
+                </div>
+              </div>
+              <div style={{display:"flex",gap:8,alignItems:"center",marginTop:12,flexWrap:"wrap"}}>
+                <input value={searchQ} onChange={e=>setSearchQ(e.target.value)} placeholder="Cari produk..." style={{...IS,maxWidth:220}}/>
+                <span style={{fontSize:11.5,color:C.t3}}>{bizShown.length} dari {bizProds.length} produk diiklankan</span>
+              </div>
+              <div style={{marginTop:8}}>
+                {bizProds.length===0
+                  ? <EmptyState pad={20} title="Tidak ada produk"/>
+                  : <>
+                    {bizProds.slice(0,shownCap).map((p,i)=>{
+                      const src=productPhoto(p);
+                      return <div key={p.id} style={{display:"flex",gap:12,alignItems:"center",padding:"10px 0",borderTop:i===0?"none":`1px solid ${C.bo0}`}}>
+                        <img src={src} alt="" style={{width:48,height:48,borderRadius:9,objectFit:"cover",flexShrink:0,background:C.bg3,border:`1px solid ${C.bo0}`}}/>
+                        <div style={{flex:1,minWidth:0}}>
+                          <div style={{fontSize:12.5,fontWeight:700,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{p.name}</div>
+                          <div style={{fontSize:11,color:C.t2,marginTop:2}}>{rp(p.price)} &middot; stok {p.stock} &middot; {p.barcode}</div>
+                          <input defaultValue={p.photo||""} key={"ph"+p.id+p.photo} onBlur={e=>savePhoto(p,e.target.value)}
+                            placeholder="Link foto produk (Google Drive)" style={{...IS,marginTop:6,fontSize:12,padding:"7px 11px",minHeight:0}}/>
+                        </div>
+                        <label style={{display:"flex",flexDirection:"column",alignItems:"center",gap:4,flexShrink:0,cursor:"pointer"}}>
+                          <input type="checkbox" checked={!!p.advertised} onChange={e=>toggleAd(p,e.target.checked)}
+                            style={{width:20,height:20,accentColor:C.pri,cursor:"pointer"}}/>
+                          <span style={{fontSize:10,fontWeight:700,color:p.advertised?C.pri:C.t3}}>{p.advertised?"Tampil":"Off"}</span>
+                        </label>
+                      </div>;
+                    })}
+                    {bizProds.length>shownCap&&<div style={{paddingTop:10,fontSize:11,color:C.t3}}>Menampilkan {shownCap} dari {bizProds.length}. Pakai pencarian untuk mempersempit.</div>}
+                  </>}
+              </div>
+            </Card>
+            <p style={{fontSize:11.5,color:C.t3,lineHeight:1.5}}>Tekan <b>Simpan</b> untuk menyimpan foto besar dan jumlah tampil. Centang produk dan isi foto produk langsung tersimpan per produk.</p>
           </div>;
         })()}
 
