@@ -23,6 +23,7 @@ import {
   Shirt, Sparkles, Home, Printer, RefreshCw, Folder, FileText, Eye, EyeOff, Building2, LayoutDashboard,
   Undo2, Activity, Upload, PanelLeftClose, PanelLeftOpen, ChevronRight, LogOut, Bell, ArrowLeftRight, ArrowLeft, MoreHorizontal, WifiOff, Info,
   QrCode, ChevronLeft, ShoppingBasket, Megaphone, ExternalLink, ShoppingBag,
+  ArrowRight, MessageCircle, ShieldCheck, BadgeCheck,
 } from "lucide-react";
 
 // ─────────────────────────────────────────────────────────────
@@ -338,6 +339,22 @@ const makeCSS = () => `
   @media(min-width:641px){
     .login-shell{min-height:auto;margin:6vh auto;border-radius:24px;overflow:hidden;box-shadow:${C.sh2};background:${C.bg2};flex:none;}
   }
+
+  /* ── Etalase publik / landing page ── */
+  .lp-title{font-size:clamp(30px,4.6vw,46px);}
+  .lp-shot{position:relative;overflow:hidden;background:${C.bg3};}
+  .lp-photo,.lp-cover{display:block;width:100%;height:100%;object-fit:cover;}
+  .lp-cover{position:absolute;inset:0;}
+  .lp-shot .lp-photo{transition:transform .5s cubic-bezier(.16,1,.3,1);}
+  .lp-shot:hover .lp-photo{transform:scale(1.045);}
+  .lp-lift{transition:transform .18s cubic-bezier(.16,1,.3,1),box-shadow .18s,border-color .18s;}
+  .lp-lift:hover{transform:translateY(-3px);box-shadow:${C.sh2};}
+  .lp-card-in{animation:fadeUp .45s cubic-bezier(.16,1,.3,1) both;}
+  .lp-card-in:nth-child(2n){animation-delay:.05s;}
+  .lp-card-in:nth-child(3n){animation-delay:.1s;}
+  #katalog{scroll-margin-top:84px;}
+  @media(hover:none){.lp-shot:hover .lp-photo{transform:none;}.lp-lift:hover{transform:none;}}
+  @media(prefers-reduced-motion:no-preference){html{scroll-behavior:smooth;}}
 `;
 let CSS = makeCSS();
 
@@ -2167,280 +2184,326 @@ function syncSheet(sh,rows,headers){
 `;
 
 // ─────────────────────────────────────────────────────────────
-//  LANDING PAGE IKLAN PRODUK (Anti-slop design taste & Sumba Tarum Palette)
+//  ETALASE PUBLIK / LANDING PAGE IKLAN
+//  Mode: Redesign-Preserve · Dial VARIANCE 7 / MOTION 4 (CSS) / DENSITY 3
+//  Figtree + ikon Lucide, radius kartu 20px. Palet Tenun Sumba menyatu dengan merek:
+//  indigo tarum (C.pri) sebagai aksen halaman, biru = identitas JS Clothing, rose = JB Store.
 // ─────────────────────────────────────────────────────────────
+
+// Foto: cukup tempel link Google Drive di PHOTO_URL, link "share" apa pun otomatis diubah.
+const driveImg = (u, w = 1600) => {
+  const id = /[-\w]{25,}/.exec(u || "")?.[0];
+  return id ? `https://drive.google.com/thumbnail?id=${id}&sz=w${w}` : "";
+};
+const picPhoto = (seed, w, h) => `https://picsum.photos/seed/je-${seed}/${w}/${h}`;
+const PHOTO_URL = {
+  hero: "",    // foto utama, rasio tegak (misal kaos konveksi)
+  hero2: "",   // foto pendamping, rasio kotak (misal serum skincare)
+  js: "",      // foto kartu JS Clothing
+  jb: "",      // foto kartu JB Store
+  atelier: "", // foto lebar untuk bagian "Kenapa belanja di sini"
+};
+const photo = (slot, w, h) => driveImg(PHOTO_URL[slot], w) || picPhoto(slot, w, h);
+// ponytail: foto asli menyusul. Selama PHOTO_URL kosong, tampil placeholder picsum.
+
+// Nomor WhatsApp toko, format internasional tanpa tanda plus (contoh: "6281234567890").
+const LANDING_WA = "6285191435249";
+const waHref = (text) => `https://wa.me/${LANDING_WA}${text ? "?text=" + encodeURIComponent(text) : ""}`;
+
+// Foto per produk: pakai p.photo bila admin mengisinya, selain itu placeholder.
+// ponytail: kolom "photo" belum ada di form produk; tambahkan bila foto per produk diperlukan.
+const productPhoto = (p) => (p.photo ? driveImg(p.photo, 700) : picPhoto(p.barcode || p.id, 700, 700));
+
 function ProductLandingPage({ prods, onLogin, onToggleTheme, isDark }) {
   const [selectedBiz, setSelectedBiz] = React.useState("ALL");
   const [searchWord, setSearchWord] = React.useState("");
 
-  // Produk yang diiklankan oleh admin (p.advertised === true)
-  // Fallback: Jika admin belum mengiklankan produk apapun, tampilkan beberapa produk unggulan otomatis
+  // Produk yang diiklankan admin (p.advertised). Fallback: produk berstok, maksimal 8.
   const advertisedList = React.useMemo(() => {
-    let list = prods.filter(p => p.advertised);
-    if (!list.length) {
-      list = prods.filter(p => p.stock > 0).slice(0, 8);
-    }
-    return list;
+    const list = prods.filter(p => p.advertised);
+    return list.length ? list : prods.filter(p => p.stock > 0).slice(0, 8);
   }, [prods]);
 
-  const filtered = React.useMemo(() => {
-    return advertisedList.filter(p => {
-      const matchBiz = selectedBiz === "ALL" || p.business === selectedBiz;
-      const matchQ = !searchWord || p.name.toLowerCase().includes(searchWord.toLowerCase()) || (p.category || "").toLowerCase().includes(searchWord.toLowerCase());
-      return matchBiz && matchQ;
-    });
-  }, [advertisedList, selectedBiz, searchWord]);
+  const filtered = React.useMemo(() => advertisedList.filter(p => {
+    const matchBiz = selectedBiz === "ALL" || p.business === selectedBiz;
+    const q = searchWord.trim().toLowerCase();
+    return matchBiz && (!q || p.name.toLowerCase().includes(q) || (p.category || "").toLowerCase().includes(q));
+  }), [advertisedList, selectedBiz, searchWord]);
 
   const jsCount = advertisedList.filter(p => p.business === "JS_CLOTHING").length;
   const jbCount = advertisedList.filter(p => p.business === "JB_STORE").length;
+  const stockLabel = p => p.stock <= 0 ? "Stok habis" : (p.stock < 10 ? "Stok terbatas" : "Tersedia");
+
+  const pickBiz = biz => {
+    setSelectedBiz(biz);
+    if (typeof document !== "undefined") document.getElementById("katalog")?.scrollIntoView({ behavior:"smooth", block:"start" });
+  };
+
+  const eyebrow = { display:"inline-flex", alignItems:"center", gap:7, padding:"6px 13px", borderRadius:50,
+    background:C.pri1, color:C.pri, fontSize:12, fontWeight:700 };
+  const btnPrimary = { height:52, padding:"0 22px", borderRadius:14, background:C.pri, color:C.on,
+    fontWeight:700, fontSize:14.5, border:"none", display:"inline-flex", alignItems:"center", gap:9,
+    textDecoration:"none", whiteSpace:"nowrap" };
+  const btnGhost = { height:52, padding:"0 20px", borderRadius:14, background:"transparent", color:C.t0,
+    border:`1.5px solid ${C.bo2}`, fontWeight:700, fontSize:14.5, display:"inline-flex", alignItems:"center",
+    gap:9, textDecoration:"none", whiteSpace:"nowrap" };
+
+  const businesses = [
+    { k:"JS_CLOTHING", name:"JS Clothing", tag:"Konveksi", tone:C.b, toneBg:C.b1, icon:<Shirt size={18}/>,
+      n:jsCount, img:photo("js",1200,900),
+      desc:"Kaos, kemeja, celana, dan jaket. Bisa pesan jumlah banyak untuk seragam atau komunitas." },
+    { k:"JB_STORE", name:"JB Store", tag:"Skincare", tone:C.p, toneBg:C.p1, icon:<Sparkles size={18}/>,
+      n:jbCount, img:photo("jb",1200,900),
+      desc:"Serum, sunscreen, toner, dan pelembab original untuk perawatan kulit harian." },
+  ];
 
   return (
     <div style={{minHeight:"100dvh",background:C.bg1,color:C.t0,display:"flex",flexDirection:"column",fontFamily:F.sans}}>
-      {/* ── Top Navbar ── */}
-      <header style={{
-        position:"sticky",top:0,zIndex:100,
-        background:isDarkTheme()?"rgba(15,19,48,0.85)":"rgba(255,255,255,0.88)",
-        backdropFilter:"blur(12px)",WebkitBackdropFilter:"blur(12px)",
-        borderBottom:`1px solid ${C.bo1}`,
-        padding:"0 20px",height:64,display:"flex",alignItems:"center",justifyContent:"space-between"
-      }}>
-        <div style={{display:"flex",alignItems:"center",gap:12}}>
+      {/* ── Navbar ── */}
+      <header style={{position:"sticky",top:0,zIndex:100,height:64,padding:"0 20px",
+        display:"flex",alignItems:"center",justifyContent:"space-between",gap:12,
+        background:isDarkTheme()?"rgba(15,19,48,0.85)":"rgba(244,245,250,0.88)",
+        backdropFilter:"blur(12px)",WebkitBackdropFilter:"blur(12px)",borderBottom:`1px solid ${C.bo1}`}}>
+        <div style={{display:"flex",alignItems:"center",gap:11,minWidth:0}}>
           <BrandMark size={36}/>
-          <div>
-            <div style={{fontSize:16,fontWeight:800,letterSpacing:"-.02em",lineHeight:1.1}}>JE GRUP CATALOG</div>
-            <div style={{fontSize:11,color:C.t2,fontWeight:600}}>JS Clothing &amp; JB Store</div>
+          <div style={{minWidth:0}}>
+            <div style={{fontSize:15.5,fontWeight:800,letterSpacing:"-.02em",lineHeight:1.15,whiteSpace:"nowrap"}}>JE Grup</div>
+            <div style={{fontSize:11,color:C.t2,fontWeight:600,whiteSpace:"nowrap"}}>JS Clothing &amp; JB Store</div>
           </div>
         </div>
-
-        <div style={{display:"flex",alignItems:"center",gap:10}}>
+        <div style={{display:"flex",alignItems:"center",gap:9}}>
           <button onClick={onToggleTheme} className="press" aria-label="Ganti mode tema"
             style={{width:40,height:40,borderRadius:12,border:`1.5px solid ${C.bo1}`,background:C.bg2,color:C.t1,display:"grid",placeItems:"center"}}>
             {isDark ? <Sun size={18}/> : <Moon size={18}/>}
           </button>
           <button onClick={onLogin} className="press"
-            style={{
-              padding:"0 18px",height:40,borderRadius:12,
-              background:C.pri,color:C.on,fontWeight:700,fontSize:13.5,
-              border:"none",display:"inline-flex",alignItems:"center",gap:7
-            }}>
+            style={{height:40,padding:"0 17px",borderRadius:12,background:C.pri,color:C.on,fontWeight:700,fontSize:13.5,
+              border:"none",display:"inline-flex",alignItems:"center",gap:7,whiteSpace:"nowrap"}}>
             <Lock size={15}/> Masuk Kasir
           </button>
         </div>
       </header>
 
-      {/* ── Hero Section (Split View with Visual Cards) ── */}
-      <section style={{
-        position:"relative",overflow:"hidden",
-        padding:"48px 20px 40px",maxWidth:1200,margin:"0 auto",width:"100%"
-      }}>
-        {/* Subtle decorative glow */}
-        <div style={{
-          position:"absolute",top:-60,right:-40,width:340,height:340,
-          borderRadius:"50%",background:isDarkTheme()?"rgba(142,156,255,0.12)":"rgba(47,60,148,0.06)",
-          filter:"blur(60px)",pointerEvents:"none"
-        }}/>
-
-        <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit, minmax(320px, 1fr))",gap:32,alignItems:"center"}}>
+      {/* ── Hero: split asimetris, teks + kolase foto ── */}
+      <section style={{maxWidth:1180,width:"100%",margin:"0 auto",padding:"40px 20px 34px"}}>
+        <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(330px,1fr))",gap:"clamp(28px,5vw,56px)",alignItems:"center"}}>
           <div>
-            <div style={{display:"inline-flex",alignItems:"center",gap:7,padding:"5px 12px",borderRadius:50,background:C.pri1,border:`1px solid ${C.pri}33`,color:C.pri,fontSize:12,fontWeight:800,marginBottom:16}}>
-              <Sparkles size={14}/> Koleksi Pilihan Terkurasi
-            </div>
-            <h1 style={{fontSize:"clamp(30px, 4.5vw, 46px)",fontWeight:800,letterSpacing:"-.03em",lineHeight:1.15,marginBottom:14}}>
-              Kualitas Konveksi &amp; Skincare Terbaik dari JE Grup.
+            <span style={eyebrow}><Sparkles size={14}/> Etalase resmi dua usaha</span>
+            <h1 className="lp-title" style={{fontWeight:800,letterSpacing:"-.03em",lineHeight:1.06,margin:"18px 0 16px"}}>
+              Konveksi dan skincare, satu etalase.
             </h1>
-            <p style={{fontSize:15.5,color:C.t1,lineHeight:1.6,maxWidth:480,marginBottom:24}}>
-              Eksplorasi pakaian konveksi premium dari <b>JS Clothing</b> serta perawatan kulit terpercaya dari <b>JB Store</b> langsung dari etalase resmi kami.
+            <p style={{fontSize:16,color:C.t1,lineHeight:1.65,maxWidth:460,marginBottom:26}}>
+              Pakaian konveksi siap kirim dari JS Clothing dan produk perawatan kulit original dari JB Store. Pesan langsung, kami balas cepat.
             </p>
             <div style={{display:"flex",gap:10,flexWrap:"wrap"}}>
-              <a href="#katalog" className="press"
-                style={{
-                  padding:"12px 24px",borderRadius:14,background:C.pri,color:C.on,
-                  fontWeight:700,fontSize:14,textDecoration:"none",display:"inline-flex",alignItems:"center",gap:8
-                }}>
-                <ShoppingBag size={17}/> Jelajahi Produk ({advertisedList.length})
+              <a href="#katalog" className="press" style={btnPrimary}><ShoppingBag size={17}/> Lihat Katalog</a>
+              <a href={waHref("Halo, saya mau tanya produk JE Grup.")} target="_blank" rel="noreferrer" className="press" style={btnGhost}>
+                <MessageCircle size={17}/> Chat WhatsApp
               </a>
-              <button onClick={onLogin} className="press"
-                style={{
-                  padding:"12px 20px",borderRadius:14,background:C.bg3,color:C.t0,
-                  border:`1.5px solid ${C.bo1}`,fontWeight:700,fontSize:14
-                }}>
-                Portal Pegawai
-              </button>
             </div>
           </div>
 
-          {/* Quick Business Highlights Cards */}
-          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14}}>
-            <div style={{
-              background:isDarkTheme()?"rgba(23,28,64,0.7)":"#FFFFFF",
-              border:`1.5px solid ${C.b}44`,borderRadius:20,padding:20,
-              boxShadow:C.sh,display:"flex",flexDirection:"column",justifyContent:"space-between"
-            }}>
-              <div>
-                <div style={{width:44,height:44,borderRadius:12,background:C.b1,color:C.b,display:"grid",placeItems:"center",marginBottom:14}}>
-                  <Shirt size={22}/>
-                </div>
-                <div style={{fontSize:16,fontWeight:800,marginBottom:4}}>JS Clothing</div>
-                <div style={{fontSize:12.5,color:C.t2,lineHeight:1.4}}>Konveksi baju kaos, kemeja, celana, dan jaket berkualitas tinggi.</div>
-              </div>
-              <div style={{marginTop:16,display:"flex",alignItems:"center",justifyContent:"space-between",fontSize:11.5,fontWeight:700,color:C.b}}>
-                <span>{jsCount} Produk Unggulan</span>
-                <ChevronRight size={16}/>
-              </div>
+          <div style={{display:"grid",gridTemplateColumns:"1.12fr .88fr",gap:14}}>
+            <div className="lp-shot" style={{aspectRatio:"4 / 5",borderRadius:24}}>
+              <img src={photo("hero",1200,1500)} alt="Produk konveksi JS Clothing" className="lp-photo" loading="eager" decoding="async"/>
             </div>
-
-            <div style={{
-              background:isDarkTheme()?"rgba(23,28,64,0.7)":"#FFFFFF",
-              border:`1.5px solid ${C.p}44`,borderRadius:20,padding:20,
-              boxShadow:C.sh,display:"flex",flexDirection:"column",justifyContent:"space-between"
-            }}>
-              <div>
-                <div style={{width:44,height:44,borderRadius:12,background:C.p1,color:C.p,display:"grid",placeItems:"center",marginBottom:14}}>
-                  <Sparkles size={22}/>
-                </div>
-                <div style={{fontSize:16,fontWeight:800,marginBottom:4}}>JB Store</div>
-                <div style={{fontSize:12.5,color:C.t2,lineHeight:1.4}}>Skincare resmi, serum, sunscreen, &amp; pelembab original terpercaya.</div>
+            <div style={{display:"flex",flexDirection:"column",gap:14}}>
+              <div className="lp-shot" style={{aspectRatio:"1 / 1",borderRadius:20}}>
+                <img src={photo("hero2",800,800)} alt="Produk skincare JB Store" className="lp-photo" loading="lazy" decoding="async"/>
               </div>
-              <div style={{marginTop:16,display:"flex",alignItems:"center",justifyContent:"space-between",fontSize:11.5,fontWeight:700,color:C.p}}>
-                <span>{jbCount} Produk Unggulan</span>
-                <ChevronRight size={16}/>
+              <div style={{flex:1,minHeight:96,borderRadius:20,background:C.bg2,border:`1px solid ${C.bo1}`,
+                padding:"16px 16px 14px",display:"flex",flexDirection:"column",justifyContent:"center",gap:7}}>
+                <div style={{display:"flex",gap:6}}>
+                  <span style={{flex:1,height:4,borderRadius:2,background:"var(--ik3)"}}/>
+                  <span style={{flex:1,height:4,borderRadius:2,background:"var(--ik1)"}}/>
+                  <span style={{flex:1,height:4,borderRadius:2,background:"var(--ik2)"}}/>
+                </div>
+                <div className="mn" style={{fontSize:26,fontWeight:850,letterSpacing:"-.03em",lineHeight:1}}>2</div>
+                <div style={{fontSize:12,color:C.t2,fontWeight:600,lineHeight:1.35}}>usaha dalam satu grup</div>
               </div>
             </div>
           </div>
         </div>
       </section>
 
-      {/* Decorative Ikat Sumba Strip */}
+      {/* Pita ikat (ciri merek) */}
       <div className="ikat-band" aria-hidden="true"/>
 
-      {/* ── Catalog Filter & Grid ── */}
-      <section id="katalog" style={{flex:1,maxWidth:1200,margin:"0 auto",width:"100%",padding:"32px 20px 60px"}}>
-        <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-end",flexWrap:"wrap",gap:16,marginBottom:24}}>
-          <div>
-            <h2 style={{fontSize:22,fontWeight:800,letterSpacing:"-.02em"}}>Etalase Pilihan</h2>
-            <p style={{fontSize:13.5,color:C.t2,marginTop:3}}>Katalog produk yang sedang dipromosikan toko kami saat ini.</p>
-          </div>
+      {/* ── Dua usaha: kartu foto 2 kolom ── */}
+      <section style={{maxWidth:1180,width:"100%",margin:"0 auto",padding:"44px 20px 8px"}}>
+        <h2 style={{fontSize:"clamp(22px,3vw,28px)",fontWeight:800,letterSpacing:"-.025em",marginBottom:20}}>Dua usaha, satu grup</h2>
+        <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(300px,1fr))",gap:18}}>
+          {businesses.map(b => (
+            <button key={b.k} onClick={()=>pickBiz(b.k)} className="press lp-lift"
+              style={{display:"block",width:"100%",textAlign:"left",padding:0,cursor:"pointer",
+                background:C.bg2,border:`1px solid ${C.bo1}`,borderRadius:20,overflow:"hidden"}}>
+              <div className="lp-shot" style={{aspectRatio:"16 / 10"}}>
+                <img src={b.img} alt={`Produk ${b.name}`} className="lp-photo" loading="lazy" decoding="async"/>
+              </div>
+              <div style={{padding:"18px 19px 20px"}}>
+                <div style={{display:"flex",alignItems:"center",gap:9,marginBottom:10}}>
+                  <span style={{width:34,height:34,borderRadius:10,background:b.toneBg,color:b.tone,display:"grid",placeItems:"center",flexShrink:0}}>{b.icon}</span>
+                  <span style={{fontSize:11.5,fontWeight:700,color:b.tone,background:b.toneBg,padding:"3px 10px",borderRadius:50}}>{b.tag}</span>
+                  <span style={{fontSize:11.5,color:C.t2,fontWeight:600,marginLeft:"auto"}}>{b.n} produk</span>
+                </div>
+                <div style={{fontSize:18,fontWeight:800,letterSpacing:"-.02em",marginBottom:5}}>{b.name}</div>
+                <p style={{fontSize:13.5,color:C.t1,lineHeight:1.55}}>{b.desc}</p>
+                <div style={{marginTop:14,display:"inline-flex",alignItems:"center",gap:6,fontSize:13,fontWeight:700,color:b.tone}}>
+                  Lihat koleksi <ArrowRight size={15}/>
+                </div>
+              </div>
+            </button>
+          ))}
+        </div>
+      </section>
 
+      {/* ── Katalog ── */}
+      <section id="katalog" style={{flex:1,maxWidth:1180,width:"100%",margin:"0 auto",padding:"40px 20px 56px"}}>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-end",flexWrap:"wrap",gap:16,marginBottom:22}}>
+          <div>
+            <h2 style={{fontSize:"clamp(22px,3vw,28px)",fontWeight:800,letterSpacing:"-.025em"}}>Etalase produk</h2>
+            <p style={{fontSize:13.5,color:C.t2,marginTop:4}}>Produk yang sedang kami promosikan. Harga resmi toko.</p>
+          </div>
           <div style={{display:"flex",gap:8,alignItems:"center",flexWrap:"wrap"}}>
-            {/* Filter Pills */}
             <div style={{display:"flex",gap:6,background:C.bg3,padding:4,borderRadius:12,border:`1px solid ${C.bo0}`}}>
-              {[
-                ["ALL", "Semua Bisnis"],
-                ["JS_CLOTHING", "👕 JS Clothing"],
-                ["JB_STORE", "✨ JB Store"]
-              ].map(([k, label]) => {
+              {[["ALL","Semua"],["JS_CLOTHING","JS Clothing"],["JB_STORE","JB Store"]].map(([k,label]) => {
                 const active = selectedBiz === k;
                 return (
-                  <button key={k} onClick={() => setSelectedBiz(k)} className="press"
-                    style={{
-                      border:"none",borderRadius:8,padding:"7px 13px",fontSize:12.5,fontWeight:active?800:600,
-                      background:active?C.bg2:"transparent",color:active?C.pri:C.t2,
-                      boxShadow:active?C.sh:"none"
-                    }}>
+                  <button key={k} onClick={()=>setSelectedBiz(k)} className="press fbtn"
+                    style={{border:"none",borderRadius:8,padding:"8px 13px",fontSize:12.5,
+                      fontWeight:active?800:600,background:active?C.bg2:"transparent",
+                      color:active?C.pri:C.t2,boxShadow:active?C.sh:"none"}}>
                     {label}
                   </button>
                 );
               })}
             </div>
-
-            {/* Search Box */}
-            <div style={{position:"relative",minWidth:200}}>
+            <div style={{position:"relative",flex:"1 1 200px",minWidth:180}}>
               <Search size={15} style={{position:"absolute",left:12,top:"50%",transform:"translateY(-50%)",color:C.t2}}/>
-              <input value={searchWord} onChange={e=>setSearchWord(e.target.value)} placeholder="Cari produk..."
-                style={{
-                  padding:"8px 12px 8px 34px",background:C.bg2,border:`1.5px solid ${C.bo1}`,
-                  borderRadius:10,fontSize:13,color:C.t0,fontFamily:F.sans,width:"100%"
-                }}/>
+              <input value={searchWord} onChange={e=>setSearchWord(e.target.value)} placeholder="Cari produk..." aria-label="Cari produk"
+                style={{width:"100%",padding:"10px 12px 10px 34px",background:C.bg2,border:`1.5px solid ${C.bo1}`,
+                  borderRadius:10,fontSize:13,color:C.t0,fontFamily:F.sans}}/>
             </div>
           </div>
         </div>
 
-        {/* Product Grid */}
         {filtered.length === 0 ? (
-          <div style={{
-            background:C.bg2,borderRadius:20,border:`1px solid ${C.bo0}`,padding:"48px 20px",
-            textAlign:"center",display:"flex",flexDirection:"column",alignItems:"center",gap:12
-          }}>
+          <div style={{background:C.bg2,borderRadius:20,border:`1px solid ${C.bo0}`,padding:"48px 20px",
+            textAlign:"center",display:"flex",flexDirection:"column",alignItems:"center",gap:12}}>
             <div style={{width:54,height:54,borderRadius:16,background:C.bg3,color:C.t3,display:"grid",placeItems:"center"}}>
               <Package size={26}/>
             </div>
-            <div style={{fontSize:16,fontWeight:800}}>Tidak ada produk ditemukan</div>
-            <div style={{fontSize:13.5,color:C.t2,maxWidth:320}}>Coba ubah kata kunci pencarian atau ganti filter bisnis di atas.</div>
+            <div style={{fontSize:16,fontWeight:800}}>Produk tidak ditemukan</div>
+            <div style={{fontSize:13.5,color:C.t2,maxWidth:320}}>Ubah kata kunci atau ganti filter bisnis di atas.</div>
           </div>
         ) : (
-          <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill, minmax(260px, 1fr))",gap:18}}>
+          <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(215px,1fr))",gap:16}}>
             {filtered.map(p => {
               const isJ = p.business === "JS_CLOTHING";
-              const tagColor = isJ ? C.b : C.p;
-              const tagBg = isJ ? C.b1 : C.p1;
+              const tone = isJ ? C.b : C.p;
+              const toneBg = isJ ? C.b1 : C.p1;
+              const out = p.stock <= 0;
               return (
-                <div key={p.id} className="press"
-                  style={{
-                    background:C.bg2,border:`1.5px solid ${C.bo1}`,borderRadius:20,
-                    padding:18,display:"flex",flexDirection:"column",justifyContent:"space-between",
-                    boxShadow:C.sh,position:"relative",overflow:"hidden"
-                  }}>
-                  {/* Top Bar inside card */}
-                  <div>
-                    <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:8,marginBottom:12}}>
-                      <span style={{
-                        fontSize:11,fontWeight:800,padding:"3px 9px",borderRadius:20,
-                        background:tagBg,color:tagColor,display:"inline-flex",alignItems:"center",gap:4
-                      }}>
-                        {isJ ? <Shirt size={12}/> : <Sparkles size={12}/>}
-                        {BIZ[p.business]?.name || p.business}
+                <article key={p.id} className="lp-card-in lp-lift"
+                  style={{background:C.bg2,border:`1px solid ${C.bo1}`,borderRadius:20,overflow:"hidden",display:"flex",flexDirection:"column"}}>
+                  <div className="lp-shot" style={{aspectRatio:"1 / 1"}}>
+                    <img src={productPhoto(p)} alt={p.name} className="lp-photo" loading="lazy" decoding="async"/>
+                  </div>
+                  <div style={{padding:"13px 14px 15px",display:"flex",flexDirection:"column",flex:1}}>
+                    <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:8}}>
+                      <span style={{fontSize:10.5,fontWeight:800,padding:"3px 9px",borderRadius:50,background:toneBg,color:tone,display:"inline-flex",alignItems:"center",gap:4}}>
+                        {isJ ? <Shirt size={11}/> : <Sparkles size={11}/>} {BIZ[p.business]?.name || p.business}
                       </span>
                       {p.category && (
-                        <span style={{fontSize:11,color:C.t2,background:C.bg3,padding:"2px 8px",borderRadius:6,fontWeight:600}}>
-                          {p.category}
-                        </span>
+                        <span style={{fontSize:10.5,fontWeight:600,color:C.t2,background:C.bg3,padding:"3px 8px",
+                          borderRadius:50,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{p.category}</span>
                       )}
                     </div>
-
-                    <h3 style={{fontSize:16,fontWeight:800,lineHeight:1.3,marginBottom:6,color:C.t0}}>
-                      {p.name}
-                    </h3>
-                    <div style={{fontSize:11,color:C.t3,fontFamily:F.mono,marginBottom:14}}>
-                      SKU: {p.barcode}
+                    <h3 style={{fontSize:14.5,fontWeight:700,lineHeight:1.35,marginBottom:"auto"}}>{p.name}</h3>
+                    <div style={{marginTop:12,display:"flex",alignItems:"flex-end",justifyContent:"space-between",gap:8}}>
+                      <div className="mn" style={{fontSize:17,fontWeight:850}}>{rp(p.price)}</div>
+                      <span style={{fontSize:11,fontWeight:700,color:out?C.r:(p.stock<10?C.a:C.g)}}>{stockLabel(p)}</span>
                     </div>
                   </div>
-
-                  {/* Pricing and Action */}
-                  <div style={{borderTop:`1px solid ${C.bo0}`,paddingTop:14,display:"flex",alignItems:"flex-end",justifyContent:"space-between"}}>
-                    <div>
-                      <div style={{fontSize:11,color:C.t2,fontWeight:600,marginBottom:2}}>Harga Resmi</div>
-                      <div className="mn" style={{fontSize:18,fontWeight:850,color:C.g}}>
-                        {rp(p.price)}
-                      </div>
-                    </div>
-                    <div style={{textAlign:"right"}}>
-                      <span style={{
-                        fontSize:11,fontWeight:700,
-                        color:p.stock > 0 ? (p.stock < 10 ? C.a : C.g) : C.r
-                      }}>
-                        {p.stock > 0 ? `Tersedia (${p.stock})` : "Stok Habis"}
-                      </span>
-                    </div>
-                  </div>
-                </div>
+                </article>
               );
             })}
           </div>
         )}
       </section>
 
-      {/* ── Footer ── */}
-      <footer style={{
-        marginTop:"auto",borderTop:`1px solid ${C.bo1}`,background:C.bg2,
-        padding:"30px 20px calc(30px + env(safe-area-inset-bottom, 0px))",textAlign:"center"
-      }}>
-        <div style={{display:"flex",alignItems:"center",justifyContent:"center",gap:8,marginBottom:8}}>
-          <BrandMark size={28}/>
-          <span style={{fontSize:15,fontWeight:800}}>Kasir JE Grup</span>
+      {/* ── Kenapa belanja di sini: bento 1 lebar + 2 kecil ── */}
+      <section style={{maxWidth:1180,width:"100%",margin:"0 auto",padding:"8px 20px 56px"}}>
+        <span style={eyebrow}><BadgeCheck size={14}/> Kenapa belanja di sini</span>
+        <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(280px,1fr))",gap:16,marginTop:18}}>
+          <div style={{gridColumn:"1 / -1",background:C.bg2,border:`1px solid ${C.bo1}`,borderRadius:20,overflow:"hidden"}}>
+            <div className="lp-shot" style={{aspectRatio:"16 / 7"}}>
+              <img src={photo("atelier",1400,900)} alt="Workshop konveksi JE Grup" className="lp-photo" loading="lazy" decoding="async"/>
+            </div>
+            <div style={{padding:"20px 22px 22px"}}>
+              <div style={{fontSize:19,fontWeight:800,letterSpacing:"-.02em",marginBottom:6}}>Dijahit di workshop sendiri</div>
+              <p style={{fontSize:13.5,color:C.t1,lineHeight:1.6,maxWidth:560}}>
+                Pesanan seragam, komunitas, maupun satuan dikerjakan langsung oleh tim kami, jadi ukuran dan jahitan bisa disesuaikan.
+              </p>
+            </div>
+          </div>
+          {[
+            { icon:<ShieldCheck size={22}/>, tone:C.g, toneBg:C.g1, bg:C.bg2, t:"Produk original", d:"Skincare resmi dari distributor, bukan barang tiruan atau kadaluarsa." },
+            { icon:<MessageCircle size={22}/>, tone:C.pri, toneBg:C.pri1, bg:C.bg3, t:"Pesan langsung", d:"Tanya stok dan ukuran lewat WhatsApp, kami balas cepat di jam kerja." },
+          ].map(c => (
+            <div key={c.t} style={{background:c.bg,border:`1px solid ${C.bo1}`,borderRadius:20,padding:"20px 21px",
+              display:"flex",flexDirection:"column",gap:10,minHeight:150}}>
+              <span style={{width:42,height:42,borderRadius:12,background:c.toneBg,color:c.tone,display:"grid",placeItems:"center"}}>{c.icon}</span>
+              <div style={{fontSize:16,fontWeight:800,letterSpacing:"-.015em"}}>{c.t}</div>
+              <p style={{fontSize:13.5,color:C.t1,lineHeight:1.55}}>{c.d}</p>
+            </div>
+          ))}
         </div>
-        <p style={{fontSize:13,color:C.t2}}>
-          &copy; {new Date().getFullYear()} JE Grup. Sistem terintegrasi JS Clothing &amp; JB Store.
-        </p>
+      </section>
+
+      {/* ── Ajakan penutup ── */}
+      <section style={{maxWidth:1180,width:"100%",margin:"0 auto",padding:"0 20px 56px"}}>
+        <div style={{position:"relative",overflow:"hidden",borderRadius:24,background:"var(--ik1)",
+          padding:"clamp(30px,5vw,52px)",display:"flex",flexWrap:"wrap",alignItems:"center",justifyContent:"space-between",gap:24}}>
+          <div style={{position:"absolute",top:0,left:0,right:0,height:6,
+            background:"repeating-linear-gradient(90deg,var(--ik3) 0 4px,var(--ik2) 4px 8px)"}}/>
+          <div style={{position:"relative",maxWidth:520}}>
+            <h2 style={{fontSize:"clamp(22px,3.4vw,32px)",fontWeight:800,letterSpacing:"-.03em",color:"#fff",lineHeight:1.12,marginBottom:10}}>
+              Mau pesan atau tanya stok?
+            </h2>
+            <p style={{fontSize:14.5,color:"rgba(255,255,255,.78)",lineHeight:1.6}}>Sebutkan produk dan jumlahnya, kami balas harga beserta ongkir.</p>
+          </div>
+          <div style={{position:"relative",display:"flex",gap:10,flexWrap:"wrap"}}>
+            <a href={waHref("Halo, saya mau pesan produk JE Grup.")} target="_blank" rel="noreferrer" className="press"
+              style={{...btnPrimary,background:"var(--ik2)",color:"var(--ik1)"}}><MessageCircle size={17}/> Chat WhatsApp</a>
+            <button onClick={onLogin} className="press"
+              style={{...btnGhost,color:"#fff",borderColor:"rgba(255,255,255,.35)"}}><Lock size={16}/> Masuk Kasir</button>
+          </div>
+        </div>
+      </section>
+
+      {/* ── Footer ── */}
+      <footer style={{marginTop:"auto",borderTop:`1px solid ${C.bo1}`,background:C.bg2,
+        padding:"28px 20px calc(28px + env(safe-area-inset-bottom, 0px))"}}>
+        <div style={{maxWidth:1180,margin:"0 auto",display:"flex",flexWrap:"wrap",alignItems:"center",justifyContent:"space-between",gap:14}}>
+          <div style={{display:"flex",alignItems:"center",gap:10}}>
+            <BrandMark size={30}/>
+            <div>
+              <div style={{fontSize:14,fontWeight:800}}>JE Grup</div>
+              <div style={{fontSize:12,color:C.t2}}>JS Clothing &amp; JB Store</div>
+            </div>
+          </div>
+          <div style={{display:"flex",alignItems:"center",gap:16,flexWrap:"wrap"}}>
+            <a href="#katalog" style={{fontSize:13,fontWeight:600,color:C.t1,textDecoration:"none"}}>Lihat Katalog</a>
+            <a href={waHref("Halo, saya mau tanya produk JE Grup.")} target="_blank" rel="noreferrer"
+              style={{fontSize:13,fontWeight:600,color:C.t1,textDecoration:"none"}}>Chat WhatsApp</a>
+            <button onClick={onLogin} className="press"
+              style={{fontSize:13,fontWeight:700,color:C.pri,background:"transparent",border:"none",padding:0}}>Masuk Kasir</button>
+          </div>
+        </div>
+        <div style={{maxWidth:1180,margin:"20px auto 0",fontSize:12,color:C.t3}}>
+          &copy; {new Date().getFullYear()} JE Grup. Semua harga dalam Rupiah.
+        </div>
       </footer>
     </div>
   );
