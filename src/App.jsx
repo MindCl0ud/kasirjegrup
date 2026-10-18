@@ -11,6 +11,7 @@ import {
   fbLogActivity, verifyPassword, subscribeExpenses, fbAddExpense, fbDeleteExpense,
   subscribeOpnames, subscribeOpnameItems, fbCreateOpname, fbCloseOpname,
   fbDeleteOpname, fbUpdateOpnameItem, fbBulkUpdateOpnameItems, fbApplyOpnameAdjustments,
+  subscribeLanding, fbSetLanding,
 } from "./firebase.js";
 // QRIS dinonaktifkan (stub). Untuk mengaktifkan: pakai `import { getQris, toDynamicQris, qrDataUrl } from "./qris.js";`
 const getQris = () => null;
@@ -962,6 +963,7 @@ function ProductFormModal({open,editing,editId,form,setForm,prods,biz,onSave,onC
       <Inp label="Barcode *" value={form.barcode||""} disabled={editing} onChange={set("barcode")} mono/>
       <Inp label="Kategori" value={form.category||""} onChange={set("category")}/>
       <div className="full"><Inp label="Nama produk *" value={form.name||""} onChange={set("name")}/></div>
+      <div className="full"><Inp label="Link foto produk (opsional) - tampil di etalase publik" value={form.photo||""} onChange={set("photo")} placeholder="https://drive.google.com/file/d/..."/></div>
     </div>
     <div className="fgrid m2" style={{marginTop:14}}>
       <Inp label="Harga jual *" type="number" suffix="Rp" value={form.price||""} onChange={set("price")}/>
@@ -2190,28 +2192,34 @@ function syncSheet(sh,rows,headers){
 //  indigo tarum (C.pri) sebagai aksen halaman, biru = identitas JS Clothing, rose = JB Store.
 // ─────────────────────────────────────────────────────────────
 
-// Foto: cukup tempel link Google Drive di PHOTO_URL, link "share" apa pun otomatis diubah.
+// Foto: diatur dari Admin Panel > tab "Landing Page" (tersimpan di Firestore: settings/landing).
+// Cukup tempel link Google Drive - link "share" apa pun otomatis diubah ke URL gambar.
 const driveImg = (u, w = 1600) => {
   const id = /[-\w]{25,}/.exec(u || "")?.[0];
   return id ? `https://drive.google.com/thumbnail?id=${id}&sz=w${w}` : "";
 };
 const picPhoto = (seed, w, h) => `https://picsum.photos/seed/je-${seed}/${w}/${h}`;
-const PHOTO_URL = {
-  hero: "",    // foto utama, rasio tegak (misal kaos konveksi)
-  hero2: "",   // foto pendamping, rasio kotak (misal serum skincare)
-  js: "",      // foto kartu JS Clothing
-  jb: "",      // foto kartu JB Store
-  atelier: "", // foto lebar untuk bagian "Kenapa belanja di sini"
-};
-const photo = (slot, w, h) => driveImg(PHOTO_URL[slot], w) || picPhoto(slot, w, h);
-// ponytail: foto asli menyusul. Selama PHOTO_URL kosong, tampil placeholder picsum.
+// Slot foto landing page: [key, label] - key sama dengan field di settings/landing.
+const PHOTO_FIELDS = [
+  ["hero",    "Foto utama (tegak) - mis. kaos konveksi"],
+  ["hero2",   "Foto pendamping (kotak) - mis. serum skincare"],
+  ["js",      "Foto kartu JS Clothing"],
+  ["jb",      "Foto kartu JB Store"],
+  ["atelier", "Foto lebar bagian Kenapa belanja di sini"],
+];
+const LANDING = {}; // diisi subscribeLanding dari settings/landing
+const photo = (slot, w, h) => driveImg(LANDING[slot], w) || picPhoto(slot, w, h);
+// ponytail: selama slot kosong, tampil placeholder picsum.
 
 // Nomor WhatsApp toko, format internasional tanpa tanda plus (contoh: "6281234567890").
+// Default di bawah bisa ditimpa admin dari tab Landing Page.
 const LANDING_WA = "6285191435249";
-const waHref = (text) => `https://wa.me/${LANDING_WA}${text ? "?text=" + encodeURIComponent(text) : ""}`;
+const waHref = (text) => {
+  const n = String(LANDING.wa || LANDING_WA).replace(/\D/g, "");
+  return `https://wa.me/${n}${text ? "?text=" + encodeURIComponent(text) : ""}`;
+};
 
-// Foto per produk: pakai p.photo bila admin mengisinya, selain itu placeholder.
-// ponytail: kolom "photo" belum ada di form produk; tambahkan bila foto per produk diperlukan.
+// Foto per produk: pakai p.photo (diisi di form produk), selain itu placeholder.
 const productPhoto = (p) => (p.photo ? driveImg(p.photo, 700) : picPhoto(p.barcode || p.id, 700, 700));
 
 function ProductLandingPage({ prods, onLogin, onToggleTheme, isDark }) {
@@ -2609,6 +2617,8 @@ function AppInner() {
   const [opnames, setOpnames] = useState([]);
   const [opnameItems, setOpnameItems] = useState([]);
   const [selectedOpname, setSelectedOpname] = useState(null);
+  const [landingCfg, setLandingCfg] = useState({});
+  const [landingDraft, setLandingDraft] = useState(null);
   useEffect(()=>{
     if(!fbReady) return;
     const uns=[
@@ -2622,6 +2632,7 @@ function AppInner() {
       subscribeTargets(d=>setTargets(d)),
       subscribeOpnames(d=>setOpnames(d)),
       subscribeExpenses(d=>setExpenses(d)),
+      subscribeLanding(d=>{Object.assign(LANDING,d);setLandingCfg(d);}),
     ];
     return()=>uns.forEach(u=>u());
   },[fbReady]);
@@ -3156,7 +3167,7 @@ function AppInner() {
 
   // ─── Admin: Product CRUD ───
   const openAddP=()=>{
-    setPForm({barcode:"",name:"",price:"",hpp:"",stock:"",category:"",business:adminBiz,expireDate:"",advertised:false});
+    setPForm({barcode:"",name:"",price:"",hpp:"",stock:"",category:"",business:adminBiz,expireDate:"",advertised:false,photo:""});
     setEditPid(null);setPModal(true);setInlineAddMode(true);setShowPriceDrawer(false);
     // scroll to top of products section
     setTimeout(()=>document.getElementById("prod-form-anchor")?.scrollIntoView({behavior:"smooth",block:"start"}),50);
@@ -4079,6 +4090,7 @@ function AppInner() {
       {id:"dashboard",l:"Dashboard",ic:LayoutDashboard},{id:"users",l:"Pengguna",ic:Users},{id:"products",l:"Produk",ic:Package},
       {id:"laporan",l:"Laporan",ic:Wallet},{id:"labarugi",l:"Laba Rugi",ic:TrendingUp},{id:"operasional",l:"Operasional",ic:ShoppingBasket},{id:"absensi",l:"Absensi",ic:Clock},{id:"stoklog",l:"Log Stok",ic:ClipboardList},
       {id:"returns",l:"Retur",ic:Undo2},{id:"actlog",l:"Aktivitas",ic:Activity},{id:"opname",l:"Opname",ic:ClipboardCheck},
+      {id:"landing",l:"Landing Page",ic:Megaphone},
     ];
     const BNAV_TABS=[
       {id:"dashboard",ic:LayoutDashboard,label:"Dashboard"},
@@ -4094,6 +4106,7 @@ function AppInner() {
       {id:"returns",ic:Undo2,label:"Retur"},
       {id:"actlog",ic:Activity,label:"Aktivitas"},
       {id:"opname",ic:ClipboardCheck,label:"Opname"},
+      {id:"landing",ic:Megaphone,label:"Landing Page"},
     ];
     const isMoreTab=MORE_TABS.some(t=>t.id===adminTab);
     const adminPs=prods.filter(p=>p.business===adminBiz&&(!searchQ||p.name.toLowerCase().includes(searchQ.toLowerCase())||p.barcode.includes(searchQ))&&(filterAdvertised?p.advertised:true));
@@ -4700,6 +4713,55 @@ function AppInner() {
           </div>
         </div>}
 
+
+        {/* ── LANDING PAGE (ETALASE PUBLIK) ── */}
+        {adminTab==="landing"&&(()=>{
+          const lf=landingDraft||landingCfg;
+          const setLf=(k,v)=>setLandingDraft({...lf,[k]:v});
+          const save=async()=>{
+            try{
+              const data={};
+              PHOTO_FIELDS.forEach(([k])=>{data[k]=String(lf[k]||"").trim();});
+              data.wa=String(lf.wa||"").replace(/[^\d+]/g,"");
+              await fbSetLanding(data,user.name);
+              toast("Etalase publik diperbarui");
+            }catch(err){toast("Gagal: "+err.message,"err");}
+          };
+          const toolBtn={padding:"7px 11px",background:C.bg3,border:`1px solid ${C.bo0}`,borderRadius:8,color:C.t2,fontSize:12,fontWeight:600,fontFamily:F.sans,display:"flex",alignItems:"center",gap:5};
+          return <div style={{display:"flex",flexDirection:"column",gap:10}}>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",flexWrap:"wrap",gap:8}}>
+              <div style={{maxWidth:560}}>
+                <h2 style={{fontSize:15,fontWeight:800}}>Etalase Publik</h2>
+                <p style={{fontSize:11.5,color:C.t2,marginTop:3,lineHeight:1.5}}>Foto dan nomor WhatsApp yang tampil di halaman promosi pelanggan. Tempel link Google Drive (Share &rarr; Copy link). Kosongkan satu slot untuk memakai foto contoh.</p>
+              </div>
+              <div style={{display:"flex",gap:7}}>
+                {/* Preview ikut menampilkan perubahan yang belum disimpan */}
+                <button onClick={()=>{if(landingDraft)Object.assign(LANDING,landingDraft);setScreen("landing");}} className="press" style={toolBtn}><ExternalLink size={13}/> Preview</button>
+                <Btn onClick={save} size="sm"><Check size={16}/> Simpan</Btn>
+              </div>
+            </div>
+            <Card>
+              {PHOTO_FIELDS.map(([k,label],i)=>{
+                const src=driveImg(lf[k],200);
+                return <div key={k} style={{display:"flex",gap:12,alignItems:"center",padding:"10px 0",borderTop:i===0?"none":`1px solid ${C.bo0}`}}>
+                  <div style={{width:56,height:56,borderRadius:10,overflow:"hidden",flexShrink:0,background:C.bg3,border:`1px solid ${C.bo0}`,display:"grid",placeItems:"center"}}>
+                    {src?<img src={src} alt="" style={{width:"100%",height:"100%",objectFit:"cover"}}/>
+                        :<span style={{fontSize:9.5,color:C.t3,textAlign:"center",lineHeight:1.2,padding:"0 4px"}}>contoh</span>}
+                  </div>
+                  <div style={{flex:1,minWidth:0}}>
+                    <label style={{fontSize:11,fontWeight:700,color:C.t2,display:"block",marginBottom:4}}>{label}</label>
+                    <input value={lf[k]||""} onChange={e=>setLf(k,e.target.value)} placeholder="https://drive.google.com/file/d/..." style={IS}/>
+                  </div>
+                </div>;
+              })}
+              <div style={{padding:"12px 0 2px",borderTop:`1px solid ${C.bo0}`}}>
+                <label style={{fontSize:11,fontWeight:700,color:C.t2,display:"block",marginBottom:4}}>Nomor WhatsApp (62xxx, tanpa + dan spasi)</label>
+                <input value={lf.wa||""} onChange={e=>setLf("wa",e.target.value)} placeholder={LANDING_WA} style={IS}/>
+              </div>
+            </Card>
+            <p style={{fontSize:11.5,color:C.t3,lineHeight:1.5}}>Produk yang tampil diatur di tab <b>Produk</b>: tekan tombol iklan (ikon megafon) di baris produk. Foto per produk diisi di form produk lewat kolom <b>Link foto produk</b>.</p>
+          </div>;
+        })()}
 
         {/* ── LAPORAN ── */}
         {adminTab==="laporan"&&<div style={{display:"flex",flexDirection:"column",gap:10}}>

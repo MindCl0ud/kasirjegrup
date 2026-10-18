@@ -345,3 +345,13 @@ export const fbDeleteExpense = async (id, label, business, actor) => {
   await deleteDoc(doc(_db,"expenses",id));
   await fbLogActivity(actor, "Hapus Belanja", label, business);
 };
+
+// ── Konfigurasi etalase publik (foto landing page + nomor WhatsApp) ──
+export const subscribeLanding = (cb) => onSnapshot(
+  doc(_db,"settings","landing"),
+  s => cb(s.exists() ? s.data() : {}), console.warn);
+
+export const fbSetLanding = async (data, actor) => {
+  await setDoc(doc(_db,"settings","landing"), { ...data, updatedAt:serverTimestamp() }, { merge:true });
+  if (actor) await fbLogActivity(actor, "Etalase Publik", "Perbarui foto / nomor WA landing page");
+};
