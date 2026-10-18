@@ -2336,9 +2336,8 @@ function ProductLandingPage({ prods, cfg, user, onLogin, onToggleTheme, isDark }
       <section style={{maxWidth:1180,width:"100%",margin:"0 auto",padding:"40px 20px 34px"}}>
         <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(330px,1fr))",gap:"clamp(28px,5vw,56px)",alignItems:"center"}}>
           <div>
-            <span style={eyebrow}><Sparkles size={14}/> Etalase resmi dua usaha</span>
-            <h1 className="lp-title" style={{fontWeight:800,letterSpacing:"-.03em",lineHeight:1.06,margin:"18px 0 16px"}}>
-              Konveksi dan skincare, satu etalase.
+            <h1 className="lp-title" style={{fontWeight:800,letterSpacing:"-.03em",lineHeight:1.06,margin:"0 0 16px"}}>
+              Konveksi dan skincare, satu etalase resmi.
             </h1>
             <p style={{fontSize:16,color:C.t1,lineHeight:1.65,maxWidth:460,marginBottom:26}}>
               Pakaian konveksi siap kirim dari JS Clothing dan produk perawatan kulit original dari JB Store. Pesan langsung, kami balas cepat.
@@ -2482,8 +2481,9 @@ function ProductLandingPage({ prods, cfg, user, onLogin, onToggleTheme, isDark }
 
       {/* ── Kenapa belanja di sini: bento 1 lebar + 2 kecil ── */}
       <section id="tentang" style={{maxWidth:1180,width:"100%",margin:"0 auto",padding:"8px 20px 56px"}}>
-        <span style={eyebrow}><BadgeCheck size={14}/> Kenapa belanja di sini</span>
-        <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(280px,1fr))",gap:16,marginTop:18}}>
+        <h2 style={{fontSize:"clamp(22px,3vw,28px)",fontWeight:800,letterSpacing:"-.025em",marginBottom:6}}>Kenapa belanja di sini</h2>
+        <p style={{fontSize:13.5,color:C.t2,marginBottom:18}}>Kualitas produksi langsung dari konveksi dan keaslian produk terjamin.</p>
+        <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(280px,1fr))",gap:16}}>
           <div style={{gridColumn:"1 / -1",background:C.bg2,border:`1px solid ${C.bo1}`,borderRadius:20,overflow:"hidden"}}>
             <div className="lp-shot" style={{aspectRatio:"16 / 7"}}>
               <img src={photo("atelier",1400,900)} alt="Workshop konveksi JE Grup" className="lp-photo" loading="lazy" decoding="async"/>
