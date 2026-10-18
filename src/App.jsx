@@ -26,6 +26,7 @@ import {
   QrCode, ChevronLeft, ShoppingBasket, Megaphone, ExternalLink, ShoppingBag,
   ArrowRight, MessageCircle, ShieldCheck, BadgeCheck,
 } from "lucide-react";
+import CustomShirtStudio from "./CustomShirtStudio.jsx";
 
 // ─────────────────────────────────────────────────────────────
 //  CONSTANTS
@@ -609,7 +610,7 @@ function UpdateBanner({onUpdate}) {
 //  HEADER  — di HP hanya: logo, bisnis, bel peringatan, avatar.
 //  Tombol lain (tema, muat ulang, pulang, keluar) ada di sheet akun.
 // ─────────────────────────────────────────────────────────────
-function Header({title,biz,user,onLogout,onSwitchBiz,onAbsenPulang,hasCheckedIn,online,onToggleTheme,isDark,lowStockCount=0,onLowStockClick,expireCount=0,expiredCount=0,onExpireClick,onGoLanding}) {
+function Header({title,biz,user,onLogout,onSwitchBiz,onAbsenPulang,hasCheckedIn,online,onToggleTheme,isDark,lowStockCount=0,onLowStockClick,expireCount=0,expiredCount=0,onExpireClick,onGoLanding,onOpenCustomizer}) {
   const b=BIZ[biz];
   const [sheet,setSheet]=React.useState(null);
   const alertN=lowStockCount+expireCount+expiredCount;
@@ -692,6 +693,7 @@ function Header({title,biz,user,onLogout,onSwitchBiz,onAbsenPulang,hasCheckedIn,
           <Divider my={4}/>
           <div style={{display:"flex",flexDirection:"column",gap:2,paddingTop:6}}>
             {onGoLanding&&<SheetRow icon={<ShoppingBag size={18}/>} label="Lihat Etalase Iklan Publik" sub="Buka landing page promosi" onClick={run(onGoLanding)}/>}
+            {onOpenCustomizer&&<SheetRow icon={<Shirt size={18}/>} label="Studio Desain Baju Custom" sub="Simulasi & rancang sablon pakaian" onClick={run(onOpenCustomizer)}/>}
             {onAbsenPulang&&hasCheckedIn&&<SheetRow tone={C.a} icon={<Home size={18}/>} label="Absen pulang" sub="Catat jam pulang hari ini" onClick={run(onAbsenPulang)}/>}
             {canSwitch&&<SheetRow icon={<ArrowLeftRight size={18}/>} label="Ganti bisnis" sub={b?`Sekarang: ${b.name}`:undefined} onClick={run(onSwitchBiz)}/>}
             {onToggleTheme&&<SheetRow icon={isDark?<Sun size={18}/>:<Moon size={18}/>} label={isDark?"Mode terang":"Mode gelap"} onClick={()=>{onToggleTheme();}}/>}
@@ -2242,7 +2244,7 @@ const waHref = (text) => {
 // Foto per produk: pakai p.photo (diisi di form produk), selain itu placeholder.
 const productPhoto = (p) => (p.photo ? driveImg(p.photo, 700) : picPhoto(p.barcode || p.id, 700, 700));
 
-function ProductLandingPage({ prods, cfg, user, onLogin, onToggleTheme, isDark }) {
+function ProductLandingPage({ prods, cfg, user, onLogin, onToggleTheme, isDark, onOpenCustomizer }) {
   const [selectedBiz, setSelectedBiz] = React.useState("ALL");
   const [searchWord, setSearchWord] = React.useState("");
 
@@ -2312,6 +2314,24 @@ function ProductLandingPage({ prods, cfg, user, onLogin, onToggleTheme, isDark }
           <nav className="lp-nav-links" aria-label="Navigasi cepat etalase">
             <div className="lp-nav-pill">
               <a href="#katalog" className="nav-link">Koleksi</a>
+              {onOpenCustomizer && (
+                <button
+                  onClick={onOpenCustomizer}
+                  className="nav-link press"
+                  style={{
+                    border: "none",
+                    background: "transparent",
+                    cursor: "pointer",
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: 6,
+                    color: C.b,
+                    fontWeight: 800,
+                  }}
+                >
+                  <Shirt size={14} /> Desain Baju
+                </button>
+              )}
               <a href="#tentang" className="nav-link">Keunggulan</a>
               <a href="#kontak" className="nav-link">Kontak</a>
             </div>
@@ -2343,7 +2363,12 @@ function ProductLandingPage({ prods, cfg, user, onLogin, onToggleTheme, isDark }
               Pakaian konveksi siap kirim dari JS Clothing dan produk perawatan kulit original dari JB Store. Pesan langsung, kami balas cepat.
             </p>
             <div style={{display:"flex",gap:10,flexWrap:"wrap"}}>
-              <a href="#katalog" className="press" style={btnPrimary}><ShoppingBag size={17}/> Lihat Katalog</a>
+              {onOpenCustomizer && (
+                <button onClick={onOpenCustomizer} className="press" style={{...btnPrimary, background:C.b, color:"#fff"}}>
+                  <Shirt size={17}/> Desain Baju Custom
+                </button>
+              )}
+              <a href="#katalog" className="press" style={btnGhost}><ShoppingBag size={17}/> Lihat Katalog</a>
               <a href={waHref("Halo, saya mau tanya produk JE Grup.")} target="_blank" rel="noreferrer" className="press" style={btnGhost}>
                 <MessageCircle size={17}/> Chat WhatsApp
               </a>
@@ -2395,14 +2420,87 @@ function ProductLandingPage({ prods, cfg, user, onLogin, onToggleTheme, isDark }
                 </div>
                 <div style={{fontSize:18,fontWeight:800,letterSpacing:"-.02em",marginBottom:5}}>{b.name}</div>
                 <p style={{fontSize:13.5,color:C.t1,lineHeight:1.55}}>{b.desc}</p>
-                <div style={{marginTop:14,display:"inline-flex",alignItems:"center",gap:6,fontSize:13,fontWeight:700,color:b.tone}}>
-                  Lihat koleksi <ArrowRight size={15}/>
+                <div style={{marginTop:14,display:"flex",alignItems:"center",justifyContent:"space-between",gap:8,flexWrap:"wrap"}}>
+                  <div style={{display:"inline-flex",alignItems:"center",gap:6,fontSize:13,fontWeight:700,color:b.tone}}>
+                    Lihat koleksi <ArrowRight size={15}/>
+                  </div>
+                  {b.k === "JS_CLOTHING" && onOpenCustomizer && (
+                    <span
+                      onClick={(e) => { e.stopPropagation(); onOpenCustomizer(); }}
+                      style={{
+                        padding:"5px 12px",
+                        borderRadius:8,
+                        background:C.b1,
+                        color:C.b,
+                        border:`1px solid ${C.b}44`,
+                        fontSize:12,
+                        fontWeight:800,
+                        display:"inline-flex",
+                        alignItems:"center",
+                        gap:5
+                      }}
+                    >
+                      <Shirt size={13}/> Studio Desain
+                    </span>
+                  )}
                 </div>
               </div>
             </button>
           ))}
         </div>
       </section>
+
+      {/* ── Highlight Banner: Studio Desain Baju Custom ── */}
+      {onOpenCustomizer && (
+        <section style={{maxWidth:1180,width:"100%",margin:"0 auto",padding:"36px 20px 8px"}}>
+          <div style={{
+            position:"relative",
+            overflow:"hidden",
+            borderRadius:24,
+            background:isDarkTheme()
+              ? "linear-gradient(135deg, rgba(27,100,176,0.32) 0%, rgba(15,19,48,0.92) 100%)"
+              : "linear-gradient(135deg, rgba(27,100,176,0.12) 0%, rgba(240,244,255,0.96) 100%)",
+            border:`1.5px solid ${C.b}44`,
+            padding:"clamp(24px, 4.5vw, 36px)",
+            display:"grid",
+            gridTemplateColumns:"repeat(auto-fit, minmax(290px, 1fr))",
+            gap:24,
+            alignItems:"center",
+            boxShadow:C.sh2
+          }}>
+            <div>
+              <div style={{display:"inline-flex",alignItems:"center",gap:7,padding:"4px 12px",borderRadius:50,background:C.b1,color:C.b,fontSize:12,fontWeight:800,marginBottom:10}}>
+                <Sparkles size={14}/> Studio Desain Online JS Clothing
+              </div>
+              <h3 style={{fontSize:"clamp(22px, 3.2vw, 29px)",fontWeight:850,letterSpacing:"-.025em",lineHeight:1.2,marginBottom:8}}>
+                Bikin Kaos Custom Sendiri, Kirim Hasilnya ke WhatsApp
+              </h3>
+              <p style={{fontSize:14,color:C.t1,lineHeight:1.6,marginBottom:18,maxWidth:490}}>
+                Bebas pilih warna kain, ketik nama komunitas atau nomor punggung, dan unggah logo Anda. Desain tampak depan &amp; belakang, simpan di koleksi, lalu kirim spesifikasinya langsung ke admin konveksi kami.
+              </p>
+              <div style={{display:"flex",gap:10,flexWrap:"wrap"}}>
+                <button onClick={onOpenCustomizer} className="press" style={{...btnPrimary, background:C.b, color:"#fff"}}>
+                  <Shirt size={17}/> Buka Studio Desain Baju
+                </button>
+              </div>
+            </div>
+
+            <div style={{display:"flex",flexDirection:"column",gap:10,background:C.bg2,padding:18,borderRadius:18,border:`1px solid ${C.bo1}`}}>
+              <div style={{fontSize:13,fontWeight:800,color:C.t0,display:"flex",alignItems:"center",gap:6}}>
+                <ShieldCheck size={16} color={C.g}/> Fitur Studio Desain JS Clothing:
+              </div>
+              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,fontSize:12,color:C.t1}}>
+                <div style={{display:"flex",alignItems:"center",gap:6}}>• Kaos 30s, 24s, Polo, Hoodie</div>
+                <div style={{display:"flex",alignItems:"center",gap:6}}>• 12 Pilihan Warna Kain Distro</div>
+                <div style={{display:"flex",alignItems:"center",gap:6}}>• Bebas Upload Logo Sendiri</div>
+                <div style={{display:"flex",alignItems:"center",gap:6}}>• Preview Depan &amp; Belakang</div>
+                <div style={{display:"flex",alignItems:"center",gap:6}}>• Simpan &amp; Edit Kapan Saja</div>
+                <div style={{display:"flex",alignItems:"center",gap:6}}>• Download Mockup PNG Jernih</div>
+              </div>
+            </div>
+          </div>
+        </section>
+      )}
 
       {/* ── Katalog ── */}
       <section id="katalog" style={{flex:1,maxWidth:1180,width:"100%",margin:"0 auto",padding:"40px 20px 56px"}}>
@@ -2711,6 +2809,8 @@ function AppInner() {
       const hash = window.location.hash.toLowerCase();
       if(s.screen==="landing" || hash==="#landing" || hash==="#katalog"){
         setScreen("landing");
+      } else if(s.screen==="custom-baju" || hash==="#custom-baju" || hash==="#desain-baju"){
+        setScreen("custom-baju");
       } else {
         setScreen(s.screen);
       }
@@ -2728,6 +2828,7 @@ function AppInner() {
   const [screen,setScreen]=useState(()=>{
     const hash = window.location.hash.toLowerCase();
     if(hash==="#login") return "login";
+    if(hash==="#custom-baju"||hash==="#desain-baju"||hash==="#custom") return "custom-baju";
     if(hash==="#katalog"||hash==="#landing"||hash==="") return "landing";
     return "landing";
   });
@@ -2743,6 +2844,8 @@ function AppInner() {
       if(window.location.hash!=="#katalog"&&window.location.hash!=="#landing") window.location.hash="landing";
     } else if(screen==="login") {
       window.location.hash="login";
+    } else if(screen==="custom-baju") {
+      window.location.hash="custom-baju";
     }
   },[screen]);
 
@@ -2751,6 +2854,8 @@ function AppInner() {
       const h=window.location.hash.toLowerCase();
       if(h==="#landing"||h==="#katalog") {
         setScreen("landing");
+      } else if(h==="#custom-baju"||h==="#desain-baju"||h==="#custom") {
+        setScreen("custom-baju");
       } else if(h==="#login") {
         if(!user) {
           setScreen("login");
@@ -3569,6 +3674,22 @@ function AppInner() {
   </div>;
 
   // ─────────────────────────────────────────────────────────────
+  //  STUDIO DESAIN BAJU CUSTOM (JS CLOTHING)
+  // ─────────────────────────────────────────────────────────────
+  if(screen==="custom-baju") return <div style={{fontFamily:F.sans,background:C.bg1,color:C.t0,minHeight:"100dvh",display:"flex",flexDirection:"column"}}>
+    {UpdateBannerEl}
+    <style>{CSS}</style><Toast n={notif}/>
+    <CustomShirtStudio
+      onBack={()=>setScreen("landing")}
+      onGoLanding={()=>setScreen("landing")}
+      waNumber={LANDING.wa || LANDING_WA}
+      C={C}
+      F={F}
+      isDark={isDark}
+    />
+  </div>;
+
+  // ─────────────────────────────────────────────────────────────
   //  LANDING PAGE (Katalog Iklan Produk Publik)
   // ─────────────────────────────────────────────────────────────
   if(screen==="landing") return <div style={{fontFamily:F.sans,background:C.bg1,color:C.t0,minHeight:"100dvh",display:"flex",flexDirection:"column"}}>
@@ -3587,6 +3708,7 @@ function AppInner() {
         }}
         onToggleTheme={toggleTheme}
         isDark={isDark}
+        onOpenCustomizer={()=>setScreen("custom-baju")}
       />
   </div>;
 
@@ -3733,7 +3855,7 @@ function AppInner() {
       <style>{CSS}</style><Toast n={notif}/>
       <Header title="Kasir" user={user} online={online} onLogout={doLogout}
         onAbsenPulang={handlePulang} hasCheckedIn={hasCheckedIn}
-        onToggleTheme={toggleTheme} isDark={isDark} lowStockCount={lowStockCount} onLowStockClick={()=>setShowLowStock(true)} expireCount={nearExpiry.length} expiredCount={expiredProds.length} onExpireClick={()=>setShowExpirePopup(true)} onGoLanding={()=>setScreen("landing")}/>
+        onToggleTheme={toggleTheme} isDark={isDark} lowStockCount={lowStockCount} onLowStockClick={()=>setShowLowStock(true)} expireCount={nearExpiry.length} expiredCount={expiredProds.length} onExpireClick={()=>setShowExpirePopup(true)} onGoLanding={()=>setScreen("landing")} onOpenCustomizer={()=>setScreen("custom-baju")}/>
 
       {/* Invoice */}
       {addonPrompt&&<AddonPrompt
@@ -3923,7 +4045,7 @@ function AppInner() {
       {showExpirePopup&&<ExpirePopup nearExpiry={nearExpiry} expiredProds={expiredProds} onClose={()=>setShowExpirePopup(false)}/>}
       <Header biz={biz} user={user} online={online} onLogout={doLogout}
         onSwitchBiz={user?.access?.length>1?()=>{setStokTarget(null);setIsNewProduct(false);setScreen("bizselect");}:null}
-        onAbsenPulang={handlePulang} hasCheckedIn={hasCheckedIn} onToggleTheme={toggleTheme} isDark={isDark} onLowStockClick={()=>setShowLowStock(true)} expireCount={nearExpiry.length} expiredCount={expiredProds.length} onExpireClick={()=>setShowExpirePopup(true)} onGoLanding={()=>setScreen("landing")}/>
+        onAbsenPulang={handlePulang} hasCheckedIn={hasCheckedIn} onToggleTheme={toggleTheme} isDark={isDark} onLowStockClick={()=>setShowLowStock(true)} expireCount={nearExpiry.length} expiredCount={expiredProds.length} onExpireClick={()=>setShowExpirePopup(true)} onGoLanding={()=>setScreen("landing")} onOpenCustomizer={()=>setScreen("custom-baju")}/>
       <div style={{flex:1,overflowY:"auto",padding:10,display:"flex",flexDirection:"column",gap:10,minHeight:0}}>
         
         {/* Scan / Cari Barcode */}
@@ -4177,7 +4299,7 @@ function AppInner() {
     return <div style={{fontFamily:F.sans,background:C.bg1,color:C.t0,height:"100vh",display:"flex",flexDirection:"column"}}>
       <style>{CSS}</style><Toast n={notif}/>
       {UpdateBannerEl}
-      <Header title="Admin Panel" user={user} online={online} onLogout={doLogout} lowStockCount={lowStockCount} onToggleTheme={toggleTheme} isDark={isDark} onLowStockClick={()=>setShowLowStock(true)} expireCount={nearExpiry.length} expiredCount={expiredProds.length} onExpireClick={()=>setShowExpirePopup(true)} onGoLanding={()=>setScreen("landing")}/>
+      <Header title="Admin Panel" user={user} online={online} onLogout={doLogout} lowStockCount={lowStockCount} onToggleTheme={toggleTheme} isDark={isDark} onLowStockClick={()=>setShowLowStock(true)} expireCount={nearExpiry.length} expiredCount={expiredProds.length} onExpireClick={()=>setShowExpirePopup(true)} onGoLanding={()=>setScreen("landing")} onOpenCustomizer={()=>setScreen("custom-baju")}/>
 
       {/* Change password modal */}
       <ExpenseFormModal open={expenseModal} onClose={()=>setExpenseModal(false)} onSave={saveExpense} access={user.access} user={user}/>
