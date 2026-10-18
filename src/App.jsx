@@ -2222,7 +2222,7 @@ const waHref = (text) => {
 // Foto per produk: pakai p.photo (diisi di form produk), selain itu placeholder.
 const productPhoto = (p) => (p.photo ? driveImg(p.photo, 700) : picPhoto(p.barcode || p.id, 700, 700));
 
-function ProductLandingPage({ prods, cfg, onLogin, onToggleTheme, isDark }) {
+function ProductLandingPage({ prods, cfg, user, onLogin, onToggleTheme, isDark }) {
   const [selectedBiz, setSelectedBiz] = React.useState("ALL");
   const [searchWord, setSearchWord] = React.useState("");
 
@@ -2295,7 +2295,8 @@ function ProductLandingPage({ prods, cfg, onLogin, onToggleTheme, isDark }) {
           <button onClick={onLogin} className="press"
             style={{height:40,padding:"0 17px",borderRadius:12,background:C.pri,color:C.on,fontWeight:700,fontSize:13.5,
               border:"none",display:"inline-flex",alignItems:"center",gap:7,whiteSpace:"nowrap"}}>
-            <Lock size={15}/> Masuk Kasir
+            {user ? <LayoutDashboard size={15}/> : <Lock size={15}/>}
+            {user ? (user.role==="admin"?"Kembali ke Admin":"Kembali ke Kasir") : "Masuk Kasir"}
           </button>
         </div>
       </header>
@@ -2493,7 +2494,10 @@ function ProductLandingPage({ prods, cfg, onLogin, onToggleTheme, isDark }) {
             <a href={waHref("Halo, saya mau pesan produk JE Grup.")} target="_blank" rel="noreferrer" className="press"
               style={{...btnPrimary,background:"var(--ik2)",color:"var(--ik1)"}}><MessageCircle size={17}/> Chat WhatsApp</a>
             <button onClick={onLogin} className="press"
-              style={{...btnGhost,color:"#fff",borderColor:"rgba(255,255,255,.35)"}}><Lock size={16}/> Masuk Kasir</button>
+              style={{...btnGhost,color:"#fff",borderColor:"rgba(255,255,255,.35)"}}>
+              {user ? <LayoutDashboard size={16}/> : <Lock size={16}/>}
+              {user ? (user.role==="admin"?"Kembali ke Admin":"Kembali ke Kasir") : "Masuk Kasir"}
+            </button>
           </div>
         </div>
       </section>
@@ -2514,7 +2518,9 @@ function ProductLandingPage({ prods, cfg, onLogin, onToggleTheme, isDark }) {
             <a href={waHref("Halo, saya mau tanya produk JE Grup.")} target="_blank" rel="noreferrer"
               style={{fontSize:13,fontWeight:600,color:C.t1,textDecoration:"none"}}>Chat WhatsApp</a>
             <button onClick={onLogin} className="press"
-              style={{fontSize:13,fontWeight:700,color:C.pri,background:"transparent",border:"none",padding:0}}>Masuk Kasir</button>
+              style={{fontSize:13,fontWeight:700,color:C.pri,background:"transparent",border:"none",padding:0}}>
+              {user ? (user.role==="admin"?"Kembali ke Admin":"Kembali ke Kasir") : "Masuk Kasir"}
+            </button>
           </div>
         </div>
         <div style={{maxWidth:1180,margin:"20px auto 0",fontSize:12,color:C.t3}}>
@@ -2669,8 +2675,14 @@ function AppInner() {
       const u=users.find(x=>x.id===s.userId&&x.active);
       if(!u){sessionStorage.removeItem("je_session");return;}
       setUser(u);setBiz(s.biz);setSessionStart(s.t);
-      if(s.screen==="admin") setAdminTab("dashboard");
-      setScreen(s.screen);
+      if(s.screen==="admin") setAdminTab(s.adminTab||"dashboard");
+      // Jika refresh dilakukan saat sedang melihat preview landing page, tetap di landing
+      const hash = window.location.hash.toLowerCase();
+      if(s.screen==="landing" || hash==="#landing" || hash==="#katalog"){
+        setScreen("landing");
+      } else {
+        setScreen(s.screen);
+      }
     }catch{sessionStorage.removeItem("je_session");}
   },[fbReady,users]);
 
@@ -2709,7 +2721,11 @@ function AppInner() {
       if(h==="#landing"||h==="#katalog") {
         setScreen("landing");
       } else if(h==="#login") {
-        if(!user) setScreen("login");
+        if(!user) {
+          setScreen("login");
+        } else {
+          setScreen(user.role==="admin"?"admin":(user.role==="kasir"?"kasir":"stok"));
+        }
       }
     };
     window.addEventListener("hashchange", handleHash);
@@ -3530,10 +3546,17 @@ function AppInner() {
       <ProductLandingPage
         prods={prods}
         cfg={landingCfg}
-        onLogin={()=>setScreen("login")}
-      onToggleTheme={toggleTheme}
-      isDark={isDark}
-    />
+        user={user}
+        onLogin={()=>{
+          if(user) {
+            setScreen(user.role==="admin"?"admin":(user.role==="kasir"?"kasir":"stok"));
+          } else {
+            setScreen("login");
+          }
+        }}
+        onToggleTheme={toggleTheme}
+        isDark={isDark}
+      />
   </div>;
 
   // ─────────────────────────────────────────────────────────────
