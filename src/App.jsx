@@ -25,7 +25,7 @@ import {
   Shirt, Sparkles, Home, Printer, RefreshCw, Folder, FileText, Eye, EyeOff, Building2, LayoutDashboard,
   Undo2, Activity, Upload, PanelLeftClose, PanelLeftOpen, ChevronRight, LogOut, Bell, ArrowLeftRight, ArrowLeft, MoreHorizontal, WifiOff, Info,
   QrCode, ChevronLeft, ShoppingBasket, Megaphone, ExternalLink, ShoppingBag,
-  ArrowRight, MessageCircle, ShieldCheck, BadgeCheck,
+  ArrowRight, MessageCircle, ShieldCheck, BadgeCheck, Download,
 } from "lucide-react";
 import CustomShirtStudio from "./CustomShirtStudio.jsx";
 
@@ -2597,7 +2597,7 @@ function ProductLandingPage({ prods, cfg, user, onLogin, onToggleTheme, isDark, 
 // ─────────────────────────────────────────────────────────────
 //  MAIN APP
 // ─────────────────────────────────────────────────────────────
-function AdminSidebar({tabs,active,onSelect,label="Menu admin",storeKey="je_sidew",defaultW=248}) {
+function AdminSidebar({tabs,groups,active,onSelect,label="Menu admin",storeKey="je_sidew",defaultW=244}) {
   const MIN=208,MAX=380,RAIL=68,SNAP=150;
   const [w,setW]=React.useState(()=>{const v=parseInt(localStorage.getItem(storeKey),10);return v>=RAIL&&v<=MAX?v:defaultW;});
   const [drag,setDrag]=React.useState(false);
@@ -2615,29 +2615,78 @@ function AdminSidebar({tabs,active,onSelect,label="Menu admin",storeKey="je_side
     else return;
     e.preventDefault();
   };
-  return <div ref={ref} className="hide-mobile" style={{width:w,flexShrink:0,position:"relative",background:C.bg2,borderRight:`1px solid ${C.bo0}`,
-    transition:drag?"none":"width .18s ease",display:"flex",flexDirection:"column",minHeight:0}}>
-    <nav aria-label={label} style={{flex:1,overflowY:"auto",overflowX:"hidden",padding:rail?"12px 10px":"12px"}}>
-      {tabs.map(t=>{const on=active===t.id;
-        return <button key={t.id} onClick={()=>onSelect(t.id)} title={rail?t.l:undefined} aria-label={rail?t.l:undefined} aria-current={on?"page":undefined} className="press sbtn"
-          style={{display:"flex",alignItems:"center",gap:12,width:"100%",height:44,padding:rail?0:"0 12px",justifyContent:rail?"center":"flex-start",marginBottom:2,
-            border:"none",borderRadius:12,background:on?C.pri1:undefined,color:on?C.pri:C.t1,fontSize:14,fontWeight:on?700:600,whiteSpace:"nowrap"}}>
-          <t.ic size={20} strokeWidth={on?2.2:1.8} style={{flexShrink:0}}/>
-          {!rail&&<span style={{overflow:"hidden",textOverflow:"ellipsis",flex:1}}>{t.l}</span>}
-          {!rail&&t.badge>0&&<span style={{padding:"2px 7px",borderRadius:10,background:C.a,color:"#FFF",fontSize:11,fontWeight:800}}>{t.badge}</span>}
-          {rail&&t.badge>0&&<span style={{position:"absolute",top:8,right:14,width:8,height:8,borderRadius:"50%",background:C.a}}/>}
-        </button>;})}
+
+  const renderedGroups = groups && groups.length > 0 ? groups : [{ id: "default", title: "", items: tabs || [] }];
+
+  return <aside ref={ref} className="hide-mobile" style={{width:w,flexShrink:0,position:"relative",background:C.bg2,borderRight:`1px solid ${C.bo0}`,
+    transition:drag?"none":"width .18s cubic-bezier(0.4, 0, 0.2, 1)",display:"flex",flexDirection:"column",minHeight:0,userSelect:"none"}}>
+    {/* Sidebar Brand Header */}
+    <div style={{padding:rail?"14px 0":"14px 14px 12px",display:"flex",alignItems:"center",justifyContent:rail?"center":"space-between",gap:10,borderBottom:`1px solid ${C.bo0}`,flexShrink:0}}>
+      <div style={{display:"flex",alignItems:"center",gap:10,minWidth:0}}>
+        <div style={{width:32,height:32,borderRadius:10,background:`linear-gradient(135deg, ${C.pri}, #4B5ECA)`,color:"#FFF",display:"grid",placeItems:"center",fontWeight:900,fontSize:13,letterSpacing:"-.02em",flexShrink:0,boxShadow:"0 2px 6px rgba(47,60,148,0.25)"}}>
+          JE
+        </div>
+        {!rail && (
+          <div style={{minWidth:0}}>
+            <div style={{fontSize:13,fontWeight:800,color:C.t0,letterSpacing:"-.01em",lineHeight:1.2,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>
+              JE GRUP
+            </div>
+            <div style={{display:"flex",alignItems:"center",gap:5,marginTop:2}}>
+              <span style={{width:6,height:6,borderRadius:"50%",background:C.g}}/>
+              <span style={{fontSize:10.5,fontWeight:700,color:C.t2,textTransform:"uppercase",letterSpacing:"0.03em"}}>
+                Admin Panel
+              </span>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+
+    {/* Nav List with Group Sections */}
+    <nav aria-label={label} style={{flex:1,overflowY:"auto",overflowX:"hidden",padding:rail?"10px 8px":"10px 10px 14px",display:"flex",flexDirection:"column",gap:2}}>
+      {renderedGroups.map((g, gIdx) => (
+        <div key={g.id || gIdx} style={{marginTop:gIdx===0?2:12}}>
+          {g.title ? (
+            !rail ? (
+              <div style={{padding:"4px 8px 6px",fontSize:10.5,fontWeight:800,letterSpacing:"0.06em",textTransform:"uppercase",color:C.t3}}>
+                {g.title}
+              </div>
+            ) : (
+              gIdx > 0 && <div style={{height:1,background:C.bo0,margin:"6px 4px 8px"}}/>
+            )
+          ) : null}
+
+          <div style={{display:"flex",flexDirection:"column",gap:2}}>
+            {g.items.map(t=>{const on=active===t.id;
+              return <button key={t.id} onClick={()=>onSelect(t.id)} title={rail?t.l:undefined} aria-label={rail?t.l:undefined} aria-current={on?"page":undefined} className="press sbtn"
+                style={{position:"relative",display:"flex",alignItems:"center",gap:11,width:"100%",height:38,padding:rail?0:"0 10px",justifyContent:rail?"center":"flex-start",
+                  borderRadius:10,border:on?`1px solid ${C.pri}33`:"1px solid transparent",background:on?C.pri1:undefined,color:on?C.pri:C.t1,fontSize:13,fontWeight:on?700:500,whiteSpace:"nowrap",transition:"all .14s ease"}}>
+                {/* Active indicator bar */}
+                {on && !rail && (
+                  <span style={{position:"absolute",left:0,top:"50%",transform:"translateY(-50%)",width:3.5,height:18,borderRadius:"0 4px 4px 0",background:C.pri}}/>
+                )}
+                <t.ic size={18} strokeWidth={on?2.3:1.8} color={on?C.pri:C.t2} style={{flexShrink:0}}/>
+                {!rail&&<span style={{overflow:"hidden",textOverflow:"ellipsis",flex:1,textAlign:"left"}}>{t.l}</span>}
+                {!rail&&t.badge>0&&<span style={{padding:"2px 7px",borderRadius:12,background:C.a,color:"#FFF",fontSize:11,fontWeight:800,lineHeight:1.2,boxShadow:"0 1px 3px rgba(168,95,0,0.3)"}}>{t.badge}</span>}
+                {rail&&t.badge>0&&<span style={{position:"absolute",top:6,right:12,width:8,height:8,borderRadius:"50%",background:C.a,border:`2px solid ${C.bg2}`}}/>}
+              </button>;})}
+          </div>
+        </div>
+      ))}
     </nav>
-    <div style={{padding:rail?"10px":"10px 12px",borderTop:`1px solid ${C.bo0}`}}>
+
+    {/* Collapse Footer */}
+    <div style={{padding:rail?"8px":"8px 10px",borderTop:`1px solid ${C.bo0}`,flexShrink:0}}>
       <button onClick={()=>commit(rail?defaultW:RAIL)} className="press sbtn" aria-label={rail?"Perluas menu":"Ciutkan menu"} title={rail?"Perluas menu":undefined}
-        style={{display:"flex",alignItems:"center",gap:12,width:"100%",height:40,padding:rail?0:"0 12px",justifyContent:rail?"center":"flex-start",border:"none",borderRadius:10,background:undefined,color:C.t2,fontSize:13,fontWeight:600}}>
-        {rail?<PanelLeftOpen size={19}/>:<><PanelLeftClose size={19}/>Ciutkan menu</>}
+        style={{display:"flex",alignItems:"center",gap:10,width:"100%",height:36,padding:rail?0:"0 10px",justifyContent:rail?"center":"flex-start",border:"none",borderRadius:8,color:C.t2,fontSize:12.5,fontWeight:600}}>
+        {rail?<PanelLeftOpen size={18}/>:<><PanelLeftClose size={18}/><span>Ciutkan menu</span></>}
       </button>
     </div>
+
     <div role="separator" aria-orientation="vertical" aria-label="Ubah lebar menu" aria-valuenow={w} aria-valuemin={RAIL} aria-valuemax={MAX} tabIndex={0}
       onPointerDown={down} onPointerMove={move} onPointerUp={up} onPointerCancel={up} onKeyDown={key} onDoubleClick={()=>commit(rail?defaultW:RAIL)}
       className={`sresize${drag?" on":""}`}/>
-  </div>;
+  </aside>;
 }
 
 function AppInner() {
@@ -4221,13 +4270,52 @@ function AppInner() {
   if(screen==="admin") {
     const IS={width:"100%",padding:"11px 13px",background:C.bg3,border:`1.5px solid ${C.bo0}`,borderRadius:10,color:C.t0,fontSize:13,fontFamily:F.mono,transition:"border-color .15s"};
     const newCustomOrdersCount = (customOrders||[]).filter(o => o && (o.status || "Baru") === "Baru").length;
-    const TABS=[
-      {id:"dashboard",l:"Dashboard",ic:LayoutDashboard},{id:"users",l:"Pengguna",ic:Users},{id:"products",l:"Produk",ic:Package},
-      {id:"laporan",l:"Laporan",ic:Wallet},{id:"labarugi",l:"Laba Rugi",ic:TrendingUp},{id:"operasional",l:"Operasional",ic:ShoppingBasket},{id:"absensi",l:"Absensi",ic:Clock},{id:"stoklog",l:"Log Stok",ic:ClipboardList},
-      {id:"returns",l:"Retur",ic:Undo2},{id:"actlog",l:"Aktivitas",ic:Activity},{id:"opname",l:"Opname",ic:ClipboardCheck},
-      {id:"customorders",l:"Pesanan Baju",ic:Shirt,badge:newCustomOrdersCount},
-      {id:"landing",l:"Landing Page",ic:Megaphone},
+    const ADMIN_TAB_GROUPS = [
+      {
+        id: "overview",
+        title: "Utama",
+        items: [
+          { id: "dashboard", l: "Dashboard", ic: LayoutDashboard },
+        ],
+      },
+      {
+        id: "sales",
+        title: "Pesanan & Katalog",
+        items: [
+          { id: "customorders", l: "Pesanan Baju", ic: Shirt, badge: newCustomOrdersCount },
+          { id: "products", l: "Produk", ic: Package },
+          { id: "landing", l: "Landing Page", ic: Megaphone },
+        ],
+      },
+      {
+        id: "inventory",
+        title: "Inventaris & Stok",
+        items: [
+          { id: "opname", l: "Stock Opname", ic: ClipboardCheck },
+          { id: "stoklog", l: "Log Stok", ic: ClipboardList },
+          { id: "returns", l: "Retur", ic: Undo2 },
+        ],
+      },
+      {
+        id: "finance",
+        title: "Keuangan",
+        items: [
+          { id: "laporan", l: "Laporan Penjualan", ic: Wallet },
+          { id: "labarugi", l: "Laba Rugi", ic: TrendingUp },
+          { id: "operasional", l: "Operasional", ic: ShoppingBasket },
+        ],
+      },
+      {
+        id: "system",
+        title: "Manajemen & Tim",
+        items: [
+          { id: "absensi", l: "Absensi", ic: Clock },
+          { id: "users", l: "Pengguna", ic: Users },
+          { id: "actlog", l: "Aktivitas", ic: Activity },
+        ],
+      },
     ];
+    const TABS = ADMIN_TAB_GROUPS.flatMap(g => g.items);
     const BNAV_TABS=[
       {id:"dashboard",ic:LayoutDashboard,label:"Dashboard"},
       {id:"products",ic:Package,label:"Produk"},
@@ -4427,21 +4515,42 @@ function AppInner() {
             <span style={{fontSize:12,fontWeight:800,color:C.t1,letterSpacing:0,textTransform:"none"}}>Menu Lainnya</span>
             <button onClick={()=>setShowMoreDrawer(false)} style={{background:"transparent",border:"none",color:C.t2,fontSize:18,cursor:"pointer",padding:"2px 6px",lineHeight:1}}><Ico e="✕"/></button>
           </div>
-          <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:10,padding:"12px 16px 6px"}}>
-            {MORE_TABS.map(t=>{const isAct=adminTab===t.id;
-              return <button key={t.id} onClick={()=>{setAdminTab(t.id);setSearchQ("");setPModal(false);setShowMoreDrawer(false);setEditPid(null);setInlineAddMode(false);}} className="press ripple-wrap"
-                style={{padding:"16px 6px 12px",background:isAct?C.pri1:C.bg3,border:`1.5px solid ${isAct?C.pri:C.bo0}`,borderRadius:16,
-                  display:"flex",flexDirection:"column",alignItems:"center",gap:5,cursor:"pointer",position:"relative",
-                  transition:"all .15s"}}>
-                <t.ic size={24} strokeWidth={1.8} color={isAct?C.pri:C.t1}/>
-                <span style={{fontSize:12.5,fontWeight:700,color:isAct?C.pri:C.t1,textAlign:"center",lineHeight:1.3}}>{t.label}</span>
-                
-              </button>;})}          </div>
+          <div style={{display:"flex",flexDirection:"column",gap:12,padding:"10px 16px 14px",maxHeight:"70vh",overflowY:"auto"}}>
+            {ADMIN_TAB_GROUPS.map(g=>{
+              const items = g.items.filter(t => !BNAV_TABS.some(b => b.id === t.id));
+              if(!items.length) return null;
+              return (
+                <div key={g.id}>
+                  <div style={{fontSize:11,fontWeight:800,letterSpacing:"0.05em",textTransform:"uppercase",color:C.t3,marginBottom:6,paddingLeft:2}}>
+                    {g.title}
+                  </div>
+                  <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:8}}>
+                    {items.map(t=>{
+                      const isAct = adminTab === t.id;
+                      return (
+                        <button key={t.id} onClick={()=>{setAdminTab(t.id);setSearchQ("");setPModal(false);setShowMoreDrawer(false);setEditPid(null);setInlineAddMode(false);}} className="press ripple-wrap"
+                          style={{padding:"14px 6px 10px",background:isAct?C.pri1:C.bg3,border:`1.5px solid ${isAct?C.pri:C.bo0}`,borderRadius:14,
+                            display:"flex",flexDirection:"column",alignItems:"center",gap:5,cursor:"pointer",position:"relative",transition:"all .15s"}}>
+                          {t.badge > 0 && (
+                            <span style={{position:"absolute",top:6,right:8,padding:"2px 6px",borderRadius:10,background:C.a,color:"#FFF",fontSize:10.5,fontWeight:800,lineHeight:1}}>
+                              {t.badge}
+                            </span>
+                          )}
+                          <t.ic size={22} strokeWidth={isAct?2.2:1.8} color={isAct?C.pri:C.t1}/>
+                          <span style={{fontSize:12,fontWeight:isAct?700:600,color:isAct?C.pri:C.t1,textAlign:"center",lineHeight:1.2}}>{t.l}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
         </div>
       </div>}
 
       <div className="admin-body">
-      <AdminSidebar tabs={TABS} active={adminTab} onSelect={id=>{setAdminTab(id);setSearchQ("");setPModal(false);setShowMoreDrawer(false);setEditPid(null);setInlineAddMode(false);}}/>
+      <AdminSidebar groups={ADMIN_TAB_GROUPS} tabs={TABS} active={adminTab} onSelect={id=>{setAdminTab(id);setSearchQ("");setPModal(false);setShowMoreDrawer(false);setEditPid(null);setInlineAddMode(false);}}/>
       <div className="admin-content">
 
 
