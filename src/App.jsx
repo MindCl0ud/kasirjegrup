@@ -1407,6 +1407,270 @@ function LowStockPopup({prods,onClose}) {
   </Modal>;
 }
 
+function LowStockDashboardCard({ prods, className = "dash-half" }) {
+  const [page, setPage] = React.useState(1);
+  const [perPage, setPerPage] = React.useState(5);
+  const [search, setSearch] = React.useState("");
+  const [filterBiz, setFilterBiz] = React.useState("ALL");
+  const [filterStatus, setFilterStatus] = React.useState("ALL"); // ALL, HABIS, MENIPIS
+
+  const allLow = (prods || []).filter(p => p && p.stock < 10);
+  const totalHabis = allLow.filter(p => p.stock === 0).length;
+  const totalMenipis = allLow.length - totalHabis;
+
+  const filtered = allLow
+    .filter(p => filterBiz === "ALL" || p.business === filterBiz)
+    .filter(p => filterStatus === "ALL" ? true : filterStatus === "HABIS" ? p.stock === 0 : p.stock > 0)
+    .filter(p => !search.trim() || (p.name || "").toLowerCase().includes(search.toLowerCase()) || (p.barcode || "").toLowerCase().includes(search.toLowerCase()))
+    .sort((a, b) => a.stock - b.stock);
+
+  const totalPages = Math.max(1, Math.ceil(filtered.length / perPage));
+  const curPage = Math.min(Math.max(1, page), totalPages);
+  const paginated = filtered.slice((curPage - 1) * perPage, curPage * perPage);
+
+  const getPageNumbers = () => {
+    const pages = [];
+    if (totalPages <= 5) {
+      for (let i = 1; i <= totalPages; i++) pages.push(i);
+    } else {
+      if (curPage <= 3) {
+        pages.push(1, 2, 3, 4, "...", totalPages);
+      } else if (curPage >= totalPages - 2) {
+        pages.push(1, "...", totalPages - 3, totalPages - 2, totalPages - 1, totalPages);
+      } else {
+        pages.push(1, "...", curPage - 1, curPage, curPage + 1, "...", totalPages);
+      }
+    }
+    return pages;
+  };
+
+  if (allLow.length === 0) {
+    return (
+      <Card className={className} accent={C.g}>
+        <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 0" }}>
+          <span style={{ width: 34, height: 34, borderRadius: 10, background: C.g1, color: C.g, display: "grid", placeItems: "center", flexShrink: 0 }}>
+            <Check size={18} strokeWidth={2.2} />
+          </span>
+          <div>
+            <div style={{ fontSize: 13.5, fontWeight: 800, color: C.t0 }}>Semua Stok Aman</div>
+            <div style={{ fontSize: 11.5, color: C.t2, marginTop: 1 }}>Tidak ada produk dengan stok di bawah 10 pcs.</div>
+          </div>
+        </div>
+      </Card>
+    );
+  }
+
+  return (
+    <Card accent={C.r} className={className}>
+      {/* Header */}
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 12, gap: 8, flexWrap: "wrap" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <span style={{ width: 32, height: 32, borderRadius: 10, background: C.r1, color: C.r, display: "grid", placeItems: "center", flexShrink: 0 }}>
+            <AlertTriangle size={18} />
+          </span>
+          <div>
+            <div style={{ fontSize: 13.5, fontWeight: 800, color: C.t0, display: "flex", alignItems: "center", gap: 6 }}>
+              <span>Stok Menipis</span>
+              <span style={{ padding: "2px 7px", borderRadius: 10, background: C.r1, color: C.r, fontSize: 11, fontWeight: 800 }}>
+                {allLow.length}
+              </span>
+            </div>
+            <div style={{ fontSize: 11, color: C.t2, marginTop: 1 }}>
+              {totalHabis} produk habis • {totalMenipis} butuh restock
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Search & Filter Bar */}
+      <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 10 }}>
+        <Inp
+          placeholder="Cari nama atau barcode produk..."
+          value={search}
+          onChange={e => { setSearch(e.target.value); setPage(1); }}
+          icon={<Search size={15} />}
+          style={{ minHeight: 36, fontSize: 12.5, padding: "6px 10px 6px 34px" }}
+        />
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
+          {/* Status filters */}
+          <div style={{ display: "flex", gap: 5, flexWrap: "wrap" }}>
+            {[
+              ["ALL", `Semua (${allLow.length})`, C.pri],
+              ["HABIS", `Habis (${totalHabis})`, C.r],
+              ["MENIPIS", `Menipis (${totalMenipis})`, C.a],
+            ].map(([key, label, col]) => (
+              <button
+                key={key}
+                type="button"
+                onClick={() => { setFilterStatus(key); setPage(1); }}
+                className="press"
+                style={{
+                  padding: "3px 9px",
+                  borderRadius: 20,
+                  border: `1px solid ${filterStatus === key ? col : C.bo1}`,
+                  background: filterStatus === key ? `${col}1F` : "transparent",
+                  color: filterStatus === key ? col : C.t2,
+                  fontSize: 11.5,
+                  fontWeight: 700,
+                  cursor: "pointer",
+                }}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+
+          {/* Toko filters */}
+          <div style={{ display: "flex", gap: 3 }}>
+            {["ALL", "JS_CLOTHING", "JB_STORE"].map(b => (
+              <button
+                key={b}
+                type="button"
+                onClick={() => { setFilterBiz(b); setPage(1); }}
+                className="press"
+                style={{
+                  padding: "3px 7px",
+                  borderRadius: 6,
+                  border: `1px solid ${filterBiz === b ? C.pri : C.bo0}`,
+                  background: filterBiz === b ? C.pri1 : "transparent",
+                  color: filterBiz === b ? C.pri : C.t3,
+                  fontSize: 10.5,
+                  fontWeight: 700,
+                  cursor: "pointer",
+                }}
+              >
+                {b === "ALL" ? "Semua" : BIZ[b]?.name}
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* Product List */}
+      {filtered.length === 0 ? (
+        <div style={{ padding: "18px 10px", textAlign: "center", color: C.t2, fontSize: 12.5 }}>
+          Tidak ada produk yang cocok dengan pencarian / filter.
+        </div>
+      ) : (
+        <div style={{ display: "flex", flexDirection: "column" }}>
+          {paginated.map((p, i) => (
+            <div
+              key={p.id}
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 10,
+                padding: "8px 0",
+                borderTop: i > 0 ? `1px solid ${C.bo0}` : undefined,
+              }}
+            >
+              <span
+                style={{
+                  width: 34,
+                  height: 34,
+                  borderRadius: 10,
+                  flexShrink: 0,
+                  display: "grid",
+                  placeItems: "center",
+                  background: p.stock === 0 ? C.r1 : C.a1,
+                  color: p.stock === 0 ? C.r : C.a,
+                }}
+              >
+                {p.stock === 0 ? <Ban size={16} /> : <Package size={16} />}
+              </span>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontWeight: 700, fontSize: 13, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", color: C.t0 }}>
+                  {p.name}
+                </div>
+                <div style={{ display: "flex", gap: 6, marginTop: 2, flexWrap: "wrap", alignItems: "center" }}>
+                  <span className="mn" style={{ fontSize: 11, color: C.t2 }}>{p.barcode}</span>
+                  <BizChip biz={p.business} sm />
+                  <span className="mn" style={{ fontSize: 11, color: C.g, fontWeight: 700 }}>{rp(p.price)}</span>
+                </div>
+              </div>
+              <div style={{ textAlign: "right", flexShrink: 0 }}>
+                <div className="mn" style={{ fontSize: 18, fontWeight: 900, color: p.stock === 0 ? C.r : C.a, lineHeight: 1 }}>
+                  {p.stock}
+                </div>
+                <div style={{ fontSize: 10, fontWeight: 700, color: p.stock === 0 ? C.r : C.t2, marginTop: 1, textTransform: "uppercase" }}>
+                  {p.stock === 0 ? "habis" : "tersisa"}
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Footer with Per-Page & Pagination */}
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8, flexWrap: "wrap", paddingTop: 10, marginTop: 4, borderTop: `1px solid ${C.bo0}`, fontSize: 11.5, color: C.t2 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+          <span>Tampilkan</span>
+          <select
+            value={perPage}
+            onChange={e => { setPerPage(Number(e.target.value)); setPage(1); }}
+            style={{ padding: "3px 6px", borderRadius: 6, background: C.bg3, border: `1px solid ${C.bo1}`, color: C.t0, fontSize: 11.5, fontWeight: 700, fontFamily: F.sans }}
+          >
+            {[5, 10, 20].map(n => <option key={n} value={n}>{n} baris</option>)}
+          </select>
+          {filtered.length > 0 && (
+            <span className="mn">({(curPage - 1) * perPage + 1}–{Math.min(curPage * perPage, filtered.length)} dari {filtered.length})</span>
+          )}
+        </div>
+
+        {totalPages > 1 && (
+          <div style={{ display: "flex", alignItems: "center", gap: 3 }}>
+            <button
+              type="button"
+              className="press"
+              disabled={curPage <= 1}
+              onClick={() => setPage(p => Math.max(1, p - 1))}
+              style={{ minHeight: 28, padding: "0 7px", borderRadius: 6, border: `1px solid ${C.bo1}`, background: curPage <= 1 ? C.bg3 : "transparent", color: curPage <= 1 ? C.t3 : C.t0, fontSize: 11, fontWeight: 700, display: "inline-flex", alignItems: "center", gap: 2, cursor: curPage <= 1 ? "default" : "pointer" }}
+            >
+              <ChevronLeft size={12} /> Prev
+            </button>
+            {getPageNumbers().map((num, idx) => (
+              num === "..." ? (
+                <span key={`dots-${idx}`} style={{ padding: "0 2px", color: C.t3, fontSize: 11 }}>…</span>
+              ) : (
+                <button
+                  key={num}
+                  type="button"
+                  onClick={() => setPage(num)}
+                  className="press"
+                  style={{
+                    minWidth: 26,
+                    height: 26,
+                    borderRadius: 6,
+                    border: `1px solid ${curPage === num ? C.pri : C.bo1}`,
+                    background: curPage === num ? C.pri : "transparent",
+                    color: curPage === num ? C.on : C.t0,
+                    fontSize: 11.5,
+                    fontWeight: 700,
+                    display: "grid",
+                    placeItems: "center",
+                    cursor: "pointer",
+                  }}
+                >
+                  {num}
+                </button>
+              )
+            ))}
+            <button
+              type="button"
+              className="press"
+              disabled={curPage >= totalPages}
+              onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+              style={{ minHeight: 28, padding: "0 7px", borderRadius: 6, border: `1px solid ${C.bo1}`, background: curPage >= totalPages ? C.bg3 : "transparent", color: curPage >= totalPages ? C.t3 : C.t0, fontSize: 11, fontWeight: 700, display: "inline-flex", alignItems: "center", gap: 2, cursor: curPage >= totalPages ? "default" : "pointer" }}
+            >
+              Next <ChevronRight size={12} />
+            </button>
+          </div>
+        )}
+      </div>
+    </Card>
+  );
+}
+
 
 // ─────────────────────────────────────────────────────────────
 //  ADDON PROMPT MODAL
@@ -4684,54 +4948,7 @@ function AppInner() {
               </div>;})}
           </Card>}
           {/* Stok menipis */}
-          {lowStockCount>0&&(()=>{
-            const dList = prods.filter(p=>p.stock<10).sort((a,b)=>a.stock-b.stock);
-            const dPerPage = lowStockPer===0 ? Math.max(1,dList.length) : lowStockPer;
-            const dTotalPages = Math.max(1, Math.ceil(dList.length / dPerPage));
-            const dCurPage = Math.min(lowStockPage, dTotalPages);
-            const dPaginated = dList.slice((dCurPage - 1) * dPerPage, dCurPage * dPerPage);
-            return <Card accent={C.r} className="dash-half">
-              <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
-                <div style={{fontSize:12,fontWeight:700,color:C.r,textTransform:"none",letterSpacing:0}}>
-                  <Ico e="⚠"/> Stok Menipis ({lowStockCount})
-                </div>
-                {dTotalPages > 1 && (
-                  <div style={{display:"flex",alignItems:"center",gap:4}}>
-                    <button className="press" disabled={dCurPage <= 1} onClick={()=>setLowStockPage(p=>Math.max(1, p-1))}
-                      style={{padding:"2px 6px",borderRadius:6,border:`1px solid ${C.bo1}`,background:dCurPage<=1?C.bg3:"transparent",color:dCurPage<=1?C.t3:C.t0,fontSize:11,fontWeight:700,display:"inline-flex",alignItems:"center"}}>
-                      <ChevronLeft size={13}/>
-                    </button>
-                    <span className="mn" style={{fontSize:11,fontWeight:700,color:C.t2,padding:"0 2px"}}>
-                      {dCurPage}/{dTotalPages}
-                    </span>
-                    <button className="press" disabled={dCurPage >= dTotalPages} onClick={()=>setLowStockPage(p=>Math.min(dTotalPages, p+1))}
-                      style={{padding:"2px 6px",borderRadius:6,border:`1px solid ${C.bo1}`,background:dCurPage>=dTotalPages?C.bg3:"transparent",color:dCurPage>=dTotalPages?C.t3:C.t0,fontSize:11,fontWeight:700,display:"inline-flex",alignItems:"center"}}>
-                      <ChevronRight size={13}/>
-                    </button>
-                  </div>
-                )}
-              </div>
-              {dPaginated.map(p=><div key={p.id} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"6px 0",borderTop:`1px solid ${C.bo0}`,fontSize:12.5}}>
-                <span style={{fontWeight:600,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",marginRight:8}}>{p.name}</span>
-                <div style={{display:"flex",gap:8,alignItems:"center",flexShrink:0}}><BizChip biz={p.business} sm/><StockBadge s={p.stock}/></div>
-              </div>)}
-              <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:8,flexWrap:"wrap",paddingTop:10,marginTop:4,borderTop:`1px solid ${C.bo0}`,fontSize:12,color:C.t2}}>
-                <label style={{display:"flex",alignItems:"center",gap:6}}>
-                  Tampilkan
-                  <select value={lowStockPer} onChange={e=>{const v=Number(e.target.value);setLowStockPer(v);setLowStockPage(1);localStorage.setItem("je_lowstock_per",String(v));}}
-                    style={{padding:"4px 8px",borderRadius:8,background:C.bg3,border:`1.5px solid ${C.bo1}`,color:C.t0,fontSize:12,fontWeight:700,fontFamily:F.sans}}>
-                    {[5,10,20,50].map(n=><option key={n} value={n}>{n}</option>)}
-                    <option value={0}>Semua</option>
-                  </select>
-                  <span className="mn">{(dCurPage-1)*dPerPage+1}–{Math.min(dCurPage*dPerPage,dList.length)} dari {dList.length}</span>
-                </label>
-                <button onClick={()=>setShowLowStock(true)} className="press"
-                  style={{padding:"5px 10px",borderRadius:8,border:`1px solid ${C.r}55`,background:C.r1,color:C.r,fontSize:12,fontWeight:700,display:"inline-flex",alignItems:"center",gap:4}}>
-                  Lihat semua <ChevronRight size={13}/>
-                </button>
-              </div>
-            </Card>;
-          })()}
+          <LowStockDashboardCard prods={prods}/>
           {/* Today attendance */}
           <Card className="dash-half">
             <div style={{fontSize:12,fontWeight:700,color:C.t2,textTransform:"none",letterSpacing:0,marginBottom:10}}><Ico e="🕐"/> Kehadiran Hari Ini</div>
