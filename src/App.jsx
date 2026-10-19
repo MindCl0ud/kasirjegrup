@@ -149,10 +149,10 @@ const makeCSS = () => `
   :root{color-scheme:${isDarkTheme()?"dark":"light"};--safe-t:env(safe-area-inset-top,0px);--safe-b:env(safe-area-inset-bottom,0px);
     --ik1:#232C75;--ik2:#E9E1CC;--ik3:#A33A2D;}
   *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
-  html{height:100%;-webkit-tap-highlight-color:transparent;-webkit-text-size-adjust:100%;}
+  html{height:100%;-webkit-tap-highlight-color:transparent;-webkit-text-size-adjust:100%;overflow-x:hidden;max-width:100vw;width:100%;}
   body{font-family:${F.sans};background:${C.bg1};color:${C.t0};height:100%;-webkit-font-smoothing:antialiased;
-    overscroll-behavior:none;font-feature-settings:"tnum" 1;}
-  #root{height:100%;display:flex;flex-direction:column;}
+    overscroll-behavior:none;font-feature-settings:"tnum" 1;overflow-x:hidden;max-width:100vw;width:100%;}
+  #root{height:100%;display:flex;flex-direction:column;overflow-x:hidden;max-width:100vw;width:100%;}
   input,button,select,textarea{font-family:inherit;}
   button{-webkit-tap-highlight-color:transparent;cursor:pointer;}
   button:disabled{cursor:not-allowed;}
@@ -187,18 +187,20 @@ const makeCSS = () => `
   .atab:hover:not(.on){color:${C.t0};background:${C.bg3};}
 
   @media(max-width:640px){.hide-mobile{display:none!important;}
+    html,body,#root{overflow-x:hidden!important;max-width:100vw!important;width:100%!important;}
+    .admin-content,.admin-body,.dash,.mobile-card-list{max-width:100%!important;overflow-x:hidden!important;box-sizing:border-box!important;}
     input:not([type=checkbox]):not([type=radio]),select,textarea{font-size:16px!important;}
     .stat-grid-4,.stat-grid-3{grid-template-columns:repeat(2,1fr)!important;}}
   @media(min-width:641px){.hide-desktop{display:none!important;}
     .stat-grid-4{grid-template-columns:repeat(4,1fr)!important;}
     .stat-grid-3{grid-template-columns:repeat(3,1fr)!important;}}
-  .mobile-card-list{display:flex;flex-direction:column;gap:10px;}
-  .admin-content{flex:1;overflow-y:auto;padding:12px;padding-bottom:calc(88px + var(--safe-b));min-height:0;}
+  .mobile-card-list{display:flex;flex-direction:column;gap:10px;width:100%;max-width:100%;box-sizing:border-box;}
+  .admin-content{flex:1;overflow-y:auto;overflow-x:hidden;padding:12px;padding-bottom:calc(88px + var(--safe-b));min-height:0;min-width:0;max-width:100%;box-sizing:border-box;}
   @media(min-width:641px){.admin-content{padding:20px;padding-bottom:calc(24px + var(--safe-b));}}
 
   /* ── Navigasi bawah ── */
   .bnav{position:fixed;bottom:0;left:0;right:0;background:${C.bg2};border-top:1px solid ${C.bo0};
-    display:flex;z-index:300;padding:6px 6px calc(6px + var(--safe-b));gap:2px;align-items:stretch;}
+    display:flex;z-index:300;padding:6px 6px calc(6px + var(--safe-b));gap:2px;align-items:stretch;max-width:100vw;box-sizing:border-box;}
   @media(min-width:641px){.bnav{display:none;}}
   .bnavbtn{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;border:none;background:transparent;
     padding:2px 0;min-width:0;color:${C.t2};transition:color .15s;}
@@ -213,19 +215,19 @@ const makeCSS = () => `
   .drawer-overlay,.sheet-wrap{position:fixed;inset:0;background:rgba(12,16,46,.55);z-index:400;animation:fadeIn .16s ease;}
   .sheet-wrap{display:flex;align-items:flex-end;justify-content:center;z-index:450;}
   .drawer,.sheet{background:${C.bg2};border-radius:22px 22px 0 0;animation:slideUp .24s cubic-bezier(.2,.9,.3,1);box-shadow:${C.sh2};}
-  .drawer{position:fixed;bottom:0;left:0;right:0;z-index:401;padding:0 0 calc(18px + var(--safe-b));}
-  .sheet{width:100%;max-width:440px;max-height:88vh;overflow-y:auto;padding:8px 16px calc(18px + var(--safe-b));}
+  .drawer{position:fixed;bottom:0;left:0;right:0;z-index:401;padding:0 0 calc(18px + var(--safe-b));max-width:100vw;box-sizing:border-box;}
+  .sheet{width:100%;max-width:440px;max-height:88vh;overflow-y:auto;padding:8px 16px calc(18px + var(--safe-b));box-sizing:border-box;}
   .grabber{width:38px;height:4px;border-radius:2px;background:${C.bo2};margin:6px auto 12px;}
   @media(min-width:641px){.sheet-wrap{align-items:center;}.sheet{border-radius:20px;}}
   .srow{display:flex;align-items:center;gap:12px;width:100%;padding:12px 10px;border:none;background:transparent;border-radius:12px;
-    text-align:left;color:${C.t0};font-size:14.5px;font-weight:600;min-height:48px;}
+    text-align:left;color:${C.t0};font-size:14.5px;font-weight:600;min-height:48px;box-sizing:border-box;}
   .srow:hover{background:${C.bg3};}
   .srow .sic{width:34px;height:34px;border-radius:10px;display:grid;place-items:center;flex-shrink:0;background:${C.bg3};color:${C.t1};}
   .hbtn{position:relative;width:40px;height:40px;border-radius:12px;border:none;background:transparent;color:${C.t1};display:grid;place-items:center;}
   .hbtn:hover{background:${C.bg3};}
 
-  .admin-body{flex:1;display:flex;min-height:0;min-width:0;}
-  .admin-content{min-width:0;}
+  .admin-body{flex:1;display:flex;min-height:0;min-width:0;max-width:100%;overflow-x:hidden;}
+  .admin-content{min-width:0;max-width:100%;overflow-x:hidden;}
   .sbtn{background:transparent;}
   .sbtn:not([aria-current]):hover{background:${C.bg3};}
   .sresize{position:absolute;top:0;bottom:0;right:-5px;width:10px;cursor:col-resize;z-index:5;touch-action:none;}
@@ -314,16 +316,16 @@ const makeCSS = () => `
     background:${C.bg2};border:1px solid ${C.bo1};border-radius:18px;padding:9px 10px 9px 12px;box-shadow:${C.sh2};}
 
   /* ── Kartu & chip ── */
-  .mcard{background:${C.bg2};border-radius:16px;border:1px solid ${C.bo0};padding:14px 15px;box-shadow:${C.sh};transition:transform .12s,background .1s;}
+  .mcard{background:${C.bg2};border-radius:16px;border:1px solid ${C.bo0};padding:14px 15px;box-shadow:${C.sh};transition:transform .12s,background .1s;max-width:100%;box-sizing:border-box;}
   .mcard:active{transform:scale(.985);background:${C.bg3};}
-  .mcard-glass{background:${C.bg2};border-radius:16px;border:1px solid ${C.bo1};padding:14px 15px;}
+  .mcard-glass{background:${C.bg2};border-radius:16px;border:1px solid ${C.bo1};padding:14px 15px;max-width:100%;box-sizing:border-box;}
   .chip{display:inline-flex;align-items:center;gap:6px;padding:9px 15px;border-radius:50px;font-size:13px;font-weight:600;
     border:1.5px solid ${C.bo1};background:transparent;color:${C.t1};font-family:inherit;transition:all .15s;min-height:38px;}
   .chip:active{transform:scale(.96);}
   .chip.on{background:${C.pri1};border-color:${C.pri};color:${C.pri};font-weight:700;}
   .stat-mobile{border-radius:16px;padding:14px;position:relative;overflow:hidden;display:flex;flex-direction:column;gap:6px;
-    border:1px solid ${C.bo0};background:${C.bg2};box-shadow:${C.sh};}
-  .stat-mobile .stat-val{font-size:20px;font-weight:800;font-variant-numeric:tabular-nums;line-height:1;}
+    border:1px solid ${C.bo0};background:${C.bg2};box-shadow:${C.sh};min-width:0;box-sizing:border-box;}
+  .stat-mobile .stat-val{font-size:20px;font-weight:800;font-variant-numeric:tabular-nums;line-height:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
   .stat-mobile .stat-lbl{font-size:12px;font-weight:600;color:${C.t2};}
   .stat-mobile .stat-ico{position:absolute;right:12px;top:12px;width:34px;height:34px;border-radius:10px;display:grid;place-items:center;}
   .ripple-wrap{position:relative;overflow:hidden;}
@@ -459,7 +461,7 @@ function Inp({value,onChange,type="text",placeholder,disabled,mono,onKeyDown,fre
 function Card({children,style:s={},onClick,accent,noPad,className}) {
   return <div className={className} onClick={onClick} style={{background:C.bg2,borderRadius:16,
     border:`1px solid ${accent?accent+"55":C.bo0}`,padding:noPad?0:"16px",
-    boxShadow:C.sh,cursor:onClick?"pointer":undefined,...s}}>
+    boxShadow:C.sh,cursor:onClick?"pointer":undefined,maxWidth:"100%",boxSizing:"border-box",...s}}>
     {children}</div>;
 }
 function EmptyState({icon,title,hint,pad=36}) {
@@ -551,6 +553,7 @@ function TableWrap({children,maxH="58vh",compact}) {
     return()=>{window.removeEventListener("resize",measure);ro?.disconnect();};
   },[compact]);
   return <div ref={ref} style={{overflowX:"auto",overflowY:"auto",WebkitOverflowScrolling:"touch",position:"relative",
+    width:"100%",maxWidth:"100%",boxSizing:"border-box",
     ...(compact?{maxHeight:maxH}:{height:h||undefined,maxHeight:h?undefined:maxH})}}>
     {children}</div>;
 }
@@ -625,7 +628,7 @@ function Header({title,biz,user,onLogout,onSwitchBiz,onAbsenPulang,hasCheckedIn,
     <header style={{background:C.bg2,borderBottom:`1px solid ${C.bo0}`,padding:"0 12px 0 14px",
       minHeight:"calc(58px + env(safe-area-inset-top, 0px))",paddingTop:"env(safe-area-inset-top, 0px)",
       display:"flex",alignItems:"center",justifyContent:"space-between",position:"sticky",top:0,zIndex:200,flexShrink:0,gap:10,
-      backdropFilter:"blur(16px)",WebkitBackdropFilter:"blur(16px)"}}>
+      backdropFilter:"blur(16px)",WebkitBackdropFilter:"blur(16px)",maxWidth:"100vw",width:"100%",boxSizing:"border-box"}}>
       <div style={{display:"flex",alignItems:"center",gap:10,minWidth:0}}>
         <BrandMark size={34}/>
         {b ? (canSwitch
@@ -1429,16 +1432,29 @@ function LowStockDashboardCard({ prods, className = "dash-half" }) {
   const paginated = filtered.slice((curPage - 1) * perPage, curPage * perPage);
 
   const getPageNumbers = () => {
+    const isMob = typeof window !== "undefined" && window.innerWidth <= 640;
     const pages = [];
-    if (totalPages <= 5) {
-      for (let i = 1; i <= totalPages; i++) pages.push(i);
-    } else {
-      if (curPage <= 3) {
-        pages.push(1, 2, 3, 4, "...", totalPages);
-      } else if (curPage >= totalPages - 2) {
-        pages.push(1, "...", totalPages - 3, totalPages - 2, totalPages - 1, totalPages);
+    if (isMob) {
+      if (totalPages <= 3) {
+        for (let i = 1; i <= totalPages; i++) pages.push(i);
+      } else if (curPage <= 2) {
+        pages.push(1, 2, "...", totalPages);
+      } else if (curPage >= totalPages - 1) {
+        pages.push(1, "...", totalPages - 1, totalPages);
       } else {
-        pages.push(1, "...", curPage - 1, curPage, curPage + 1, "...", totalPages);
+        pages.push(1, "...", curPage, "...", totalPages);
+      }
+    } else {
+      if (totalPages <= 5) {
+        for (let i = 1; i <= totalPages; i++) pages.push(i);
+      } else {
+        if (curPage <= 3) {
+          pages.push(1, 2, 3, 4, "...", totalPages);
+        } else if (curPage >= totalPages - 2) {
+          pages.push(1, "...", totalPages - 3, totalPages - 2, totalPages - 1, totalPages);
+        } else {
+          pages.push(1, "...", curPage - 1, curPage, curPage + 1, "...", totalPages);
+        }
       }
     }
     return pages;
@@ -1493,7 +1509,7 @@ function LowStockDashboardCard({ prods, className = "dash-half" }) {
         />
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
           {/* Status filters */}
-          <div style={{ display: "flex", gap: 5, flexWrap: "wrap" }}>
+          <div style={{ display: "flex", gap: 5, flexWrap: "wrap", maxWidth: "100%" }}>
             {[
               ["ALL", `Semua (${allLow.length})`, C.pri],
               ["HABIS", `Habis (${totalHabis})`, C.r],
@@ -1521,7 +1537,7 @@ function LowStockDashboardCard({ prods, className = "dash-half" }) {
           </div>
 
           {/* Toko filters */}
-          <div style={{ display: "flex", gap: 3 }}>
+          <div style={{ display: "flex", gap: 3, flexWrap: "wrap", maxWidth: "100%" }}>
             {["ALL", "JS_CLOTHING", "JB_STORE"].map(b => (
               <button
                 key={b}
@@ -1552,7 +1568,7 @@ function LowStockDashboardCard({ prods, className = "dash-half" }) {
           Tidak ada produk yang cocok dengan pencarian / filter.
         </div>
       ) : (
-        <div style={{ display: "flex", flexDirection: "column" }}>
+        <div style={{ display: "flex", flexDirection: "column", maxWidth: "100%" }}>
           {paginated.map((p, i) => (
             <div
               key={p.id}
@@ -1562,6 +1578,8 @@ function LowStockDashboardCard({ prods, className = "dash-half" }) {
                 gap: 10,
                 padding: "8px 0",
                 borderTop: i > 0 ? `1px solid ${C.bo0}` : undefined,
+                maxWidth: "100%",
+                overflow: "hidden",
               }}
             >
               <span
@@ -1578,7 +1596,7 @@ function LowStockDashboardCard({ prods, className = "dash-half" }) {
               >
                 {p.stock === 0 ? <Ban size={16} /> : <Package size={16} />}
               </span>
-              <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ flex: 1, minWidth: 0, overflow: "hidden" }}>
                 <div style={{ fontWeight: 700, fontSize: 13, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", color: C.t0 }}>
                   {p.name}
                 </div>
@@ -1602,8 +1620,8 @@ function LowStockDashboardCard({ prods, className = "dash-half" }) {
       )}
 
       {/* Footer with Per-Page & Pagination */}
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8, flexWrap: "wrap", paddingTop: 10, marginTop: 4, borderTop: `1px solid ${C.bo0}`, fontSize: 11.5, color: C.t2 }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8, flexWrap: "wrap", paddingTop: 10, marginTop: 4, borderTop: `1px solid ${C.bo0}`, fontSize: 11.5, color: C.t2, maxWidth: "100%" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap", maxWidth: "100%" }}>
           <span>Tampilkan</span>
           <select
             value={perPage}
@@ -1618,7 +1636,7 @@ function LowStockDashboardCard({ prods, className = "dash-half" }) {
         </div>
 
         {totalPages > 1 && (
-          <div style={{ display: "flex", alignItems: "center", gap: 3 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 3, flexWrap: "wrap", justifyContent: "center", maxWidth: "100%" }}>
             <button
               type="button"
               className="press"
@@ -1684,16 +1702,29 @@ function TablePagination({
   const curPage = Math.min(Math.max(1, page), totalPages);
 
   const getPageNumbers = () => {
+    const isMob = typeof window !== "undefined" && window.innerWidth <= 640;
     const pages = [];
-    if (totalPages <= 5) {
-      for (let i = 1; i <= totalPages; i++) pages.push(i);
-    } else {
-      if (curPage <= 3) {
-        pages.push(1, 2, 3, 4, "...", totalPages);
-      } else if (curPage >= totalPages - 2) {
-        pages.push(1, "...", totalPages - 3, totalPages - 2, totalPages - 1, totalPages);
+    if (isMob) {
+      if (totalPages <= 3) {
+        for (let i = 1; i <= totalPages; i++) pages.push(i);
+      } else if (curPage <= 2) {
+        pages.push(1, 2, "...", totalPages);
+      } else if (curPage >= totalPages - 1) {
+        pages.push(1, "...", totalPages - 1, totalPages);
       } else {
-        pages.push(1, "...", curPage - 1, curPage, curPage + 1, "...", totalPages);
+        pages.push(1, "...", curPage, "...", totalPages);
+      }
+    } else {
+      if (totalPages <= 5) {
+        for (let i = 1; i <= totalPages; i++) pages.push(i);
+      } else {
+        if (curPage <= 3) {
+          pages.push(1, 2, 3, 4, "...", totalPages);
+        } else if (curPage >= totalPages - 2) {
+          pages.push(1, "...", totalPages - 3, totalPages - 2, totalPages - 1, totalPages);
+        } else {
+          pages.push(1, "...", curPage - 1, curPage, curPage + 1, "...", totalPages);
+        }
       }
     }
     return pages;
@@ -1707,16 +1738,18 @@ function TablePagination({
         alignItems: "center",
         gap: 8,
         flexWrap: "wrap",
-        padding: "10px 14px",
+        padding: "8px 12px",
         borderTop: `1px solid ${C.bo0}`,
         fontSize: 12,
         color: C.t2,
         background: C.bg2,
         borderRadius: "0 0 16px 16px",
+        maxWidth: "100%",
+        boxSizing: "border-box",
         ...style,
       }}
     >
-      <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap", maxWidth: "100%" }}>
         <span>Tampilkan</span>
         <select
           value={perPage}
@@ -1750,20 +1783,20 @@ function TablePagination({
       </div>
 
       {totalPages > 1 && (
-        <div style={{ display: "flex", justifyContent: "center", alignItems: "center", gap: 4, flexWrap: "wrap" }}>
+        <div style={{ display: "flex", justifyContent: "center", alignItems: "center", gap: 4, flexWrap: "wrap", maxWidth: "100%" }}>
           <button
             type="button"
             className="press"
             disabled={curPage <= 1}
             onClick={() => onPageChange && onPageChange(Math.max(1, curPage - 1))}
             style={{
-              minHeight: 30,
-              padding: "0 9px",
+              minHeight: 28,
+              padding: "0 8px",
               borderRadius: 8,
               border: `1px solid ${C.bo1}`,
               background: curPage <= 1 ? C.bg3 : "transparent",
               color: curPage <= 1 ? C.t3 : C.t0,
-              fontSize: 12,
+              fontSize: 11.5,
               fontWeight: 700,
               display: "inline-flex",
               alignItems: "center",
@@ -1775,7 +1808,7 @@ function TablePagination({
           </button>
           {getPageNumbers().map((num, idx) =>
             num === "..." ? (
-              <span key={`dots-${idx}`} style={{ padding: "0 4px", color: C.t3, fontSize: 12 }}>
+              <span key={`dots-${idx}`} style={{ padding: "0 3px", color: C.t3, fontSize: 11 }}>
                 …
               </span>
             ) : (
@@ -1785,13 +1818,13 @@ function TablePagination({
                 onClick={() => onPageChange && onPageChange(num)}
                 className="press"
                 style={{
-                  minWidth: 30,
-                  height: 30,
+                  minWidth: 26,
+                  height: 26,
                   borderRadius: 8,
                   border: `1.5px solid ${curPage === num ? C.pri : C.bo1}`,
                   background: curPage === num ? C.pri : "transparent",
                   color: curPage === num ? C.on : C.t0,
-                  fontSize: 12,
+                  fontSize: 11.5,
                   fontWeight: 700,
                   display: "grid",
                   placeItems: "center",
@@ -1808,13 +1841,13 @@ function TablePagination({
             disabled={curPage >= totalPages}
             onClick={() => onPageChange && onPageChange(Math.min(totalPages, curPage + 1))}
             style={{
-              minHeight: 30,
-              padding: "0 9px",
+              minHeight: 28,
+              padding: "0 8px",
               borderRadius: 8,
               border: `1px solid ${C.bo1}`,
               background: curPage >= totalPages ? C.bg3 : "transparent",
               color: curPage >= totalPages ? C.t3 : C.t0,
-              fontSize: 12,
+              fontSize: 11.5,
               fontWeight: 700,
               display: "inline-flex",
               alignItems: "center",
@@ -4355,7 +4388,7 @@ function AppInner() {
       </div>);
     const qrisMissing=payMethod==="QRIS"&&!qrisReady?qrisBiz.filter(x=>!getQris(x)).map(x=>BIZ[x]?.name).join(", "):"";
 
-    return <div style={{fontFamily:F.sans,background:C.bg1,color:C.t0,height:"100vh",display:"flex",flexDirection:"column"}}>
+    return <div style={{fontFamily:F.sans,background:C.bg1,color:C.t0,height:"100vh",display:"flex",flexDirection:"column",overflowX:"hidden",maxWidth:"100vw",width:"100%"}}>
       <style>{CSS}</style><Toast n={notif}/>
       <Header title="Kasir" user={user} online={online} onLogout={doLogout}
         onAbsenPulang={handlePulang} hasCheckedIn={hasCheckedIn}
@@ -4555,7 +4588,7 @@ function AppInner() {
     }
     const bc=biz==="JS_CLOTHING"?C.b:C.p;
     const filtered=bizProds().filter(p=>!stokSearch||p.name.toLowerCase().includes(stokSearch.toLowerCase())||p.barcode.includes(stokSearch));
-    return <div style={{fontFamily:F.sans,background:C.bg1,color:C.t0,height:"100vh",display:"flex",flexDirection:"column"}}>
+    return <div style={{fontFamily:F.sans,background:C.bg1,color:C.t0,height:"100vh",display:"flex",flexDirection:"column",overflowX:"hidden",maxWidth:"100vw",width:"100%"}}>
       <style>{CSS}</style><Toast n={notif}/>
       {showOpnamePanel&&opnameOverlay(()=>setShowOpnamePanel(false))}
       {UpdateBannerEl}
@@ -4871,7 +4904,7 @@ function AppInner() {
     const adminPs=prods.filter(p=>p.business===adminBiz&&(!searchQ||p.name.toLowerCase().includes(searchQ.toLowerCase())||p.barcode.includes(searchQ))&&(filterAdvertised?p.advertised:true));
     const paginatedAdminPs=adminPs.slice((prodPage - 1) * prodPerPage, prodPage * prodPerPage);
 
-    return <div style={{fontFamily:F.sans,background:C.bg1,color:C.t0,height:"100vh",display:"flex",flexDirection:"column"}}>
+    return <div style={{fontFamily:F.sans,background:C.bg1,color:C.t0,height:"100vh",display:"flex",flexDirection:"column",overflowX:"hidden",maxWidth:"100vw",width:"100%"}}>
       <style>{CSS}</style><Toast n={notif}/>
       {UpdateBannerEl}
       <Header title="JE GRUP" user={user} online={online} onLogout={doLogout} lowStockCount={lowStockCount} onToggleTheme={toggleTheme} isDark={isDark} onLowStockClick={()=>setShowLowStock(true)} expireCount={nearExpiry.length} expiredCount={expiredProds.length} onExpireClick={()=>setShowExpirePopup(true)} onGoLanding={()=>setScreen("landing")} onOpenCustomizer={()=>setScreen("custom-baju")}/>
