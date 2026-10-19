@@ -25,7 +25,7 @@ import {
   Shirt, Sparkles, Home, Printer, RefreshCw, Folder, FileText, Eye, EyeOff, Building2, LayoutDashboard,
   Undo2, Activity, Upload, PanelLeftClose, PanelLeftOpen, ChevronRight, LogOut, Bell, ArrowLeftRight, ArrowLeft, MoreHorizontal, WifiOff, Info,
   QrCode, ChevronLeft, ShoppingBasket, Megaphone, ExternalLink, ShoppingBag,
-  ArrowRight, MessageCircle, ShieldCheck, BadgeCheck, Download,
+  ArrowRight, MessageCircle, ShieldCheck, BadgeCheck, Download, LayoutGrid, List,
 } from "lucide-react";
 import CustomShirtStudio from "./CustomShirtStudio.jsx";
 
@@ -3511,6 +3511,7 @@ function AppInner() {
   const [userSearch, setUserSearch] = useState("");
   const [userRoleFilter, setUserRoleFilter] = useState("ALL");
   const [userStatusFilter, setUserStatusFilter] = useState("ALL");
+  const [userViewMode, setUserViewMode] = useState("cards"); // "cards" | "table"
   const [prodPage, setProdPage] = useState(1);
   const [prodPerPage, setProdPerPage] = useState(20);
   const [lapPage, setLapPage] = useState(1);
@@ -5271,7 +5272,58 @@ function AppInner() {
                     Kelola hak akses cabang, peran operasional, kata sandi, dan biometrik wajah pegawai.
                   </div>
                 </div>
-                <Btn onClick={openAddU} size="sm">+ Tambah Pengguna</Btn>
+
+                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                  {/* View Mode Toggle */}
+                  <div style={{ display: "inline-flex", background: C.bg3, padding: 3, borderRadius: 10, border: `1px solid ${C.bo0}` }}>
+                    <button
+                      type="button"
+                      onClick={() => setUserViewMode("cards")}
+                      className="press"
+                      title="Tampilan Kartu"
+                      style={{
+                        padding: "5px 10px",
+                        borderRadius: 7,
+                        border: "none",
+                        background: userViewMode === "cards" ? C.bg2 : "transparent",
+                        color: userViewMode === "cards" ? C.pri : C.t2,
+                        boxShadow: userViewMode === "cards" ? "0 1px 3px rgba(0,0,0,0.08)" : "none",
+                        fontSize: 11.5,
+                        fontWeight: 750,
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 5,
+                        cursor: "pointer",
+                      }}
+                    >
+                      <LayoutGrid size={14} /> <span className="hide-mobile">Kartu</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setUserViewMode("table")}
+                      className="press"
+                      title="Tampilan Tabel"
+                      style={{
+                        padding: "5px 10px",
+                        borderRadius: 7,
+                        border: "none",
+                        background: userViewMode === "table" ? C.bg2 : "transparent",
+                        color: userViewMode === "table" ? C.pri : C.t2,
+                        boxShadow: userViewMode === "table" ? "0 1px 3px rgba(0,0,0,0.08)" : "none",
+                        fontSize: 11.5,
+                        fontWeight: 750,
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 5,
+                        cursor: "pointer",
+                      }}
+                    >
+                      <List size={14} /> <span className="hide-mobile">Tabel</span>
+                    </button>
+                  </div>
+
+                  <Btn onClick={openAddU} size="sm">+ Tambah Pengguna</Btn>
+                </div>
               </div>
 
               {/* Quick Summary Strip */}
@@ -5383,7 +5435,7 @@ function AppInner() {
                 </div>
               </Card>
 
-              {/* Users Card Grid (Unified Desktop & Mobile) */}
+              {/* Users Display (Cards or Table) */}
               {filteredUsers.length === 0 ? (
                 <Card style={{ padding: "40px 20px" }}>
                   <EmptyState
@@ -5392,178 +5444,341 @@ function AppInner() {
                     hint={q || userRoleFilter !== "ALL" || userStatusFilter !== "ALL" ? "Coba ganti filter peran, status, atau kata kunci pencarian Anda." : "Belum ada data pengguna yang terdaftar."}
                   />
                 </Card>
+              ) : userViewMode === "table" ? (
+                <Card noPad style={{ overflow: "hidden", borderRadius: 14 }}>
+                  <TableWrap>
+                    <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12, minWidth: 650 }}>
+                      <THead cols={["Pengguna", "Peran", "Akses Cabang", "Presensi Wajah", "Status", "Aksi"]} />
+                      <tbody>
+                        {paginatedUsers.map((u, i) => (
+                          <tr key={u.id} className="hrow" style={{ borderTop: `1px solid ${C.bo0}`, background: i % 2 === 0 ? "transparent" : C.bg0 }}>
+                            <td style={{ padding: "12px 14px" }}>
+                              <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                                <Avatar
+                                  name={u.name}
+                                  size={34}
+                                  style={{
+                                    borderRadius: "50%",
+                                    background: (u.role === "admin" ? C.vi : u.role === "kasir" ? C.cy : C.a) + "1F",
+                                    color: u.role === "admin" ? C.vi : u.role === "kasir" ? C.cy : C.a,
+                                  }}
+                                />
+                                <div>
+                                  <div style={{ fontWeight: 700, color: C.t0 }}>{u.name}</div>
+                                  <div className="mn" style={{ fontSize: 11, color: C.t2 }}>@{u.username}</div>
+                                </div>
+                              </div>
+                            </td>
+                            <td style={{ padding: "12px 14px" }}><RoleTag role={u.role} /></td>
+                            <td style={{ padding: "12px 14px" }}>
+                              <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
+                                {u.access && u.access.length > 0 ? (
+                                  u.access.map(a => <BizChip key={a} biz={a} sm />)
+                                ) : (
+                                  <span style={{ fontSize: 11, color: C.t3, fontStyle: "italic" }}>-</span>
+                                )}
+                              </div>
+                            </td>
+                            <td style={{ padding: "12px 14px" }}>
+                              {u.role === "admin" ? (
+                                <span style={{ fontSize: 11, color: C.t3, fontWeight: 600 }}>Bebas Absen</span>
+                              ) : u.faceDescriptor ? (
+                                <span style={{ fontSize: 10.5, color: C.g, fontWeight: 750, display: "inline-flex", alignItems: "center", gap: 4 }}>
+                                  <CheckCircle2 size={12} /> Terdaftar
+                                </span>
+                              ) : (
+                                <button
+                                  type="button"
+                                  onClick={() => setFaceReg(u.id)}
+                                  className="press"
+                                  style={{ padding: "3px 9px", background: C.pri1, border: `1px solid ${C.pri}33`, borderRadius: 6, color: C.pri, fontSize: 10.5, fontWeight: 750, cursor: "pointer" }}
+                                >
+                                  + Daftarkan
+                                </button>
+                              )}
+                            </td>
+                            <td style={{ padding: "12px 14px" }}>
+                              <span style={{ padding: "2px 8px", borderRadius: 20, fontSize: 10, fontWeight: 700, background: u.active ? C.g1 : C.r1, color: u.active ? C.g : C.r }}>
+                                {u.active ? "Aktif" : "Off"}
+                              </span>
+                            </td>
+                            <td style={{ padding: "12px 14px", whiteSpace: "nowrap" }}>
+                              <div style={{ display: "flex", alignItems: "center", gap: 5 }}>
+                                <button
+                                  type="button"
+                                  onClick={() => openEditU(u)}
+                                  className="press"
+                                  style={{ padding: "4px 9px", background: "transparent", border: `1px solid ${C.bo1}`, borderRadius: 6, color: C.t0, fontSize: 11, fontWeight: 650, cursor: "pointer" }}
+                                >
+                                  Edit
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => { setCpwdModal(u.id); setCpwdForm({ old: "", n1: "", n2: "" }); }}
+                                  className="press"
+                                  title="Ganti Password"
+                                  style={{ padding: "4px 8px", background: C.bg3, border: `1px solid ${C.bo1}`, borderRadius: 6, color: C.t1, fontSize: 11, cursor: "pointer" }}
+                                >
+                                  <KeyRound size={12} />
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    if (window.confirm(`Hapus pengguna "${u.name}" (@${u.username})?`)) {
+                                      delUser(u);
+                                    }
+                                  }}
+                                  className="press"
+                                  title="Hapus"
+                                  style={{ padding: "4px 8px", background: "transparent", border: `1px solid transparent`, borderRadius: 6, color: C.r, fontSize: 11, cursor: "pointer" }}
+                                >
+                                  <Trash2 size={12} />
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </TableWrap>
+                </Card>
               ) : (
-                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(310px, 1fr))", gap: 12 }}>
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(310px, 1fr))", gap: 14 }}>
                   {paginatedUsers.map((u, _idx) => {
-                    const roleBorder = u.role === "admin" ? C.vi : u.role === "kasir" ? C.cy : C.a;
+                    const roleColor = u.role === "admin" ? C.vi : u.role === "kasir" ? C.cy : C.a;
                     return (
                       <div
                         key={u.id}
                         className="card-in"
                         style={{
                           background: C.bg2,
-                          borderRadius: 18,
-                          border: `1.5px solid ${u.active ? C.bo0 : C.r + "44"}`,
+                          borderRadius: 16,
+                          border: `1.5px solid ${u.active ? C.bo0 : C.r + "33"}`,
                           padding: "16px",
                           display: "flex",
                           flexDirection: "column",
-                          gap: 12,
+                          gap: 13,
                           boxShadow: C.sh,
                           position: "relative",
                           transition: "transform .18s ease, border-color .18s ease, box-shadow .18s ease",
-                          animationDelay: `${_idx * 0.03}s`,
+                          animationDelay: `${_idx * 0.02}s`,
                         }}
                       >
-                        {/* Top: Avatar, Name, Username, Status */}
-                        <div style={{ display: "flex", alignItems: "flex-start", gap: 12 }}>
-                          {/* Avatar with Role Ring */}
+                        {/* Header: Avatar, Name, Role, Status & Delete */}
+                        <div style={{ display: "flex", alignItems: "flex-start", gap: 11 }}>
                           <div style={{ position: "relative", flexShrink: 0 }}>
-                            <div
+                            <Avatar
+                              name={u.name}
+                              size={44}
                               style={{
-                                padding: 2,
                                 borderRadius: "50%",
-                                border: `2px solid ${roleBorder}88`,
-                                display: "grid",
-                                placeItems: "center",
+                                fontSize: 16,
+                                fontWeight: 800,
+                                background: roleColor + "1F",
+                                color: roleColor,
+                                border: `1.5px solid ${roleColor}44`,
                               }}
-                            >
-                              <Avatar name={u.name} size={46} />
-                            </div>
+                            />
                             <span
                               title={u.active ? "Akun Aktif" : "Akun Nonaktif"}
                               style={{
                                 position: "absolute",
                                 bottom: 0,
                                 right: 0,
-                                width: 13,
-                                height: 13,
+                                width: 11,
+                                height: 11,
                                 borderRadius: "50%",
                                 background: u.active ? C.g : C.r,
                                 border: `2px solid ${C.bg2}`,
-                                boxShadow: u.active ? `0 0 6px ${C.g}` : undefined,
+                                boxShadow: u.active ? `0 0 4px ${C.g}` : undefined,
                               }}
                             />
                           </div>
 
-                          {/* Name & Username */}
                           <div style={{ flex: 1, minWidth: 0 }}>
-                            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 6 }}>
-                              <div
-                                style={{
-                                  fontSize: 15,
-                                  fontWeight: 800,
-                                  color: C.t0,
-                                  overflow: "hidden",
-                                  textOverflow: "ellipsis",
-                                  whiteSpace: "nowrap",
-                                  lineHeight: 1.25,
-                                }}
-                              >
-                                {u.name}
-                              </div>
-                              <span className="mn" style={{ fontSize: 10, fontWeight: 700, color: C.t3, background: C.bg3, padding: "1px 6px", borderRadius: 6, flexShrink: 0 }}>
-                                #{u.id}
-                              </span>
+                            <div
+                              style={{
+                                fontSize: 15,
+                                fontWeight: 750,
+                                color: C.t0,
+                                overflow: "hidden",
+                                textOverflow: "ellipsis",
+                                whiteSpace: "nowrap",
+                                lineHeight: 1.25,
+                              }}
+                            >
+                              {u.name}
                             </div>
-
-                            <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 3 }}>
-                              <span className="mn" style={{ fontSize: 12, color: C.t2, fontWeight: 600 }}>
+                            <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 4 }}>
+                              <span className="mn" style={{ fontSize: 11.5, color: C.t2, fontWeight: 600 }}>
                                 @{u.username}
                               </span>
                               <RoleTag role={u.role} />
                             </div>
                           </div>
+
+                          <div style={{ display: "flex", alignItems: "center", gap: 4, flexShrink: 0 }}>
+                            <span
+                              style={{
+                                display: "inline-flex",
+                                alignItems: "center",
+                                gap: 4,
+                                fontSize: 10,
+                                fontWeight: 700,
+                                padding: "3px 8px",
+                                borderRadius: 20,
+                                background: u.active ? C.g1 : C.r1,
+                                color: u.active ? C.g : C.r,
+                                border: `1px solid ${u.active ? C.g + "33" : C.r + "33"}`,
+                              }}
+                            >
+                              <span style={{ width: 5, height: 5, borderRadius: "50%", background: u.active ? C.g : C.r }} />
+                              {u.active ? "Aktif" : "Off"}
+                            </span>
+
+                            <button
+                              type="button"
+                              onClick={() => {
+                                if (window.confirm(`Hapus pengguna "${u.name}" (@${u.username})?`)) {
+                                  delUser(u);
+                                }
+                              }}
+                              className="press"
+                              title={`Hapus ${u.name}`}
+                              style={{
+                                width: 28,
+                                height: 28,
+                                borderRadius: 8,
+                                background: "transparent",
+                                border: "1px solid transparent",
+                                color: C.t3,
+                                display: "grid",
+                                placeItems: "center",
+                                cursor: "pointer",
+                                transition: "all .15s",
+                              }}
+                              onMouseEnter={e => {
+                                e.currentTarget.style.background = C.r1;
+                                e.currentTarget.style.color = C.r;
+                                e.currentTarget.style.borderColor = C.r + "33";
+                              }}
+                              onMouseLeave={e => {
+                                e.currentTarget.style.background = "transparent";
+                                e.currentTarget.style.color = C.t3;
+                                e.currentTarget.style.borderColor = "transparent";
+                              }}
+                            >
+                              <Trash2 size={13} />
+                            </button>
+                          </div>
                         </div>
 
-                        {/* Middle Info: Akses Bisnis & Biometrik Wajah */}
-                        <div style={{ display: "flex", flexDirection: "column", gap: 8, background: C.bg3, padding: "10px 12px", borderRadius: 12 }}>
-                          {/* Akses Bisnis */}
+                        {/* Middle Info: Cabang & Biometrik Wajah */}
+                        <div style={{ display: "flex", flexDirection: "column", gap: 9 }}>
+                          {/* Akses Cabang */}
                           <div>
-                            <div style={{ fontSize: 10.5, fontWeight: 700, color: C.t3, textTransform: "uppercase", letterSpacing: "0.04em", marginBottom: 4 }}>
-                              Akses Bisnis
+                            <div style={{ fontSize: 10, fontWeight: 700, color: C.t3, textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 5, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                              <span>Akses Cabang</span>
+                              <span style={{ fontSize: 10.5, fontWeight: 600, color: C.t2 }}>
+                                {u.access?.length || 0} Toko
+                              </span>
                             </div>
-                            <div style={{ display: "flex", gap: 4, flexWrap: "wrap", alignItems: "center" }}>
+                            <div style={{ display: "flex", gap: 5, flexWrap: "wrap", alignItems: "center", minHeight: 22 }}>
                               {u.access && u.access.length > 0 ? (
                                 u.access.map(a => <BizChip key={a} biz={a} sm />)
                               ) : (
-                                <span style={{ fontSize: 11, color: C.t3, fontStyle: "italic" }}>Tidak ada akses</span>
+                                <span style={{ fontSize: 11, color: C.t3, fontStyle: "italic" }}>Tidak ada akses cabang</span>
                               )}
                             </div>
                           </div>
 
-                          {/* Face Biometric Status */}
-                          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 6, paddingTop: 6, borderTop: `1px solid ${C.bo0}` }}>
-                            <span style={{ fontSize: 11, fontWeight: 600, color: C.t2 }}>Presensi Wajah:</span>
+                          {/* Presensi Wajah Status Row */}
+                          <div
+                            style={{
+                              display: "flex",
+                              alignItems: "center",
+                              justifyContent: "space-between",
+                              padding: "7px 10px",
+                              borderRadius: 10,
+                              background: C.bg3,
+                              border: `1px solid ${C.bo0}`,
+                            }}
+                          >
+                            <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 11.5, fontWeight: 600, color: C.t2 }}>
+                              <ScanLine size={13} color={C.t3} />
+                              <span>Presensi Wajah</span>
+                            </div>
                             {u.role === "admin" ? (
-                              <span style={{ fontSize: 10.5, color: C.t3, fontWeight: 700, display: "inline-flex", alignItems: "center", gap: 4 }}>
+                              <span style={{ fontSize: 10.5, color: C.t3, fontWeight: 600, display: "inline-flex", alignItems: "center", gap: 4 }}>
                                 <ShieldCheck size={12} /> Bebas Absen
                               </span>
                             ) : u.faceDescriptor ? (
-                              <span style={{ fontSize: 10.5, fontWeight: 800, color: C.g, background: C.g1, padding: "2px 8px", borderRadius: 20, display: "inline-flex", alignItems: "center", gap: 4 }}>
-                                <CheckCircle2 size={12} /> Terdaftar
+                              <span style={{ fontSize: 10.5, fontWeight: 750, color: C.g, background: C.g1, padding: "2px 7px", borderRadius: 12, border: `1px solid ${C.g}33`, display: "inline-flex", alignItems: "center", gap: 4 }}>
+                                <CheckCircle2 size={11} /> Terdaftar
                               </span>
                             ) : (
-                              <span style={{ fontSize: 10.5, fontWeight: 800, color: C.a, background: C.a1, padding: "2px 8px", borderRadius: 20, display: "inline-flex", alignItems: "center", gap: 4 }}>
-                                <AlertTriangle size={12} /> Belum Terdaftar
+                              <span style={{ fontSize: 10.5, fontWeight: 750, color: C.a, background: C.a1, padding: "2px 7px", borderRadius: 12, border: `1px solid ${C.a}33`, display: "inline-flex", alignItems: "center", gap: 4 }}>
+                                <AlertTriangle size={11} /> Belum Ada
                               </span>
                             )}
                           </div>
                         </div>
 
                         {/* Action Buttons */}
-                        <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginTop: "auto", paddingTop: 4 }}>
-                          {/* Edit */}
-                          <button
-                            type="button"
-                            onClick={() => openEditU(u)}
-                            className="press"
-                            style={{
-                              flex: 1,
-                              minWidth: 70,
-                              padding: "8px 10px",
-                              background: "transparent",
-                              border: `1.5px solid ${C.bo1}`,
-                              borderRadius: 10,
-                              color: C.t0,
-                              fontSize: 12,
-                              fontWeight: 700,
-                              fontFamily: F.sans,
-                              display: "inline-flex",
-                              alignItems: "center",
-                              justifyContent: "center",
-                              gap: 5,
-                              cursor: "pointer",
-                            }}
-                          >
-                            <Pencil size={13} /> Edit
-                          </button>
+                        <div style={{ display: "flex", flexDirection: "column", gap: 7, marginTop: "auto", paddingTop: 4 }}>
+                          {/* Row 1: Edit & Password (50/50 Grid) */}
+                          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 7 }}>
+                            <button
+                              type="button"
+                              onClick={() => openEditU(u)}
+                              className="press"
+                              style={{
+                                padding: "8px 10px",
+                                background: C.bg2,
+                                border: `1px solid ${C.bo1}`,
+                                borderRadius: 9,
+                                color: C.t0,
+                                fontSize: 12,
+                                fontWeight: 650,
+                                fontFamily: F.sans,
+                                display: "inline-flex",
+                                alignItems: "center",
+                                justifyContent: "center",
+                                gap: 6,
+                                cursor: "pointer",
+                                transition: "all .15s",
+                              }}
+                            >
+                              <Pencil size={12} color={C.t2} /> Edit
+                            </button>
 
-                          {/* Password */}
-                          <button
-                            type="button"
-                            onClick={() => { setCpwdModal(u.id); setCpwdForm({ old: "", n1: "", n2: "" }); }}
-                            className="press"
-                            title="Ganti Password"
-                            style={{
-                              padding: "8px 10px",
-                              background: C.a1,
-                              border: `1.5px solid ${C.a}33`,
-                              borderRadius: 10,
-                              color: C.a,
-                              fontSize: 12,
-                              fontWeight: 700,
-                              fontFamily: F.sans,
-                              display: "inline-flex",
-                              alignItems: "center",
-                              justifyContent: "center",
-                              gap: 5,
-                              cursor: "pointer",
-                            }}
-                          >
-                            <KeyRound size={13} /> Password
-                          </button>
+                            <button
+                              type="button"
+                              onClick={() => { setCpwdModal(u.id); setCpwdForm({ old: "", n1: "", n2: "" }); }}
+                              className="press"
+                              title="Ganti Password"
+                              style={{
+                                padding: "8px 10px",
+                                background: C.bg2,
+                                border: `1px solid ${C.bo1}`,
+                                borderRadius: 9,
+                                color: C.t0,
+                                fontSize: 12,
+                                fontWeight: 650,
+                                fontFamily: F.sans,
+                                display: "inline-flex",
+                                alignItems: "center",
+                                justifyContent: "center",
+                                gap: 6,
+                                cursor: "pointer",
+                                transition: "all .15s",
+                              }}
+                            >
+                              <KeyRound size={12} color={C.t2} /> Password
+                            </button>
+                          </div>
 
-                          {/* Face Register / Reset */}
+                          {/* Row 2: Biometric CTA (Full width, no wrap!) */}
                           {u.role !== "admin" && (
                             !u.faceDescriptor ? (
                               <button
@@ -5571,24 +5786,24 @@ function AppInner() {
                                 onClick={() => setFaceReg(u.id)}
                                 className="press"
                                 style={{
-                                  flex: 1,
-                                  minWidth: 95,
-                                  padding: "8px 10px",
-                                  background: C.b1,
-                                  border: `1.5px solid ${C.b}33`,
-                                  borderRadius: 10,
-                                  color: C.b,
+                                  width: "100%",
+                                  padding: "8px 12px",
+                                  background: C.pri1,
+                                  border: `1.5px solid ${C.pri}33`,
+                                  borderRadius: 9,
+                                  color: C.pri,
                                   fontSize: 11.5,
-                                  fontWeight: 700,
+                                  fontWeight: 750,
                                   fontFamily: F.sans,
                                   display: "inline-flex",
                                   alignItems: "center",
                                   justifyContent: "center",
-                                  gap: 5,
+                                  gap: 6,
                                   cursor: "pointer",
+                                  transition: "all .15s",
                                 }}
                               >
-                                <ScanLine size={13} /> Daftarkan
+                                <ScanLine size={13} /> Daftarkan Wajah
                               </button>
                             ) : (
                               <button
@@ -5596,48 +5811,27 @@ function AppInner() {
                                 onClick={() => { fbUpdateUser(u.id, { ...u, faceDescriptor: null }, user.name); toast("Wajah direset", "warn"); }}
                                 className="press"
                                 style={{
-                                  padding: "8px 10px",
-                                  background: C.bg3,
-                                  border: `1px solid ${C.bo1}`,
-                                  borderRadius: 10,
+                                  width: "100%",
+                                  padding: "6.5px 10px",
+                                  background: "transparent",
+                                  border: `1px dashed ${C.bo1}`,
+                                  borderRadius: 9,
                                   color: C.t2,
-                                  fontSize: 11.5,
+                                  fontSize: 11,
                                   fontWeight: 600,
                                   fontFamily: F.sans,
                                   display: "inline-flex",
                                   alignItems: "center",
                                   justifyContent: "center",
-                                  gap: 4,
+                                  gap: 5,
                                   cursor: "pointer",
+                                  transition: "all .15s",
                                 }}
                               >
-                                <RefreshCw size={12} /> Reset
+                                <RefreshCw size={11} color={C.t3} /> Reset Data Wajah
                               </button>
                             )
                           )}
-
-                          {/* Delete */}
-                          <button
-                            type="button"
-                            onClick={() => delUser(u)}
-                            className="press"
-                            title="Hapus Pengguna"
-                            aria-label={`Hapus ${u.name}`}
-                            style={{
-                              width: 36,
-                              height: 36,
-                              background: C.r1,
-                              border: `1.5px solid ${C.r}33`,
-                              borderRadius: 10,
-                              color: C.r,
-                              display: "grid",
-                              placeItems: "center",
-                              cursor: "pointer",
-                              flexShrink: 0,
-                            }}
-                          >
-                            <Trash2 size={14} />
-                          </button>
                         </div>
                       </div>
                     );

@@ -2,7 +2,7 @@
 const CACHE_NAME = "kasir-je-grup-v9";
 
 // File list diisi otomatis saat build oleh vite plugin
-const PRECACHE_URLS = ["/","/index.html","/manifest.json","/assets/figtree-latin-ext-wght-normal-DCwSJGxG.woff2","/assets/figtree-latin-wght-normal-D_ZTVpCC.woff2","/assets/index-B6UvA-XB.js","/assets/index-Bxy0JztA.css","/icons/apple-touch-icon.png","/icons/icon 1.svg","/icons/icon-128 1.png","/icons/icon-128.png","/icons/icon-144 1.png","/icons/icon-144.png","/icons/icon-152 1.png","/icons/icon-152.png","/icons/icon-192 1.png","/icons/icon-192.png","/icons/icon-384 1.png","/icons/icon-384.png","/icons/icon-512 1.png","/icons/icon-512.png","/icons/icon-72 1.png","/icons/icon-72.png","/icons/icon-96 1.png","/icons/icon-96.png","/icons/icon-maskable-192.png","/icons/icon-maskable-512.png","/icons/icon.svg"];
+const PRECACHE_URLS = ["/","/index.html","/manifest.json","/assets/figtree-latin-ext-wght-normal-DCwSJGxG.woff2","/assets/figtree-latin-wght-normal-D_ZTVpCC.woff2","/assets/index-Bxy0JztA.css","/assets/index-DsFYO8HQ.js","/icons/apple-touch-icon.png","/icons/icon 1.svg","/icons/icon-128 1.png","/icons/icon-128.png","/icons/icon-144 1.png","/icons/icon-144.png","/icons/icon-152 1.png","/icons/icon-152.png","/icons/icon-192 1.png","/icons/icon-192.png","/icons/icon-384 1.png","/icons/icon-384.png","/icons/icon-512 1.png","/icons/icon-512.png","/icons/icon-72 1.png","/icons/icon-72.png","/icons/icon-96 1.png","/icons/icon-96.png","/icons/icon-maskable-192.png","/icons/icon-maskable-512.png","/icons/icon.svg"];
 
 // ── Install: cache SEMUA file app ─────────────────────────────
 self.addEventListener("install", (e) => {
