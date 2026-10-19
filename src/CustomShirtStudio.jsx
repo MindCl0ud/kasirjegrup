@@ -152,86 +152,352 @@ export const CLIPART_PRESETS = [
 const rp = (n) => "Rp " + Number(n).toLocaleString("id-ID");
 
 export function getGarmentSvgMarkup(type, colorHex, side = "front") {
-  const isLight = colorHex.toLowerCase() === "#ffffff" || colorHex.toLowerCase() === "#fff";
-  const shadowOpacity = isLight ? 0.12 : 0.28;
-  const seamColor = isLight ? "rgba(0,0,0,0.18)" : "rgba(255,255,255,0.15)";
+  const c = colorHex.replace("#", "");
+  const r = parseInt(c.substring(0, 2), 16) || 0;
+  const g = parseInt(c.substring(2, 4), 16) || 0;
+  const b = parseInt(c.substring(4, 6), 16) || 0;
+  const yiq = (r * 299 + g * 587 + b * 114) / 1000;
+  const isLight = yiq > 160;
 
+  const seamColor = isLight ? "rgba(0,0,0,0.18)" : "rgba(255,255,255,0.16)";
+  const foldColor = isLight ? "rgba(0,0,0,0.08)" : "rgba(0,0,0,0.22)";
+  const strokeBorder = isLight ? "rgba(0,0,0,0.16)" : "rgba(0,0,0,0.40)";
+  const neckDip = side === "front" ? 134 : 88;
+  const gid = `gm_${type}_${side}_${c}`;
+
+  // 1. HOODIE JUMPER
   if (type === "hoodie") {
-    return `<svg xmlns="http://www.w3.org/2000/svg" width="460" height="520" viewBox="0 0 500 580">
+    return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 500 540" width="100%" height="100%">
       <defs>
-        <linearGradient id="hoodieShadow" x1="0%" y1="0%" x2="0%" y2="100%">
-          <stop offset="0%" stop-color="#000" stop-opacity="0" />
-          <stop offset="100%" stop-color="#000" stop-opacity="${shadowOpacity}" />
+        <linearGradient id="${gid}_sheen" x1="0%" y1="0%" x2="100%" y2="0%">
+          <stop offset="0%" stop-color="#000" stop-opacity="${isLight ? '0.08' : '0.28'}" />
+          <stop offset="20%" stop-color="#000" stop-opacity="${isLight ? '0.02' : '0.08'}" />
+          <stop offset="50%" stop-color="#fff" stop-opacity="${isLight ? '0.22' : '0.12'}" />
+          <stop offset="80%" stop-color="#000" stop-opacity="${isLight ? '0.02' : '0.08'}" />
+          <stop offset="100%" stop-color="#000" stop-opacity="${isLight ? '0.08' : '0.28'}" />
         </linearGradient>
       </defs>
-      <path d="M 120 120 L 30 270 Q 20 290 40 300 L 95 270 L 140 200 Z" fill="${colorHex}" stroke="rgba(0,0,0,0.15)" stroke-width="1.5"/>
-      <path d="M 380 120 L 470 270 Q 480 290 460 300 L 405 270 L 360 200 Z" fill="${colorHex}" stroke="rgba(0,0,0,0.15)" stroke-width="1.5"/>
-      <rect x="25" y="280" width="28" height="24" rx="4" transform="rotate(-30 35 285)" fill="${colorHex}" stroke="${seamColor}" stroke-width="2" />
-      <rect x="445" y="280" width="28" height="24" rx="4" transform="rotate(30 455 285)" fill="${colorHex}" stroke="${seamColor}" stroke-width="2" />
-      <path d="M 130 110 Q 250 120 370 110 L 390 480 Q 250 495 110 480 Z" fill="${colorHex}" stroke="rgba(0,0,0,0.2)" stroke-width="2"/>
-      <path d="M 130 110 Q 250 120 370 110 L 390 480 Q 250 495 110 480 Z" fill="url(#hoodieShadow)"/>
-      <path d="M 110 480 Q 250 495 390 480 L 390 520 Q 250 535 110 520 Z" fill="${colorHex}" stroke="${seamColor}" stroke-width="2" />
+
+      <!-- Hood Back (Visible from front as background behind neck) -->
       ${side === "front" ? `
-        <path d="M 180 370 L 320 370 L 350 460 Q 250 472 150 460 Z" fill="${colorHex}" stroke="${seamColor}" stroke-width="2.5" />
-        <path d="M 180 370 L 150 460" stroke="${seamColor}" stroke-width="3" />
-        <path d="M 320 370 L 350 460" stroke="${seamColor}" stroke-width="3" />
-        <path d="M 170 110 Q 250 40 330 110 Q 250 155 170 110 Z" fill="${colorHex}" stroke="${seamColor}" stroke-width="2" />
-        <path d="M 230 135 Q 225 180 220 220" stroke="${isLight ? "#444" : "#EEE"}" stroke-width="4" stroke-linecap="round" />
-        <path d="M 270 135 Q 275 180 280 220" stroke="${isLight ? "#444" : "#EEE"}" stroke-width="4" stroke-linecap="round" />
-        <circle cx="220" cy="222" r="3" fill="#888" />
-        <circle cx="280" cy="222" r="3" fill="#888" />
+        <path d="M 160,94 C 145,18 355,18 340,94 Q 250,118 160,94 Z" fill="${colorHex}" stroke="${strokeBorder}" stroke-width="1.5" />
+        <path d="M 175,90 C 165,35 335,35 325,90 Q 250,112 175,90 Z" fill="#000" fill-opacity="${isLight ? '0.14' : '0.35'}" />
+      ` : ''}
+
+      <!-- Main Hoodie Silhouette (Torso + Drop Shoulder Sleeves) -->
+      <path
+        d="M 176,86 Q 250,105 324,86 L 434,128 Q 460,210 472,310 L 436,324 Q 408,280 374,234 Q 368,360 378,476 Q 250,486 122,476 Q 132,360 126,234 Q 92,280 64,324 L 28,310 Q 40,210 66,128 Z"
+        fill="${colorHex}"
+        stroke="${strokeBorder}"
+        stroke-width="1.6"
+      />
+      <path
+        d="M 176,86 Q 250,105 324,86 L 434,128 Q 460,210 472,310 L 436,324 Q 408,280 374,234 Q 368,360 378,476 Q 250,486 122,476 Q 132,360 126,234 Q 92,280 64,324 L 28,310 Q 40,210 66,128 Z"
+        fill="url(#${gid}_sheen)"
+      />
+
+      <!-- Ribbed Cuffs (Pergelangan Tangan) -->
+      <path d="M 28,310 L 64,324 L 58,342 L 22,328 Z" fill="${colorHex}" stroke="${seamColor}" stroke-width="1.4" />
+      <path d="M 472,310 L 436,324 L 442,342 L 478,328 Z" fill="${colorHex}" stroke="${seamColor}" stroke-width="1.4" />
+
+      <!-- Ribbed Bottom Waistband Hem (Karet Pinggang Bawah Tebal) -->
+      <path d="M 122,476 Q 250,486 378,476 L 378,516 Q 250,526 122,516 Z" fill="${colorHex}" stroke="${seamColor}" stroke-width="1.6" />
+      <path d="M 122,476 Q 250,486 378,476" stroke="${seamColor}" stroke-width="2" fill="none" />
+      <path d="M 122,496 Q 250,506 378,496" stroke="${seamColor}" stroke-width="1" stroke-dasharray="8 4" fill="none" />
+
+      <!-- Drop Shoulder Seams -->
+      <path d="M 66,128 Q 98,180 126,234" stroke="${seamColor}" stroke-width="1.8" fill="none" />
+      <path d="M 434,128 Q 402,180 374,234" stroke="${seamColor}" stroke-width="1.8" fill="none" />
+
+      ${side === "front" ? `
+        <!-- Kangaroo Pocket (Saku Depan Khas Hoodie) -->
+        <g>
+          <path
+            d="M 176,350 L 324,350 L 358,426 L 354,476 Q 250,486 146,476 L 142,426 Z"
+            fill="${colorHex}"
+            stroke="${strokeBorder}"
+            stroke-width="1.6"
+          />
+          <path
+            d="M 176,350 L 324,350 L 358,426 L 354,476 Q 250,486 146,476 L 142,426 Z"
+            fill="url(#${gid}_sheen)"
+          />
+          <!-- Pocket Opening Seams -->
+          <path d="M 176,350 L 142,426" stroke="${seamColor}" stroke-width="2.5" />
+          <path d="M 324,350 L 358,426" stroke="${seamColor}" stroke-width="2.5" />
+          <path d="M 176,350 L 324,350" stroke="${seamColor}" stroke-width="1.8" />
+        </g>
+
+        <!-- Hood Crossover Neckline -->
+        <path d="M 170,86 Q 220,132 258,132 Q 210,126 170,86 Z" fill="${colorHex}" stroke="${seamColor}" stroke-width="1.6" />
+        <path d="M 330,86 Q 280,132 242,132 Q 290,126 330,86 Z" fill="${colorHex}" stroke="${seamColor}" stroke-width="1.6" />
+
+        <!-- Drawstrings (Tali Hoodie) with Metallic Aglets -->
+        <path d="M 224,128 Q 218,175 214,216" stroke="${isLight ? '#444' : '#e2e8f0'}" stroke-width="3.5" stroke-linecap="round" fill="none" />
+        <path d="M 276,128 Q 282,175 286,216" stroke="${isLight ? '#444' : '#e2e8f0'}" stroke-width="3.5" stroke-linecap="round" fill="none" />
+        <rect x="211" y="216" width="6" height="12" rx="2" fill="#94a3b8" stroke="#475569" stroke-width="0.8" />
+        <rect x="283" y="216" width="6" height="12" rx="2" fill="#94a3b8" stroke="#475569" stroke-width="0.8" />
       ` : `
-        <path d="M 160 110 Q 250 30 340 110 Q 250 160 160 110 Z" fill="${colorHex}" stroke="${seamColor}" stroke-width="2.5" />
+        <!-- Back View Draped Hood -->
+        <path
+          d="M 160,82 C 140,16 360,16 340,82 C 354,160 300,195 250,195 C 200,195 146,160 160,82 Z"
+          fill="${colorHex}"
+          stroke="${strokeBorder}"
+          stroke-width="1.8"
+        />
+        <path d="M 250,22 L 250,195" stroke="${seamColor}" stroke-width="1.4" stroke-dasharray="4 2" fill="none" />
+        <path d="M 160,82 C 180,120 220,135 250,135 C 280,135 320,120 340,82" stroke="${seamColor}" stroke-width="1.5" fill="none" />
       `}
     </svg>`;
   }
 
+  // 2. POLO SHIRT
   if (type === "polo") {
-    return `<svg xmlns="http://www.w3.org/2000/svg" width="460" height="520" viewBox="0 0 500 580">
-      <path d="M 130 110 L 40 210 Q 30 225 50 235 L 105 210 L 140 170 Z" fill="${colorHex}" stroke="rgba(0,0,0,0.15)" stroke-width="1.5"/>
-      <path d="M 370 110 L 460 210 Q 470 225 450 235 L 395 210 L 360 170 Z" fill="${colorHex}" stroke="rgba(0,0,0,0.15)" stroke-width="1.5"/>
-      <path d="M 40 210 L 105 210 L 100 225 L 45 228 Z" fill="${colorHex}" stroke="${seamColor}" stroke-width="2" />
-      <path d="M 460 210 L 395 210 L 400 225 L 455 228 Z" fill="${colorHex}" stroke="${seamColor}" stroke-width="2" />
-      <path d="M 135 110 Q 250 120 365 110 L 385 500 Q 250 512 115 500 Z" fill="${colorHex}" stroke="rgba(0,0,0,0.2)" stroke-width="2"/>
-      <path d="M 135 110 Q 250 120 365 110 L 385 500 Q 250 512 115 500 Z" fill="#000" fill-opacity="${shadowOpacity}" />
+    return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 500 540" width="100%" height="100%">
+      <defs>
+        <linearGradient id="${gid}_sheen" x1="0%" y1="0%" x2="100%" y2="0%">
+          <stop offset="0%" stop-color="#000" stop-opacity="${isLight ? '0.08' : '0.28'}" />
+          <stop offset="20%" stop-color="#000" stop-opacity="${isLight ? '0.02' : '0.08'}" />
+          <stop offset="50%" stop-color="#fff" stop-opacity="${isLight ? '0.22' : '0.12'}" />
+          <stop offset="80%" stop-color="#000" stop-opacity="${isLight ? '0.02' : '0.08'}" />
+          <stop offset="100%" stop-color="#000" stop-opacity="${isLight ? '0.08' : '0.28'}" />
+        </linearGradient>
+      </defs>
+
+      <!-- Inside Back Collar (Front view) -->
       ${side === "front" ? `
-        <rect x="235" y="115" width="30" height="120" rx="3" fill="${colorHex}" stroke="${seamColor}" stroke-width="2" />
-        <circle cx="250" cy="140" r="4" fill="${isLight ? "#333" : "#FFF"}" />
-        <circle cx="250" cy="175" r="4" fill="${isLight ? "#333" : "#FFF"}" />
-        <circle cx="250" cy="210" r="4" fill="${isLight ? "#333" : "#FFF"}" />
-        <path d="M 250 115 L 180 80 Q 190 125 235 130 Z" fill="${colorHex}" stroke="${seamColor}" stroke-width="2.5" />
-        <path d="M 250 115 L 320 80 Q 310 125 265 130 Z" fill="${colorHex}" stroke="${seamColor}" stroke-width="2.5" />
+        <path d="M 186,72 Q 250,56 314,72 Q 250,86 186,72 Z" fill="#000" fill-opacity="${isLight ? '0.14' : '0.38'}" />
+      ` : ''}
+
+      <!-- Main Polo Silhouette -->
+      <path
+        d="M 186,72 Q 250,${side === 'front' ? '92' : '88'} 314,72 L 414,110 Q 448,155 476,208 L 418,234 Q 395,226 366,218 Q 360,350 374,506 Q 250,520 126,506 Q 140,350 134,218 Q 105,226 82,234 L 24,208 Q 52,155 86,110 Z"
+        fill="${colorHex}"
+        stroke="${strokeBorder}"
+        stroke-width="1.5"
+      />
+      <path
+        d="M 186,72 Q 250,${side === 'front' ? '92' : '88'} 314,72 L 414,110 Q 448,155 476,208 L 418,234 Q 395,226 366,218 Q 360,350 374,506 Q 250,520 126,506 Q 140,350 134,218 Q 105,226 82,234 L 24,208 Q 52,155 86,110 Z"
+        fill="url(#${gid}_sheen)"
+      />
+
+      <!-- Ribbed Sleeve Bands (Manset Lengan Polo) -->
+      <path d="M 24,208 L 82,234 L 88,220 L 30,194 Z" fill="${colorHex}" stroke="${seamColor}" stroke-width="1.3" />
+      <path d="M 476,208 L 418,234 L 412,220 L 470,194 Z" fill="${colorHex}" stroke="${seamColor}" stroke-width="1.3" />
+
+      <!-- Armhole & Shoulder Seams -->
+      <path d="M 86,110 Q 116,158 134,218" stroke="${seamColor}" stroke-width="1.8" fill="none" />
+      <path d="M 414,110 Q 384,158 366,218" stroke="${seamColor}" stroke-width="1.8" fill="none" />
+      <path d="M 186,72 L 86,110" stroke="${seamColor}" stroke-width="1.4" stroke-dasharray="6 2" fill="none" />
+      <path d="M 314,72 L 414,110" stroke="${seamColor}" stroke-width="1.4" stroke-dasharray="6 2" fill="none" />
+
+      <!-- Side Slits at Bottom Hem -->
+      <path d="M 127,494 Q 250,508 373,494" stroke="${seamColor}" stroke-width="1.2" stroke-dasharray="5 2.5" fill="none" />
+      <path d="M 126,494 L 126,506 L 132,506" stroke="${seamColor}" stroke-width="1.4" fill="none" />
+      <path d="M 374,494 L 374,506 L 368,506" stroke="${seamColor}" stroke-width="1.4" fill="none" />
+
+      ${side === "front" ? `
+        <!-- Button Placket (Tatakan Kancing Polo) -->
+        <g>
+          <rect x="236" y="94" width="28" height="122" rx="3" fill="${colorHex}" stroke="${seamColor}" stroke-width="1.6" />
+          <!-- Placket Bottom Box Stitch with Cross -->
+          <rect x="236" y="190" width="28" height="26" fill="${colorHex}" stroke="${seamColor}" stroke-width="1.4" />
+          <path d="M 236,190 L 264,216 M 264,190 L 236,216" stroke="${seamColor}" stroke-width="1.2" fill="none" />
+          <!-- 3 Pearlized Buttons -->
+          <circle cx="250" cy="116" r="4.2" fill="${isLight ? '#ffffff' : '#f8fafc'}" stroke="#94a3b8" stroke-width="1" />
+          <circle cx="250" cy="144" r="4.2" fill="${isLight ? '#ffffff' : '#f8fafc'}" stroke="#94a3b8" stroke-width="1" />
+          <circle cx="250" cy="172" r="4.2" fill="${isLight ? '#ffffff' : '#f8fafc'}" stroke="#94a3b8" stroke-width="1" />
+          <!-- Button Thread Crosses -->
+          <path d="M 248.5,116 L 251.5,116 M 250,114.5 L 250,117.5" stroke="#475569" stroke-width="0.8" />
+          <path d="M 248.5,144 L 251.5,144 M 250,142.5 L 250,145.5" stroke="#475569" stroke-width="0.8" />
+          <path d="M 248.5,172 L 251.5,172 M 250,170.5 L 250,173.5" stroke="#475569" stroke-width="0.8" />
+        </g>
+
+        <!-- Left Folded Collar Wing -->
+        <path
+          d="M 186,72 L 174,134 Q 205,138 236,136 L 236,94 Q 212,80 186,72 Z"
+          fill="${colorHex}"
+          stroke="${strokeBorder}"
+          stroke-width="1.5"
+        />
+        <!-- Right Folded Collar Wing -->
+        <path
+          d="M 314,72 L 326,134 Q 295,138 264,136 L 264,94 Q 288,80 314,72 Z"
+          fill="${colorHex}"
+          stroke="${strokeBorder}"
+          stroke-width="1.5"
+        />
       ` : `
-        <path d="M 180 85 Q 250 105 320 85 Q 250 120 180 85 Z" fill="${colorHex}" stroke="${seamColor}" stroke-width="2.5" />
+        <!-- Back View Folded Collar -->
+        <path
+          d="M 180,68 Q 250,50 320,68 Q 250,96 180,68 Z"
+          fill="${colorHex}"
+          stroke="${strokeBorder}"
+          stroke-width="1.6"
+        />
+        <path d="M 180,78 Q 250,102 320,78" stroke="${seamColor}" stroke-width="1.4" stroke-dasharray="5 2.5" fill="none" />
       `}
     </svg>`;
   }
 
+  // 3. KAOS LENGAN PANJANG
   if (type === "tshirt_long") {
-    return `<svg xmlns="http://www.w3.org/2000/svg" width="460" height="520" viewBox="0 0 500 580">
-      <path d="M 130 110 L 30 360 Q 25 375 45 380 L 85 365 L 140 180 Z" fill="${colorHex}" stroke="rgba(0,0,0,0.15)" stroke-width="1.5"/>
-      <path d="M 370 110 L 470 360 Q 475 375 455 380 L 415 365 L 360 180 Z" fill="${colorHex}" stroke="rgba(0,0,0,0.15)" stroke-width="1.5"/>
-      <rect x="30" y="360" width="26" height="22" rx="3" transform="rotate(-20 35 365)" fill="${colorHex}" stroke="${seamColor}" stroke-width="2" />
-      <rect x="445" y="360" width="26" height="22" rx="3" transform="rotate(20 455 365)" fill="${colorHex}" stroke="${seamColor}" stroke-width="2" />
-      <path d="M 135 110 Q 250 120 365 110 L 385 510 Q 250 522 115 510 Z" fill="${colorHex}" stroke="rgba(0,0,0,0.2)" stroke-width="2"/>
-      <path d="M 135 110 Q 250 120 365 110 L 385 510 Q 250 522 115 510 Z" fill="#000" fill-opacity="${shadowOpacity}" />
-      ${side === "front"
-        ? `<path d="M 195 95 Q 250 160 305 95 Q 250 135 195 95 Z" fill="${colorHex}" stroke="${seamColor}" stroke-width="2.5" />`
-        : `<path d="M 195 95 Q 250 115 305 95 Q 250 130 195 95 Z" fill="${colorHex}" stroke="${seamColor}" stroke-width="2.5" />`
-      }
+    return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 500 540" width="100%" height="100%">
+      <defs>
+        <linearGradient id="${gid}_sheen" x1="0%" y1="0%" x2="100%" y2="0%">
+          <stop offset="0%" stop-color="#000" stop-opacity="${isLight ? '0.07' : '0.28'}" />
+          <stop offset="20%" stop-color="#000" stop-opacity="${isLight ? '0.02' : '0.10'}" />
+          <stop offset="50%" stop-color="#fff" stop-opacity="${isLight ? '0.25' : '0.12'}" />
+          <stop offset="80%" stop-color="#000" stop-opacity="${isLight ? '0.02' : '0.10'}" />
+          <stop offset="100%" stop-color="#000" stop-opacity="${isLight ? '0.07' : '0.28'}" />
+        </linearGradient>
+      </defs>
+
+      <!-- Inside Back Collar (Front view) -->
+      ${side === "front" ? `
+        <path d="M 186,72 Q 250,50 314,72 Q 250,134 186,72 Z" fill="#000000" fill-opacity="${isLight ? '0.14' : '0.40'}" />
+        <rect x="242" y="58" width="16" height="20" rx="2" fill="${isLight ? '#ffffff' : '#282b3c'}" stroke="rgba(0,0,0,0.15)" stroke-width="0.8" />
+        <text x="250" y="72" text-anchor="middle" font-family="sans-serif" font-size="7.5" font-weight="bold" fill="${isLight ? '#555' : '#ccc'}">L</text>
+      ` : ''}
+
+      <!-- Main Garment Silhouette (Long Sleeves + Torso) -->
+      <path
+        d="M 186,72 Q 250,${neckDip} 314,72 L 414,110 Q 442,240 460,396 L 424,408 Q 398,310 366,218 Q 360,350 374,506 Q 250,520 126,506 Q 140,350 134,218 Q 102,310 76,408 L 40,396 Q 58,240 86,110 Z"
+        fill="${colorHex}"
+        stroke="${strokeBorder}"
+        stroke-width="1.5"
+      />
+      <path
+        d="M 186,72 Q 250,${neckDip} 314,72 L 414,110 Q 442,240 460,396 L 424,408 Q 398,310 366,218 Q 360,350 374,506 Q 250,520 126,506 Q 140,350 134,218 Q 102,310 76,408 L 40,396 Q 58,240 86,110 Z"
+        fill="url(#${gid}_sheen)"
+      />
+
+      <!-- Ribbed Wrist Cuffs (Karet Pergelangan Tangan) -->
+      <path d="M 40,396 L 76,408 L 71,424 L 35,412 Z" fill="${colorHex}" stroke="${seamColor}" stroke-width="1.3" />
+      <path d="M 460,396 L 424,408 L 429,424 L 465,412 Z" fill="${colorHex}" stroke="${seamColor}" stroke-width="1.3" />
+      <path d="M 40,396 L 76,408" stroke="${seamColor}" stroke-width="1.8" />
+      <path d="M 460,396 L 424,408" stroke="${seamColor}" stroke-width="1.8" />
+
+      <!-- Collar Rib Band -->
+      ${side === "front" ? `
+        <path
+          d="M 186,72 Q 250,134 314,72 Q 318,76 315,83 Q 250,145 185,83 Q 182,76 186,72 Z"
+          fill="${colorHex}"
+          stroke="${seamColor}"
+          stroke-width="1.2"
+        />
+        <path d="M 183,85 Q 250,147 317,85" fill="none" stroke="${seamColor}" stroke-width="1.2" stroke-dasharray="4 2" />
+      ` : `
+        <path
+          d="M 186,72 Q 250,88 314,72 Q 318,76 315,83 Q 250,99 185,83 Q 182,76 186,72 Z"
+          fill="${colorHex}"
+          stroke="${seamColor}"
+          stroke-width="1.2"
+        />
+        <path d="M 183,85 Q 250,101 317,85" fill="none" stroke="${seamColor}" stroke-width="1.2" stroke-dasharray="4 2" />
+        <path d="M 186,85 Q 250,126 314,85" fill="none" stroke="${seamColor}" stroke-width="1.2" stroke-dasharray="5 2.5" />
+      `}
+
+      <!-- Armhole Seams & Shoulder Seams -->
+      <path d="M 86,110 Q 116,158 134,218" stroke="${seamColor}" stroke-width="1.8" fill="none" />
+      <path d="M 414,110 Q 384,158 366,218" stroke="${seamColor}" stroke-width="1.8" fill="none" />
+      <path d="M 186,72 L 86,110" stroke="${seamColor}" stroke-width="1.4" stroke-dasharray="6 2" fill="none" />
+      <path d="M 314,72 L 414,110" stroke="${seamColor}" stroke-width="1.4" stroke-dasharray="6 2" fill="none" />
+
+      <!-- Bottom Hem Twin Stitches -->
+      <path d="M 127,494 Q 250,508 373,494" stroke="${seamColor}" stroke-width="1.2" stroke-dasharray="5 2.5" fill="none" />
+      <path d="M 127,499 Q 250,513 373,499" stroke="${seamColor}" stroke-width="1.2" stroke-dasharray="5 2.5" fill="none" />
     </svg>`;
   }
 
-  // Default: Kaos Pendek Combed 30s / 24s
-  return `<svg xmlns="http://www.w3.org/2000/svg" width="460" height="520" viewBox="0 0 500 580">
-    <path d="M 130 105 L 35 205 Q 25 220 45 230 L 105 205 L 142 165 Z" fill="${colorHex}" stroke="rgba(0,0,0,0.15)" stroke-width="1.5"/>
-    <path d="M 370 105 L 465 205 Q 475 220 455 230 L 395 205 L 358 165 Z" fill="${colorHex}" stroke="rgba(0,0,0,0.15)" stroke-width="1.5"/>
-    <path d="M 135 105 Q 250 115 365 105 L 388 510 Q 250 525 112 510 Z" fill="${colorHex}" stroke="rgba(0,0,0,0.2)" stroke-width="2"/>
-    <path d="M 135 105 Q 250 115 365 105 L 388 510 Q 250 525 112 510 Z" fill="#000" fill-opacity="${shadowOpacity}" />
-    ${side === "front"
-      ? `<path d="M 190 95 Q 250 162 310 95 Q 250 142 190 95 Z" fill="${colorHex}" stroke="${seamColor}" stroke-width="3"/>`
-      : `<path d="M 190 95 Q 250 118 310 95 Q 250 134 190 95 Z" fill="${colorHex}" stroke="${seamColor}" stroke-width="3"/>`
-    }
+  // 4 & 5. DEFAULT: KAOS PENDEK COMBED 30s & 24s
+  const isHeavy = type === "tshirt_heavy";
+  const ribHeight = isHeavy ? 15 : 12;
+
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 500 540" width="100%" height="100%">
+    <defs>
+      <linearGradient id="${gid}_sheen" x1="0%" y1="0%" x2="100%" y2="0%">
+        <stop offset="0%" stop-color="#000" stop-opacity="${isLight ? '0.07' : '0.28'}" />
+        <stop offset="20%" stop-color="#000" stop-opacity="${isLight ? '0.02' : '0.10'}" />
+        <stop offset="50%" stop-color="#fff" stop-opacity="${isLight ? '0.25' : '0.12'}" />
+        <stop offset="80%" stop-color="#000" stop-opacity="${isLight ? '0.02' : '0.10'}" />
+        <stop offset="100%" stop-color="#000" stop-opacity="${isLight ? '0.07' : '0.28'}" />
+      </linearGradient>
+      <linearGradient id="${gid}_depth" x1="0%" y1="0%" x2="0%" y2="100%">
+        <stop offset="0%" stop-color="#fff" stop-opacity="${isLight ? '0.15' : '0.08'}" />
+        <stop offset="85%" stop-color="#000" stop-opacity="0" />
+        <stop offset="100%" stop-color="#000" stop-opacity="${isLight ? '0.08' : '0.25'}" />
+      </linearGradient>
+    </defs>
+
+    <!-- Inside Back Collar (Visible only on Front view) -->
+    ${side === "front" ? `
+      <path d="M 186,72 Q 250,50 314,72 Q 250,134 186,72 Z" fill="#000000" fill-opacity="${isLight ? '0.14' : '0.40'}" />
+      <rect x="242" y="58" width="16" height="20" rx="2" fill="${isLight ? '#ffffff' : '#282b3c'}" stroke="rgba(0,0,0,0.15)" stroke-width="0.8" />
+      <text x="250" y="72" text-anchor="middle" font-family="sans-serif" font-size="7.5" font-weight="bold" fill="${isLight ? '#555' : '#ccc'}">L</text>
+    ` : ''}
+
+    <!-- Single Continuous Main Garment Silhouette (Body + Sleeves) -->
+    <path
+      d="M 186,72 Q 250,${neckDip} 314,72 L 414,110 Q 448,155 476,208 L 418,234 Q 395,226 366,218 Q 360,350 374,506 Q 250,520 126,506 Q 140,350 134,218 Q 105,226 82,234 L 24,208 Q 52,155 86,110 Z"
+      fill="${colorHex}"
+      stroke="${strokeBorder}"
+      stroke-width="1.5"
+    />
+
+    <!-- Fabric Sheen & Depth Gradient Overlay -->
+    <path
+      d="M 186,72 Q 250,${neckDip} 314,72 L 414,110 Q 448,155 476,208 L 418,234 Q 395,226 366,218 Q 360,350 374,506 Q 250,520 126,506 Q 140,350 134,218 Q 105,226 82,234 L 24,208 Q 52,155 86,110 Z"
+      fill="url(#${gid}_sheen)"
+    />
+    <path
+      d="M 186,72 Q 250,${neckDip} 314,72 L 414,110 Q 448,155 476,208 L 418,234 Q 395,226 366,218 Q 360,350 374,506 Q 250,520 126,506 Q 140,350 134,218 Q 105,226 82,234 L 24,208 Q 52,155 86,110 Z"
+      fill="url(#${gid}_depth)"
+    />
+
+    <!-- Collar Rib Band -->
+    ${side === "front" ? `
+      <path
+        d="M 186,72 Q 250,134 314,72 Q 318,76 315,${72 + ribHeight - 1} Q 250,${134 + ribHeight - 1} 185,${72 + ribHeight - 1} Q 182,76 186,72 Z"
+        fill="${colorHex}"
+        stroke="${seamColor}"
+        stroke-width="1.2"
+      />
+      <!-- Collar Seam Twin-Stitch -->
+      <path d="M 183,${72 + ribHeight + 1} Q 250,${134 + ribHeight + 1} 317,${72 + ribHeight + 1}" fill="none" stroke="${seamColor}" stroke-width="1.2" stroke-dasharray="4 2" />
+    ` : `
+      <path
+        d="M 186,72 Q 250,88 314,72 Q 318,76 315,${72 + ribHeight - 1} Q 250,${88 + ribHeight - 1} 185,${72 + ribHeight - 1} Q 182,76 186,72 Z"
+        fill="${colorHex}"
+        stroke="${seamColor}"
+        stroke-width="1.2"
+      />
+      <!-- Back Neck Tape Reinforcement Stitch -->
+      <path d="M 183,${72 + ribHeight + 1} Q 250,${88 + ribHeight + 1} 317,${72 + ribHeight + 1}" fill="none" stroke="${seamColor}" stroke-width="1.2" stroke-dasharray="4 2" />
+      <path d="M 186,85 Q 250,126 314,85" fill="none" stroke="${seamColor}" stroke-width="1.2" stroke-dasharray="5 2.5" />
+    `}
+
+    <!-- Shoulder Seams -->
+    <path d="M 186,72 L 86,110" stroke="${seamColor}" stroke-width="1.4" stroke-dasharray="6 2" fill="none" />
+    <path d="M 314,72 L 414,110" stroke="${seamColor}" stroke-width="1.4" stroke-dasharray="6 2" fill="none" />
+
+    <!-- Armhole Seams (Connection from Shoulder to Armpit) -->
+    <path d="M 86,110 Q 116,158 134,218" stroke="${seamColor}" stroke-width="1.8" fill="none" />
+    <path d="M 414,110 Q 384,158 366,218" stroke="${seamColor}" stroke-width="1.8" fill="none" />
+
+    <!-- Sleeve Cuff Stitches -->
+    <path d="M 32,204 L 80,227" stroke="${seamColor}" stroke-width="1.2" stroke-dasharray="4 2" fill="none" />
+    <path d="M 468,204 L 420,227" stroke="${seamColor}" stroke-width="1.2" stroke-dasharray="4 2" fill="none" />
+
+    <!-- Bottom Hem Twin Stitches -->
+    <path d="M 127,494 Q 250,508 373,494" stroke="${seamColor}" stroke-width="1.2" stroke-dasharray="5 2.5" fill="none" />
+    <path d="M 127,499 Q 250,513 373,499" stroke="${seamColor}" stroke-width="1.2" stroke-dasharray="5 2.5" fill="none" />
+
+    <!-- Natural Drape Folds -->
+    <path d="M 134,218 Q 155,236 172,246" stroke="${foldColor}" stroke-width="2" stroke-linecap="round" fill="none" />
+    <path d="M 366,218 Q 345,236 328,246" stroke="${foldColor}" stroke-width="2" stroke-linecap="round" fill="none" />
+    <path d="M 137,360 Q 165,374 190,369" stroke="${foldColor}" stroke-width="1.6" stroke-linecap="round" fill="none" />
+    <path d="M 363,360 Q 335,374 310,369" stroke="${foldColor}" stroke-width="1.6" stroke-linecap="round" fill="none" />
   </svg>`;
 }
 
@@ -239,161 +505,23 @@ export function getGarmentSvgMarkup(type, colorHex, side = "front") {
 //  REALISTIC SVG GARMENT SILHOUETTES WITH FABRIC DEPTH
 // ─────────────────────────────────────────────────────────────
 export function GarmentIllustration({ type, colorHex, side = "front" }) {
-  const isLight = colorHex.toLowerCase() === "#ffffff" || colorHex.toLowerCase() === "#fff";
-  const shadowOpacity = isLight ? 0.12 : 0.28;
-  const highlightOpacity = isLight ? 0.35 : 0.16;
-  const seamColor = isLight ? "rgba(0,0,0,0.18)" : "rgba(255,255,255,0.15)";
+  const svgMarkup = getGarmentSvgMarkup(type, colorHex, side);
 
-  // Render berdasarkan tipe pakaian
-  if (type === "hoodie") {
-    return (
-      <svg viewBox="0 0 500 580" className="garment-svg" style={{ width: "100%", height: "100%", filter: "drop-shadow(0 14px 30px rgba(0,0,0,0.22))" }}>
-        <defs>
-          <linearGradient id="hoodieBodyGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-            <stop offset="0%" stopColor={colorHex} />
-            <stop offset="100%" stopColor={colorHex} stopOpacity="0.88" />
-          </linearGradient>
-          <linearGradient id="hoodieShadow" x1="0%" y1="0%" x2="0%" y2="100%">
-            <stop offset="0%" stopColor="#000" stopOpacity="0" />
-            <stop offset="100%" stopColor="#000" stopOpacity={shadowOpacity} />
-          </linearGradient>
-        </defs>
-
-        {/* Lengan Kiri & Kanan */}
-        <path d="M 120 120 L 30 270 Q 20 290 40 300 L 95 270 L 140 200 Z" fill={colorHex} />
-        <path d="M 380 120 L 470 270 Q 480 290 460 300 L 405 270 L 360 200 Z" fill={colorHex} />
-
-        {/* Manset Lengan */}
-        <rect x="25" y="280" width="28" height="24" rx="4" transform="rotate(-30 35 285)" fill={colorHex} stroke={seamColor} strokeWidth="2" />
-        <rect x="445" y="280" width="28" height="24" rx="4" transform="rotate(30 455 285)" fill={colorHex} stroke={seamColor} strokeWidth="2" />
-
-        {/* Badan Utama Hoodie */}
-        <path d="M 130 110 Q 250 120 370 110 L 390 480 Q 250 495 110 480 Z" fill="url(#hoodieBodyGrad)" />
-        <path d="M 130 110 Q 250 120 370 110 L 390 480 Q 250 495 110 480 Z" fill="url(#hoodieShadow)" />
-
-        {/* Karet Pinggang Bawah (Rib Hem) */}
-        <path d="M 110 480 Q 250 495 390 480 L 390 520 Q 250 535 110 520 Z" fill={colorHex} stroke={seamColor} strokeWidth="2" />
-
-        {/* Saku Kangguru (Hanya Tampak Depan) */}
-        {side === "front" && (
-          <g>
-            <path d="M 180 370 L 320 370 L 350 460 Q 250 472 150 460 Z" fill={colorHex} stroke={seamColor} strokeWidth="2.5" />
-            <path d="M 180 370 L 150 460" stroke={seamColor} strokeWidth="3" />
-            <path d="M 320 370 L 350 460" stroke={seamColor} strokeWidth="3" />
-          </g>
-        )}
-
-        {/* Tudung Kepala (Hood) */}
-        {side === "front" ? (
-          <g>
-            <path d="M 170 110 Q 250 40 330 110 Q 250 155 170 110 Z" fill={colorHex} stroke={seamColor} strokeWidth="2" />
-            {/* Tali Hoodie */}
-            <path d="M 230 135 Q 225 180 220 220" stroke={isLight ? "#444" : "#EEE"} strokeWidth="4" strokeLinecap="round" />
-            <path d="M 270 135 Q 275 180 280 220" stroke={isLight ? "#444" : "#EEE"} strokeWidth="4" strokeLinecap="round" />
-            <circle cx="220" cy="222" r="3" fill="#888" />
-            <circle cx="280" cy="222" r="3" fill="#888" />
-          </g>
-        ) : (
-          <path d="M 160 110 Q 250 30 340 110 Q 250 160 160 110 Z" fill={colorHex} stroke={seamColor} strokeWidth="2.5" />
-        )}
-      </svg>
-    );
-  }
-
-  if (type === "polo") {
-    return (
-      <svg viewBox="0 0 500 580" className="garment-svg" style={{ width: "100%", height: "100%", filter: "drop-shadow(0 14px 28px rgba(0,0,0,0.2))" }}>
-        {/* Lengan */}
-        <path d="M 130 110 L 40 210 Q 30 225 50 235 L 105 210 L 140 170 Z" fill={colorHex} />
-        <path d="M 370 110 L 460 210 Q 470 225 450 235 L 395 210 L 360 170 Z" fill={colorHex} />
-
-        {/* Rib Ujung Lengan */}
-        <path d="M 40 210 L 105 210 L 100 225 L 45 228 Z" fill={colorHex} stroke={seamColor} strokeWidth="2" />
-        <path d="M 460 210 L 395 210 L 400 225 L 455 228 Z" fill={colorHex} stroke={seamColor} strokeWidth="2" />
-
-        {/* Badan Utama */}
-        <path d="M 135 110 Q 250 120 365 110 L 385 500 Q 250 512 115 500 Z" fill={colorHex} />
-
-        {/* Bayangan Lipatan Halus */}
-        <path d="M 135 110 Q 250 120 365 110 L 385 500 Q 250 512 115 500 Z" fill="#000" fillOpacity={shadowOpacity} />
-
-        {/* Kerah & Placket Kancing Polo */}
-        {side === "front" ? (
-          <g>
-            {/* Placket Kancing */}
-            <rect x="235" y="115" width="30" height="120" rx="3" fill={colorHex} stroke={seamColor} strokeWidth="2" />
-            <circle cx="250" cy="140" r="4" fill={isLight ? "#333" : "#FFF"} />
-            <circle cx="250" cy="175" r="4" fill={isLight ? "#333" : "#FFF"} />
-            <circle cx="250" cy="210" r="4" fill={isLight ? "#333" : "#FFF"} />
-
-            {/* Daun Kerah Kiri & Kanan */}
-            <path d="M 250 115 L 180 80 Q 190 125 235 130 Z" fill={colorHex} stroke={seamColor} strokeWidth="2.5" />
-            <path d="M 250 115 L 320 80 Q 310 125 265 130 Z" fill={colorHex} stroke={seamColor} strokeWidth="2.5" />
-          </g>
-        ) : (
-          <path d="M 180 85 Q 250 105 320 85 Q 250 120 180 85 Z" fill={colorHex} stroke={seamColor} strokeWidth="2.5" />
-        )}
-      </svg>
-    );
-  }
-
-  if (type === "tshirt_long") {
-    return (
-      <svg viewBox="0 0 500 580" className="garment-svg" style={{ width: "100%", height: "100%", filter: "drop-shadow(0 14px 28px rgba(0,0,0,0.2))" }}>
-        {/* Lengan Panjang Kiri & Kanan */}
-        <path d="M 130 110 L 30 360 Q 25 375 45 380 L 85 365 L 140 180 Z" fill={colorHex} />
-        <path d="M 370 110 L 470 360 Q 475 375 455 380 L 415 365 L 360 180 Z" fill={colorHex} />
-
-        {/* Rib Karet Pergelangan Tangan */}
-        <rect x="30" y="360" width="26" height="22" rx="3" transform="rotate(-20 35 365)" fill={colorHex} stroke={seamColor} strokeWidth="2" />
-        <rect x="445" y="360" width="26" height="22" rx="3" transform="rotate(20 455 365)" fill={colorHex} stroke={seamColor} strokeWidth="2" />
-
-        {/* Badan Utama */}
-        <path d="M 135 110 Q 250 120 365 110 L 385 510 Q 250 522 115 510 Z" fill={colorHex} />
-        <path d="M 135 110 Q 250 120 365 110 L 385 510 Q 250 522 115 510 Z" fill="#000" fillOpacity={shadowOpacity} />
-
-        {/* Kerah O-Neck */}
-        {side === "front" ? (
-          <path d="M 195 95 Q 250 160 305 95 Q 250 135 195 95 Z" fill={colorHex} stroke={seamColor} strokeWidth="2.5" />
-        ) : (
-          <path d="M 195 95 Q 250 115 305 95 Q 250 130 195 95 Z" fill={colorHex} stroke={seamColor} strokeWidth="2.5" />
-        )}
-      </svg>
-    );
-  }
-
-  // Default: Kaos Pendek Combed 30s / 24s
   return (
-    <svg viewBox="0 0 500 580" className="garment-svg" style={{ width: "100%", height: "100%", filter: "drop-shadow(0 14px 28px rgba(0,0,0,0.18))" }}>
-      {/* Lengan Pendek Kiri */}
-      <path d="M 130 105 L 35 205 Q 25 220 45 230 L 105 205 L 142 165 Z" fill={colorHex} />
-      <path d="M 35 205 L 105 205" stroke={seamColor} strokeWidth="2.5" />
-
-      {/* Lengan Pendek Kanan */}
-      <path d="M 370 105 L 465 205 Q 475 220 455 230 L 395 205 L 358 165 Z" fill={colorHex} />
-      <path d="M 465 205 L 395 205" stroke={seamColor} strokeWidth="2.5" />
-
-      {/* Badan Utama Kaos */}
-      <path d="M 135 105 Q 250 115 365 105 L 388 510 Q 250 525 112 510 Z" fill={colorHex} />
-
-      {/* Soft Texture & Shadow Gradients */}
-      <path d="M 135 105 Q 250 115 365 105 L 388 510 Q 250 525 112 510 Z" fill="#000" fillOpacity={shadowOpacity} />
-
-      {/* Jahitan Hem Bawah */}
-      <path d="M 115 496 Q 250 511 385 496" stroke={seamColor} strokeWidth="2" fill="none" strokeDasharray="6 3" />
-
-      {/* Kerah O-Neck (Rib Collar) */}
-      {side === "front" ? (
-        <g>
-          {/* Bagian Dalam Kerah Belakang */}
-          <path d="M 195 95 Q 250 112 305 95 Q 250 128 195 95 Z" fill="#000" fillOpacity={isLight ? 0.08 : 0.35} />
-          {/* Daun Kerah Depan */}
-          <path d="M 190 95 Q 250 162 310 95 Q 250 142 190 95 Z" fill={colorHex} stroke={seamColor} strokeWidth="2.8" />
-        </g>
-      ) : (
-        <path d="M 190 95 Q 250 118 310 95 Q 250 134 190 95 Z" fill={colorHex} stroke={seamColor} strokeWidth="2.8" />
-      )}
-    </svg>
+    <div
+      className="garment-svg-wrapper"
+      style={{
+        width: "100%",
+        height: "100%",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        filter: "drop-shadow(0 18px 36px rgba(0,0,0,0.20))",
+        pointerEvents: "none",
+        userSelect: "none",
+      }}
+      dangerouslySetInnerHTML={{ __html: svgMarkup }}
+    />
   );
 }
 
@@ -809,8 +937,10 @@ export default function CustomShirtStudio({ onBack, onGoLanding, waNumber = "628
     // Gambar label Tampak Depan & Tampak Belakang
     ctx.fillStyle = "#8E9CFF";
     ctx.font = "bold 18px sans-serif";
-    ctx.fillText("TAMPAK DEPAN", 220, 150);
-    ctx.fillText("TAMPAK BELAKANG", 780, 150);
+    ctx.textAlign = "center";
+    ctx.fillText("TAMPAK DEPAN", 280, 145);
+    ctx.fillText("TAMPAK BELAKANG", 880, 145);
+    ctx.textAlign = "start";
 
     // Helper untuk merender mockup ke canvas
     const drawSide = async (sideName, xOffset) => {
@@ -826,7 +956,7 @@ export default function CustomShirtStudio({ onBack, onGoLanding, waNumber = "628
 
       await new Promise((resolve) => {
         img.onload = () => {
-          ctx.drawImage(img, xOffset, 170, 460, 520);
+          ctx.drawImage(img, xOffset, 160, 460, 497);
           URL.revokeObjectURL(blobURL);
           resolve(true);
         };
@@ -837,11 +967,11 @@ export default function CustomShirtStudio({ onBack, onGoLanding, waNumber = "628
         img.src = blobURL;
       });
 
-      // Render sablon elements
+      // Render sablon elements (Safe Zone: left 28%, top 23%, width 44%, height 54%)
       for (const el of els) {
         ctx.save();
-        const posX = xOffset + 130 + (el.x / 100) * 200;
-        const posY = 170 + 130 + (el.y / 100) * 260;
+        const posX = xOffset + 128.8 + (el.x / 100) * 202.4;
+        const posY = 160 + 114.3 + (el.y / 100) * 268.4;
         ctx.translate(posX, posY);
         if (el.rotation) ctx.rotate((el.rotation * Math.PI) / 180);
         if (el.scale) ctx.scale(el.scale, el.scale);
@@ -1865,8 +1995,9 @@ ${orderNotes ? `• Catatan: ${orderNotes}\n` : ""}`;
           <div
             style={{
               position: "relative",
-              width: "min(92vw, 480px)",
-              height: "min(72vh, 560px)",
+              width: "min(88vw, 440px)",
+              aspectRatio: "500 / 540",
+              maxHeight: "min(72vh, 540px)",
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
@@ -1884,11 +2015,11 @@ ${orderNotes ? `• Catatan: ${orderNotes}\n` : ""}`;
             <div
               style={{
                 position: "absolute",
-                top: "22%",
-                left: "27%",
-                width: "46%",
-                height: "56%",
-                border: showSafeZone ? "1.5px dashed rgba(142,156,255,0.45)" : "none",
+                top: "23%",
+                left: "28%",
+                width: "44%",
+                height: "54%",
+                border: showSafeZone ? "1.5px dashed rgba(142,156,255,0.6)" : "none",
                 borderRadius: 8,
                 pointerEvents: "auto",
               }}
@@ -1898,17 +2029,21 @@ ${orderNotes ? `• Catatan: ${orderNotes}\n` : ""}`;
                 <div
                   style={{
                     position: "absolute",
-                    top: -18,
+                    top: -14,
                     left: "50%",
                     transform: "translateX(-50%)",
                     fontSize: 9.5,
                     fontWeight: 700,
+                    letterSpacing: "0.03em",
                     color: C.pri,
                     background: C.bg2,
-                    padding: "1px 6px",
-                    borderRadius: 4,
-                    boxShadow: C.sh,
+                    border: `1px solid ${C.pri}33`,
+                    padding: "2px 8px",
+                    borderRadius: 12,
+                    boxShadow: "0 2px 8px rgba(0,0,0,0.12)",
                     whiteSpace: "nowrap",
+                    pointerEvents: "none",
+                    zIndex: 10,
                   }}
                 >
                   Area Sablon {activeSide === "front" ? "Dada" : "Punggung"}
