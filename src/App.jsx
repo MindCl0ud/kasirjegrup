@@ -832,85 +832,6 @@ function FaceScan({user,mode="verify",onSuccess,onCancel}) {
 }
 
 // ─────────────────────────────────────────────────────────────
-//  FIREBASE SETUP
-// ─────────────────────────────────────────────────────────────
-function FirebaseSetup({onDone}) {
-  const [step,setStep]=useState(1);
-  const [form,setForm]=useState({apiKey:"",authDomain:"",projectId:"",storageBucket:"",messagingSenderId:"",appId:""});
-  const [loading,setLoading]=useState(false);
-  const [err,setErr]=useState("");
-  const IS={width:"100%",padding:"12px 13px",background:C.bg3,border:`1.5px solid ${C.bo0}`,borderRadius:10,color:C.t0,fontSize:13,fontFamily:F.mono,transition:"border-color .15s"};
-  const connect=async()=>{
-    if(!form.apiKey||!form.projectId){setErr("API Key dan Project ID wajib diisi.");return;}
-    setLoading(true);setErr("");
-    const r=await initFirebase(form);
-    if(!r.ok){setErr("Koneksi gagal: "+r.error);setLoading(false);return;}
-    const seeded=await isSeeded().catch(()=>false);
-    if(!seeded) await seedDatabase(SEED_USERS,SEED_PRODUCTS);
-    setLoading(false);onDone();
-  };
-  return <div style={{fontFamily:F.sans,background:C.bg1,color:C.t0,minHeight:"100vh",display:"flex",alignItems:"center",justifyContent:"center",padding:16}}>
-    <style>{CSS}</style>
-    <div style={{position:"fixed",inset:0,pointerEvents:"none",overflow:"hidden"}}>
-      <div style={{position:"absolute",top:"-15%",right:"-10%",width:"50%",paddingBottom:"50%",borderRadius:"50%",background:`radial-gradient(circle,${C.g}07,transparent 70%)`}}/>
-      <div style={{position:"absolute",bottom:"-10%",left:"-5%",width:"45%",paddingBottom:"45%",borderRadius:"50%",background:`radial-gradient(circle,${C.b}05,transparent 70%)`}}/>
-    </div>
-    <div style={{position:"relative",width:"100%",maxWidth:500,animation:"fadeUp .4s ease"}}>
-      <div style={{textAlign:"center",marginBottom:24}}>
-        <div style={{display:"inline-flex",width:68,height:68,borderRadius:22,marginBottom:14,
-          background:`linear-gradient(135deg,${C.g}20,${C.b}18)`,border:`1.5px solid ${C.g}30`,
-          alignItems:"center",justifyContent:"center",fontSize:32}}><Ico e="🏬"/></div>
-        <h1 className="mn" style={{fontSize:22,fontWeight:700,letterSpacing:3,
-          background:`${C.pri}`,WebkitBackgroundClip:"text",WebkitTextFillColor:"transparent",marginBottom:10}}>KASIR JE GRUP</h1>
-        <div style={{display:"flex",justifyContent:"center",gap:7,flexWrap:"wrap"}}>
-          {Object.values(BIZ).map(b=><span key={b.id} style={{fontSize:11,padding:"3px 11px",borderRadius:20,fontWeight:600,
-            background:b.id==="JS_CLOTHING"?C.b1:C.p1,color:b.id==="JS_CLOTHING"?C.b:C.p,border:`1px solid ${(b.id==="JS_CLOTHING"?C.b:C.p)}22`}}><Ico e={b.icon}/> {b.name}</span>)}
-        </div>
-      </div>
-      <Card style={{padding:step===1?"22px":"18px 22px"}}>
-        {step===1 ? <>
-          <h2 style={{fontSize:14,fontWeight:800,marginBottom:4,color:C.g}}><Ico e="🔥"/> Hubungkan Firebase</h2>
-          <p style={{fontSize:12.5,color:C.t2,marginBottom:18,lineHeight:1.7}}>Database cloud untuk sinkronisasi real-time antar perangkat.</p>
-          {[{n:1,t:"Buat Firebase Project",d:"console.firebase.google.com → Add project → kasir-je-grup"},
-            {n:2,t:"Daftarkan Web App",d:"Klik ikon </> → nickname: Kasir → Register app"},
-            {n:3,t:"Salin firebaseConfig",d:"Salin semua isi objek firebaseConfig yang tampil"},
-            {n:4,t:"Aktifkan Firestore",d:"Build → Firestore Database → Create → test mode → asia-southeast1"},
-            {n:5,t:"Paste config di sini",d:"Klik tombol di bawah dan isi form"},
-          ].map(s=><div key={s.n} style={{display:"flex",gap:10,marginBottom:10,alignItems:"flex-start"}}>
-            <div style={{minWidth:22,height:22,borderRadius:"50%",background:C.g1,border:`1px solid ${C.g}44`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:10,fontWeight:700,color:C.g,flexShrink:0}}>{s.n}</div>
-            <div><div style={{fontSize:12.5,fontWeight:600}}>{s.t}</div><div style={{fontSize:11.5,color:C.t2,marginTop:2,lineHeight:1.6}}>{s.d}</div></div>
-          </div>)}
-          <div style={{marginTop:14,padding:"10px 12px",background:C.g2,borderRadius:8,border:`1px solid ${C.g}22`,fontSize:11.5,color:C.g,marginBottom:16}}>
-            <Ico e="💡"/> Gratis selamanya — Spark plan</div>
-          <div style={{display:"flex",gap:8}}>
-            <Btn onClick={()=>setStep(2)} full>Masukkan Config →</Btn>
-            <Btn onClick={()=>window.open("https://console.firebase.google.com","_blank")} outline>Buka ↗</Btn>
-          </div>
-        </> : <>
-          <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:16}}>
-            <button onClick={()=>setStep(1)} style={{background:"transparent",border:"none",color:C.t2,fontSize:20,lineHeight:1}}>←</button>
-            <h2 style={{fontSize:14,fontWeight:800}}>Firebase Config</h2>
-          </div>
-          <div style={{display:"flex",flexDirection:"column",gap:10}}>
-            {[{k:"apiKey",l:"API Key *"},{k:"authDomain",l:"Auth Domain"},{k:"projectId",l:"Project ID *"},
-              {k:"storageBucket",l:"Storage Bucket"},{k:"messagingSenderId",l:"Sender ID"},{k:"appId",l:"App ID"}].map(f=>(
-              <div key={f.k}>
-                <div style={{fontSize:12,fontWeight:700,color:C.t2,textTransform:"none",letterSpacing:0,marginBottom:4}}>{f.l}</div>
-                <input value={form[f.k]} onChange={e=>setForm(x=>({...x,[f.k]:e.target.value}))} style={IS}
-                  onFocus={e=>e.target.style.borderColor=C.pri+"88"} onBlur={e=>e.target.style.borderColor=C.bo0}/>
-              </div>))}
-          </div>
-          {err&&<div style={{marginTop:10,padding:"10px 13px",background:C.r1,borderRadius:8,border:`1px solid ${C.r}33`,fontSize:12,color:C.r}}><Ico e="⚠"/> {err}</div>}
-          <div style={{marginTop:16}}>
-            <Btn onClick={connect} disabled={loading} full size="lg">{loading?"Menghubungkan…":"Hubungkan Firebase"}</Btn>
-          </div>
-        </>}
-      </Card>
-    </div>
-  </div>;
-}
-
-// ─────────────────────────────────────────────────────────────
 //  INVOICE
 // ─────────────────────────────────────────────────────────────
 // ─────────────────────────────────────────────────────────────
@@ -3660,8 +3581,6 @@ function AppInner() {
       <p style={{fontSize:12,color:C.t2}}>Menghubungkan database...</p>
     </div>
   </div>;
-
-  if(fbSetup||!fbReady) return <FirebaseSetup onDone={()=>{setFbReady(true);setFbSetup(false);setFbLoad(false);}}/>;
 
   if(screen==="facescan"&&pending) return <div style={{fontFamily:F.sans,color:C.t0,height:"100vh",background:C.bg1}}>
     <style>{CSS}</style><Toast n={notif}/>

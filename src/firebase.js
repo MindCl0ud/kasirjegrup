@@ -46,6 +46,7 @@ export const getDB = () => _db;
 
 export const initFirebase = async (config) => {
   try {
+    if (_db) return { ok:true, db:_db };
     const existing = getApps();
     const app = existing.length > 0 ? existing[0] : initializeApp(config);
     _db = initializeFirestore(app, {
@@ -144,7 +145,7 @@ export const fbAddProduct = async (p, actor) => {
 export const fbUpdateProduct = async (id, data, actor) => {
   // merge:true = aman offline, tidak hapus field lain
   await setDoc(doc(_db,"products",String(id)), data, { merge: true });
-  if (actor) await fbLogActivity(actor,"Edit Produk",`Edit: ${data.name}`,data.business);
+  if (actor && data.name) await fbLogActivity(actor,"Edit Produk",`Edit: ${data.name}`,data.business);
 };
 
 export const fbDeleteProduct = async (id, name, biz, actor) => {
