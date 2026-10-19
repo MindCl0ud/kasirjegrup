@@ -3507,7 +3507,10 @@ function AppInner() {
   const [lapTo,setLapTo]=useState("");
   // ─── Table Pagination States ───
   const [userPage, setUserPage] = useState(1);
-  const [userPerPage, setUserPerPage] = useState(10);
+  const [userPerPage, setUserPerPage] = useState(12);
+  const [userSearch, setUserSearch] = useState("");
+  const [userRoleFilter, setUserRoleFilter] = useState("ALL");
+  const [userStatusFilter, setUserStatusFilter] = useState("ALL");
   const [prodPage, setProdPage] = useState(1);
   const [prodPerPage, setProdPerPage] = useState(20);
   const [lapPage, setLapPage] = useState(1);
@@ -5233,89 +5236,428 @@ function AppInner() {
 
 
         {/* ── PENGGUNA ── */}
-        {adminTab==="users"&&<div style={{display:"flex",flexDirection:"column",gap:10}}>
-          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",flexWrap:"wrap",gap:8}}>
-            <div><h2 style={{fontSize:15,fontWeight:800}}>Database Pengguna</h2></div>
-            <Btn onClick={openAddU} size="sm">+ Tambah</Btn>
-          </div>
-          {/* Desktop table */}
-          <div className="hide-mobile">
-            <Card noPad style={{overflow:"hidden"}}>
-              <TableWrap>
-                <table style={{width:"100%",borderCollapse:"collapse",fontSize:12,minWidth:600}}>
-                  <THead cols={["#","Username","Nama","Role","Akses","Wajah","Status","Aksi"]}/>
-                  <tbody>{users.slice((userPage - 1) * userPerPage, userPage * userPerPage).map((u,i)=><tr key={u.id} className="hrow" style={{borderTop:`1px solid ${C.bo0}`,background:i%2===0?"transparent":C.bg0}}>
-                    <td style={{padding:"14px 13px",fontFamily:F.mono,color:C.t3,fontSize:10}}>{u.id}</td>
-                    <td style={{padding:"14px 13px",fontFamily:F.mono,fontSize:11}}>{u.username}</td>
-                    <td style={{padding:"14px 13px",fontWeight:600}}>{u.name}</td>
-                    <td style={{padding:"14px 13px"}}><RoleTag role={u.role}/></td>
-                    <td style={{padding:"14px 13px"}}><div style={{display:"flex",gap:4,flexWrap:"wrap"}}>{u.access?.map(a=><BizChip key={a} biz={a} sm/>)}</div></td>
-                    <td style={{padding:"14px 13px"}}>
-                      {u.role==="admin"?<span style={{fontSize:10,color:C.t3}}>N/A</span>
-                      :u.faceDescriptor?<span style={{fontSize:10,color:C.g,fontWeight:700}}><Ico e="✓"/> Ada</span>
-                      :<button onClick={()=>setFaceReg(u.id)} className="press" style={{padding:"3px 9px",background:C.a1,border:`1px solid ${C.a}33`,borderRadius:6,color:C.a,fontSize:10,fontWeight:700}}>Daftarkan</button>}
-                    </td>
-                    <td style={{padding:"14px 13px"}}>
-                      <span style={{padding:"2px 8px",borderRadius:20,fontSize:9.5,fontWeight:700,background:u.active?C.g1:C.r1,color:u.active?C.g:C.r}}>{u.active?"AKTIF":"OFF"}</span>
-                    </td>
-                    <td style={{padding:"14px 13px",whiteSpace:"nowrap"}}>
-                      <button onClick={()=>openEditU(u)} className="press" style={{marginRight:4,padding:"3px 9px",background:"transparent",border:`1px solid ${C.bo1}`,borderRadius:6,color:C.t0,fontSize:10}}>Edit</button>
-                      <button onClick={()=>{setCpwdModal(u.id);setCpwdForm({old:"",n1:"",n2:""}); }} className="press" style={{marginRight:4,padding:"3px 9px",background:C.a1,border:`1px solid ${C.a}22`,borderRadius:6,color:C.a,fontSize:10}}><Ico e="🔑"/></button>
-                      {u.faceDescriptor&&u.role!=="admin"&&<button onClick={()=>{fbUpdateUser(u.id,{...u,faceDescriptor:null},user.name);toast("Wajah direset","warn");}} className="press" style={{marginRight:4,padding:"3px 9px",background:C.b1,border:`1px solid ${C.b}22`,borderRadius:6,color:C.b,fontSize:10}}>Reset</button>}
-                      <button onClick={()=>delUser(u)} className="press" style={{padding:"3px 9px",background:C.r1,border:`1px solid ${C.r}22`,borderRadius:6,color:C.r,fontSize:10}}>Hapus</button>
-                    </td>
-                  </tr>)}</tbody>
-                </table>
-              </TableWrap>
-              <TablePagination
-                page={userPage}
-                perPage={userPerPage}
-                totalItems={users.length}
-                onPageChange={setUserPage}
-                onPerPageChange={setUserPerPage}
-                perPageOptions={[5, 10, 20]}
-              />
-            </Card>
-          </div>
-          {/* Mobile card list */}
-          <div className="hide-desktop mobile-card-list">
-            {users.slice((userPage - 1) * userPerPage, userPage * userPerPage).map((u,_ui)=><div key={u.id} className="mcard card-in" style={{background:C.bg2,borderRadius:16,border:`1px solid ${C.bo0}`,padding:"14px 15px"}}>
-              <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:10}}>
-                <Avatar name={u.name} size={44}/>
-                <div style={{flex:1,minWidth:0}}>
-                  <div style={{fontSize:15,fontWeight:700,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{u.name}</div>
-                  <div style={{display:"flex",gap:6,alignItems:"center",marginTop:3,flexWrap:"wrap"}}>
-                    <span className="mn" style={{fontSize:11,color:C.t2}}>@{u.username}</span>
-                    <RoleTag role={u.role}/>
-                    <span style={{padding:"1px 7px",borderRadius:20,fontSize:9.5,fontWeight:700,background:u.active?C.g1:C.r1,color:u.active?C.g:C.r}}>{u.active?"AKTIF":"OFF"}</span>
+        {adminTab==="users"&&(()=>{
+          const totalActive = users.filter(u => u.active).length;
+          const totalAdmin = users.filter(u => u.role === "admin").length;
+          const totalKasir = users.filter(u => u.role === "kasir").length;
+          const totalStok = users.filter(u => u.role === "stok").length;
+          const totalWithFace = users.filter(u => u.faceDescriptor).length;
+
+          const q = (userSearch || "").trim().toLowerCase();
+          const filteredUsers = users.filter(u => {
+            if (!u) return false;
+            const matchQ = !q || (u.name || "").toLowerCase().includes(q) || (u.username || "").toLowerCase().includes(q) || String(u.id).includes(q);
+            const matchRole = userRoleFilter === "ALL" || u.role === userRoleFilter;
+            const matchStatus = userStatusFilter === "ALL" ? true : userStatusFilter === "active" ? !!u.active : !u.active;
+            return matchQ && matchRole && matchStatus;
+          });
+
+          const totalPages = Math.max(1, Math.ceil(filteredUsers.length / userPerPage));
+          const curPage = Math.min(Math.max(1, userPage), totalPages);
+          const paginatedUsers = filteredUsers.slice((curPage - 1) * userPerPage, curPage * userPerPage);
+
+          return (
+            <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+              {/* Top Header */}
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 10 }}>
+                <div>
+                  <h2 style={{ fontSize: 16, fontWeight: 800, color: C.t0, display: "flex", alignItems: "center", gap: 8 }}>
+                    <span>Database Pengguna</span>
+                    <span style={{ fontSize: 11.5, fontWeight: 700, padding: "2px 8px", borderRadius: 12, background: C.pri1, color: C.pri }}>
+                      {users.length} Akun
+                    </span>
+                  </h2>
+                  <div style={{ fontSize: 12, color: C.t2, marginTop: 2 }}>
+                    Kelola hak akses cabang, peran operasional, kata sandi, dan biometrik wajah pegawai.
                   </div>
                 </div>
+                <Btn onClick={openAddU} size="sm">+ Tambah Pengguna</Btn>
               </div>
-              <div style={{display:"flex",gap:4,flexWrap:"wrap",marginBottom:10}}>
-                {u.access?.map(a=><BizChip key={a} biz={a} sm/>)}
-                {u.role!=="admin"&&(u.faceDescriptor
-                  ?<span style={{padding:"2px 8px",borderRadius:20,fontSize:10,fontWeight:700,background:C.g1,color:C.g}}><Ico e="👁"/> Wajah terdaftar</span>
-                  :<span style={{padding:"2px 8px",borderRadius:20,fontSize:10,fontWeight:700,background:C.a1,color:C.a}}><Ico e="⚠"/> Belum ada wajah</span>)}
+
+              {/* Quick Summary Strip */}
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(130px, 1fr))", gap: 8 }}>
+                {[
+                  { label: "Total Pengguna", val: users.length, color: C.pri, icon: Users },
+                  { label: "Akun Aktif", val: totalActive, color: C.g, icon: CheckCircle2 },
+                  { label: "Admin", val: totalAdmin, color: C.vi, icon: ShieldCheck },
+                  { label: "Kasir", val: totalKasir, color: C.cy, icon: ShoppingBag },
+                  { label: "Stok", val: totalStok, color: C.a, icon: Package },
+                  { label: "Wajah Terdaftar", val: totalWithFace, color: C.b, icon: ScanLine },
+                ].map((s, idx) => (
+                  <div
+                    key={idx}
+                    style={{
+                      background: C.bg2,
+                      border: `1px solid ${C.bo0}`,
+                      borderRadius: 14,
+                      padding: "9px 12px",
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 9,
+                      boxShadow: C.sh,
+                    }}
+                  >
+                    <span style={{ width: 30, height: 30, borderRadius: 9, background: s.color + "1A", color: s.color, display: "grid", placeItems: "center", flexShrink: 0 }}>
+                      <s.icon size={16} strokeWidth={2.2} />
+                    </span>
+                    <div style={{ minWidth: 0 }}>
+                      <div style={{ fontSize: 10.5, fontWeight: 600, color: C.t2, lineHeight: 1.2 }}>{s.label}</div>
+                      <div className="mn" style={{ fontSize: 16, fontWeight: 800, color: C.t0, marginTop: 1, lineHeight: 1 }}>{s.val}</div>
+                    </div>
+                  </div>
+                ))}
               </div>
-              <div style={{display:"flex",gap:7,flexWrap:"wrap"}}>
-                <button onClick={()=>openEditU(u)} className="press" style={{flex:1,padding:"10px",background:"transparent",border:`1.5px solid ${C.bo1}`,borderRadius:10,color:C.t0,fontSize:12,fontWeight:600,fontFamily:F.sans}}><Ico e="✏️"/> Edit</button>
-                <button onClick={()=>{setCpwdModal(u.id);setCpwdForm({old:"",n1:"",n2:""});}} className="press" style={{flex:1,padding:"10px",background:C.a1,border:`1.5px solid ${C.a}33`,borderRadius:10,color:C.a,fontSize:12,fontWeight:600,fontFamily:F.sans}}><Ico e="🔑"/> Password</button>
-                {u.role!=="admin"&&!u.faceDescriptor&&<button onClick={()=>setFaceReg(u.id)} className="press" style={{flex:1,padding:"10px",background:C.b1,border:`1.5px solid ${C.b}33`,borderRadius:10,color:C.b,fontSize:12,fontWeight:600,fontFamily:F.sans}}><Ico e="📷"/> Daftarkan</button>}
-                {u.faceDescriptor&&u.role!=="admin"&&<button onClick={()=>{fbUpdateUser(u.id,{...u,faceDescriptor:null},user.name);toast("Wajah direset","warn");}} className="press" style={{padding:"10px 14px",background:C.b1,border:`1.5px solid ${C.b}33`,borderRadius:10,color:C.b,fontSize:12,fontFamily:F.sans}}>Reset Wajah</button>}
-                <button onClick={()=>delUser(u)} className="press" style={{padding:"10px 14px",background:C.r1,border:`1.5px solid ${C.r}33`,borderRadius:10,color:C.r,fontSize:12,fontFamily:F.sans}}><Ico e="🗑"/></button>
-              </div>
-            </div>)}
-            <TablePagination
-              page={userPage}
-              perPage={userPerPage}
-              totalItems={users.length}
-              onPageChange={setUserPage}
-              onPerPageChange={setUserPerPage}
-              perPageOptions={[5, 10, 20]}
-              style={{ borderRadius: 14, border: `1px solid ${C.bo0}`, marginTop: 10 }}
-            />
-          </div>
-        </div>}
+
+              {/* Search & Filters Card */}
+              <Card style={{ padding: "12px 14px" }}>
+                <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                  <Inp
+                    placeholder="Cari nama, username (@kasir), atau ID pengguna..."
+                    value={userSearch}
+                    onChange={e => { setUserSearch(e.target.value); setUserPage(1); }}
+                    icon={<Search size={15} />}
+                    style={{ minHeight: 38, fontSize: 13, padding: "7px 12px 7px 36px" }}
+                  />
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+                    {/* Role Filter Chips */}
+                    <div style={{ display: "flex", gap: 5, flexWrap: "wrap", alignItems: "center" }}>
+                      <span style={{ fontSize: 11, fontWeight: 700, color: C.t3, marginRight: 2, textTransform: "uppercase" }}>Peran:</span>
+                      {[
+                        ["ALL", `Semua (${users.length})`],
+                        ["admin", `Admin (${totalAdmin})`],
+                        ["kasir", `Kasir (${totalKasir})`],
+                        ["stok", `Stok (${totalStok})`],
+                      ].map(([key, label]) => (
+                        <button
+                          key={key}
+                          type="button"
+                          onClick={() => { setUserRoleFilter(key); setUserPage(1); }}
+                          className="press"
+                          style={{
+                            padding: "4px 10px",
+                            borderRadius: 20,
+                            border: `1.5px solid ${userRoleFilter === key ? C.pri : C.bo1}`,
+                            background: userRoleFilter === key ? C.pri1 : "transparent",
+                            color: userRoleFilter === key ? C.pri : C.t2,
+                            fontSize: 11.5,
+                            fontWeight: userRoleFilter === key ? 800 : 600,
+                            cursor: "pointer",
+                            transition: "all .15s",
+                          }}
+                        >
+                          {label}
+                        </button>
+                      ))}
+                    </div>
+
+                    {/* Status Filter Chips */}
+                    <div style={{ display: "flex", gap: 5, flexWrap: "wrap", alignItems: "center" }}>
+                      <span style={{ fontSize: 11, fontWeight: 700, color: C.t3, marginRight: 2, textTransform: "uppercase" }}>Status:</span>
+                      {[
+                        ["ALL", "Semua"],
+                        ["active", `Aktif (${totalActive})`],
+                        ["inactive", `Nonaktif (${users.length - totalActive})`],
+                      ].map(([key, label]) => (
+                        <button
+                          key={key}
+                          type="button"
+                          onClick={() => { setUserStatusFilter(key); setUserPage(1); }}
+                          className="press"
+                          style={{
+                            padding: "4px 9px",
+                            borderRadius: 8,
+                            border: `1px solid ${userStatusFilter === key ? (key === "inactive" ? C.r : C.g) : C.bo0}`,
+                            background: userStatusFilter === key ? (key === "inactive" ? C.r1 : C.g1) : "transparent",
+                            color: userStatusFilter === key ? (key === "inactive" ? C.r : C.g) : C.t3,
+                            fontSize: 11,
+                            fontWeight: 700,
+                            cursor: "pointer",
+                            transition: "all .15s",
+                          }}
+                        >
+                          {label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </Card>
+
+              {/* Users Card Grid (Unified Desktop & Mobile) */}
+              {filteredUsers.length === 0 ? (
+                <Card style={{ padding: "40px 20px" }}>
+                  <EmptyState
+                    icon={<Users size={32} />}
+                    title="Pengguna tidak ditemukan"
+                    hint={q || userRoleFilter !== "ALL" || userStatusFilter !== "ALL" ? "Coba ganti filter peran, status, atau kata kunci pencarian Anda." : "Belum ada data pengguna yang terdaftar."}
+                  />
+                </Card>
+              ) : (
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(310px, 1fr))", gap: 12 }}>
+                  {paginatedUsers.map((u, _idx) => {
+                    const roleBorder = u.role === "admin" ? C.vi : u.role === "kasir" ? C.cy : C.a;
+                    return (
+                      <div
+                        key={u.id}
+                        className="card-in"
+                        style={{
+                          background: C.bg2,
+                          borderRadius: 18,
+                          border: `1.5px solid ${u.active ? C.bo0 : C.r + "44"}`,
+                          padding: "16px",
+                          display: "flex",
+                          flexDirection: "column",
+                          gap: 12,
+                          boxShadow: C.sh,
+                          position: "relative",
+                          transition: "transform .18s ease, border-color .18s ease, box-shadow .18s ease",
+                          animationDelay: `${_idx * 0.03}s`,
+                        }}
+                      >
+                        {/* Top: Avatar, Name, Username, Status */}
+                        <div style={{ display: "flex", alignItems: "flex-start", gap: 12 }}>
+                          {/* Avatar with Role Ring */}
+                          <div style={{ position: "relative", flexShrink: 0 }}>
+                            <div
+                              style={{
+                                padding: 2,
+                                borderRadius: "50%",
+                                border: `2px solid ${roleBorder}88`,
+                                display: "grid",
+                                placeItems: "center",
+                              }}
+                            >
+                              <Avatar name={u.name} size={46} />
+                            </div>
+                            <span
+                              title={u.active ? "Akun Aktif" : "Akun Nonaktif"}
+                              style={{
+                                position: "absolute",
+                                bottom: 0,
+                                right: 0,
+                                width: 13,
+                                height: 13,
+                                borderRadius: "50%",
+                                background: u.active ? C.g : C.r,
+                                border: `2px solid ${C.bg2}`,
+                                boxShadow: u.active ? `0 0 6px ${C.g}` : undefined,
+                              }}
+                            />
+                          </div>
+
+                          {/* Name & Username */}
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 6 }}>
+                              <div
+                                style={{
+                                  fontSize: 15,
+                                  fontWeight: 800,
+                                  color: C.t0,
+                                  overflow: "hidden",
+                                  textOverflow: "ellipsis",
+                                  whiteSpace: "nowrap",
+                                  lineHeight: 1.25,
+                                }}
+                              >
+                                {u.name}
+                              </div>
+                              <span className="mn" style={{ fontSize: 10, fontWeight: 700, color: C.t3, background: C.bg3, padding: "1px 6px", borderRadius: 6, flexShrink: 0 }}>
+                                #{u.id}
+                              </span>
+                            </div>
+
+                            <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 3 }}>
+                              <span className="mn" style={{ fontSize: 12, color: C.t2, fontWeight: 600 }}>
+                                @{u.username}
+                              </span>
+                              <RoleTag role={u.role} />
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Middle Info: Akses Bisnis & Biometrik Wajah */}
+                        <div style={{ display: "flex", flexDirection: "column", gap: 8, background: C.bg3, padding: "10px 12px", borderRadius: 12 }}>
+                          {/* Akses Bisnis */}
+                          <div>
+                            <div style={{ fontSize: 10.5, fontWeight: 700, color: C.t3, textTransform: "uppercase", letterSpacing: "0.04em", marginBottom: 4 }}>
+                              Akses Bisnis
+                            </div>
+                            <div style={{ display: "flex", gap: 4, flexWrap: "wrap", alignItems: "center" }}>
+                              {u.access && u.access.length > 0 ? (
+                                u.access.map(a => <BizChip key={a} biz={a} sm />)
+                              ) : (
+                                <span style={{ fontSize: 11, color: C.t3, fontStyle: "italic" }}>Tidak ada akses</span>
+                              )}
+                            </div>
+                          </div>
+
+                          {/* Face Biometric Status */}
+                          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 6, paddingTop: 6, borderTop: `1px solid ${C.bo0}` }}>
+                            <span style={{ fontSize: 11, fontWeight: 600, color: C.t2 }}>Presensi Wajah:</span>
+                            {u.role === "admin" ? (
+                              <span style={{ fontSize: 10.5, color: C.t3, fontWeight: 700, display: "inline-flex", alignItems: "center", gap: 4 }}>
+                                <ShieldCheck size={12} /> Bebas Absen
+                              </span>
+                            ) : u.faceDescriptor ? (
+                              <span style={{ fontSize: 10.5, fontWeight: 800, color: C.g, background: C.g1, padding: "2px 8px", borderRadius: 20, display: "inline-flex", alignItems: "center", gap: 4 }}>
+                                <CheckCircle2 size={12} /> Terdaftar
+                              </span>
+                            ) : (
+                              <span style={{ fontSize: 10.5, fontWeight: 800, color: C.a, background: C.a1, padding: "2px 8px", borderRadius: 20, display: "inline-flex", alignItems: "center", gap: 4 }}>
+                                <AlertTriangle size={12} /> Belum Terdaftar
+                              </span>
+                            )}
+                          </div>
+                        </div>
+
+                        {/* Action Buttons */}
+                        <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginTop: "auto", paddingTop: 4 }}>
+                          {/* Edit */}
+                          <button
+                            type="button"
+                            onClick={() => openEditU(u)}
+                            className="press"
+                            style={{
+                              flex: 1,
+                              minWidth: 70,
+                              padding: "8px 10px",
+                              background: "transparent",
+                              border: `1.5px solid ${C.bo1}`,
+                              borderRadius: 10,
+                              color: C.t0,
+                              fontSize: 12,
+                              fontWeight: 700,
+                              fontFamily: F.sans,
+                              display: "inline-flex",
+                              alignItems: "center",
+                              justifyContent: "center",
+                              gap: 5,
+                              cursor: "pointer",
+                            }}
+                          >
+                            <Pencil size={13} /> Edit
+                          </button>
+
+                          {/* Password */}
+                          <button
+                            type="button"
+                            onClick={() => { setCpwdModal(u.id); setCpwdForm({ old: "", n1: "", n2: "" }); }}
+                            className="press"
+                            title="Ganti Password"
+                            style={{
+                              padding: "8px 10px",
+                              background: C.a1,
+                              border: `1.5px solid ${C.a}33`,
+                              borderRadius: 10,
+                              color: C.a,
+                              fontSize: 12,
+                              fontWeight: 700,
+                              fontFamily: F.sans,
+                              display: "inline-flex",
+                              alignItems: "center",
+                              justifyContent: "center",
+                              gap: 5,
+                              cursor: "pointer",
+                            }}
+                          >
+                            <KeyRound size={13} /> Password
+                          </button>
+
+                          {/* Face Register / Reset */}
+                          {u.role !== "admin" && (
+                            !u.faceDescriptor ? (
+                              <button
+                                type="button"
+                                onClick={() => setFaceReg(u.id)}
+                                className="press"
+                                style={{
+                                  flex: 1,
+                                  minWidth: 95,
+                                  padding: "8px 10px",
+                                  background: C.b1,
+                                  border: `1.5px solid ${C.b}33`,
+                                  borderRadius: 10,
+                                  color: C.b,
+                                  fontSize: 11.5,
+                                  fontWeight: 700,
+                                  fontFamily: F.sans,
+                                  display: "inline-flex",
+                                  alignItems: "center",
+                                  justifyContent: "center",
+                                  gap: 5,
+                                  cursor: "pointer",
+                                }}
+                              >
+                                <ScanLine size={13} /> Daftarkan
+                              </button>
+                            ) : (
+                              <button
+                                type="button"
+                                onClick={() => { fbUpdateUser(u.id, { ...u, faceDescriptor: null }, user.name); toast("Wajah direset", "warn"); }}
+                                className="press"
+                                style={{
+                                  padding: "8px 10px",
+                                  background: C.bg3,
+                                  border: `1px solid ${C.bo1}`,
+                                  borderRadius: 10,
+                                  color: C.t2,
+                                  fontSize: 11.5,
+                                  fontWeight: 600,
+                                  fontFamily: F.sans,
+                                  display: "inline-flex",
+                                  alignItems: "center",
+                                  justifyContent: "center",
+                                  gap: 4,
+                                  cursor: "pointer",
+                                }}
+                              >
+                                <RefreshCw size={12} /> Reset
+                              </button>
+                            )
+                          )}
+
+                          {/* Delete */}
+                          <button
+                            type="button"
+                            onClick={() => delUser(u)}
+                            className="press"
+                            title="Hapus Pengguna"
+                            aria-label={`Hapus ${u.name}`}
+                            style={{
+                              width: 36,
+                              height: 36,
+                              background: C.r1,
+                              border: `1.5px solid ${C.r}33`,
+                              borderRadius: 10,
+                              color: C.r,
+                              display: "grid",
+                              placeItems: "center",
+                              cursor: "pointer",
+                              flexShrink: 0,
+                            }}
+                          >
+                            <Trash2 size={14} />
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+
+              {/* Pagination */}
+              <TablePagination
+                page={curPage}
+                perPage={userPerPage}
+                totalItems={filteredUsers.length}
+                onPageChange={setUserPage}
+                onPerPageChange={setUserPerPage}
+                perPageOptions={[6, 12, 24, 48]}
+                style={{ borderRadius: 14, border: `1px solid ${C.bo0}`, marginTop: 6 }}
+              />
+            </div>
+          );
+        })()}
 
         {/* ── PRODUK ── */}
         {adminTab==="products"&&<div style={{display:"flex",flexDirection:"column",gap:10}}>
