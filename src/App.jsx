@@ -12,6 +12,7 @@ import {
   subscribeOpnames, subscribeOpnameItems, fbCreateOpname, fbCloseOpname,
   fbDeleteOpname, fbUpdateOpnameItem, fbBulkUpdateOpnameItems, fbApplyOpnameAdjustments,
   subscribeLanding, fbSetLanding,
+  subscribeCustomOrders, fbUpdateCustomOrderStatus, fbDeleteCustomOrder,
 } from "./firebase.js";
 // QRIS dinonaktifkan (stub). Untuk mengaktifkan: pakai `import { getQris, toDynamicQris, qrDataUrl } from "./qris.js";`
 const getQris = () => null;
@@ -889,7 +890,7 @@ function ProductFormModal({open,editing,editId,form,setForm,prods,biz,onSave,onC
   const set=k=>e=>setForm(x=>({...x,[k]:e.target.value}));
   const addAddon=()=>{
     const q=(form._addonSearch||"").trim().toLowerCase(); if(!q) return;
-    const found=prods.find(p=>p.business===bizId&&(p.barcode.toLowerCase().includes(q)||p.name.toLowerCase().includes(q))&&p.id!==editId);
+    const found=(prods||[]).find(p=>p&&p.business===bizId&&(p.barcode?.toLowerCase().includes(q)||p.name?.toLowerCase().includes(q))&&p.id!==editId);
     if(!found){toast("Produk tidak ditemukan","warn");return;}
     if(addons.includes(found.id)){toast("Sudah ada","warn");return;}
     setForm(x=>({...x,addons:[...addons,found.id],_addonSearch:""}));
@@ -946,7 +947,7 @@ function ProductFormModal({open,editing,editId,form,setForm,prods,biz,onSave,onC
       </div>
       {addons.length>0
         ? <div style={{display:"flex",flexDirection:"column",gap:8}}>
-            {addons.map(adId=>{const ap=prods.find(x=>x.id===adId);if(!ap) return null;
+            {addons.map(adId=>{const ap=(prods||[]).find(x=>x&&x.id===adId);if(!ap) return null;
               return <div key={adId} style={{display:"flex",alignItems:"center",gap:10,padding:"9px 12px",background:C.bg3,borderRadius:12}}>
                 <div style={{flex:1,minWidth:0}}>
                   <div style={{fontSize:14,fontWeight:600,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{ap.name}</div>
@@ -2695,6 +2696,16 @@ function AppInner() {
   const [selectedOpname, setSelectedOpname] = useState(null);
   const [landingCfg, setLandingCfg] = useState({});
   const [landingDraft, setLandingDraft] = useState(null);
+  const [customOrders, setCustomOrders] = useState(() => {
+    try {
+      const raw = localStorage.getItem("je_custom_orders_backup");
+      return raw ? JSON.parse(raw) : [];
+    } catch { return []; }
+  });
+  const [previewOrder, setPreviewOrder] = useState(null);
+  const [customOrderFilter, setCustomOrderFilter] = useState("Semua");
+  const [customOrderSearch, setCustomOrderSearch] = useState("");
+
   useEffect(()=>{
     if(!fbReady) return;
     const uns=[
@@ -2709,8 +2720,12 @@ function AppInner() {
       subscribeOpnames(d=>setOpnames(d)),
       subscribeExpenses(d=>setExpenses(d)),
       subscribeLanding(d=>{Object.assign(LANDING,d);setLandingCfg(d);}),
+      subscribeCustomOrders(d=>{
+        setCustomOrders(d);
+        try { localStorage.setItem("je_custom_orders_backup", JSON.stringify(d)); } catch {}
+      }),
     ];
-    return()=>uns.forEach(u=>u());
+    return()=>uns.forEach(u=>u&&u());
   },[fbReady]);
   // ─── Subscribe opname items when session selected ───
   useEffect(() => {
@@ -3266,9 +3281,10 @@ function AppInner() {
     setTimeout(()=>document.getElementById("prod-form-anchor")?.scrollIntoView({behavior:"smooth",block:"start"}),50);
   };
   const openEditP=p=>{
+    if(!p||!p.id) return;
     // If same product clicked again → close
     if(editPid===p.id&&pModal){setPModal(false);setEditPid(null);setInlineAddMode(false);return;}
-    setPForm({...p,price:String(p.price),hpp:String(p.hpp||0),stock:String(p.stock),expireDate:p.expireDate||"",advertised:!!p.advertised});
+    setPForm({...p,price:String(p.price||0),hpp:String(p.hpp||0),stock:String(p.stock??0),expireDate:p.expireDate||"",advertised:!!p.advertised,addons:Array.isArray(p.addons)?p.addons.filter(Boolean):[]});
     setEditPid(p.id);setPModal(true);setInlineAddMode(false);
     // Show price drawer only if price/hpp already exist
     setShowPriceDrawer(!!(p.price||p.hpp));
@@ -4206,6 +4222,7 @@ function AppInner() {
       {id:"dashboard",l:"Dashboard",ic:LayoutDashboard},{id:"users",l:"Pengguna",ic:Users},{id:"products",l:"Produk",ic:Package},
       {id:"laporan",l:"Laporan",ic:Wallet},{id:"labarugi",l:"Laba Rugi",ic:TrendingUp},{id:"operasional",l:"Operasional",ic:ShoppingBasket},{id:"absensi",l:"Absensi",ic:Clock},{id:"stoklog",l:"Log Stok",ic:ClipboardList},
       {id:"returns",l:"Retur",ic:Undo2},{id:"actlog",l:"Aktivitas",ic:Activity},{id:"opname",l:"Opname",ic:ClipboardCheck},
+      {id:"customorders",l:"Pesanan Baju",ic:Shirt},
       {id:"landing",l:"Landing Page",ic:Megaphone},
     ];
     const BNAV_TABS=[
@@ -4215,6 +4232,7 @@ function AppInner() {
       {id:"absensi",ic:Clock,label:"Absensi"},
     ];
     const MORE_TABS=[
+      {id:"customorders",ic:Shirt,label:"Pesanan Baju"},
       {id:"users",ic:Users,label:"Pengguna"},
       {id:"labarugi",ic:TrendingUp,label:"Laba Rugi"},
       {id:"operasional",ic:ShoppingBasket,label:"Operasional"},
@@ -4282,6 +4300,121 @@ function AppInner() {
 
       {showLowStock&&<LowStockPopup prods={prods} onClose={()=>setShowLowStock(false)}/>}
       {showExpirePopup&&<ExpirePopup nearExpiry={nearExpiry} expiredProds={expiredProds} onClose={()=>setShowExpirePopup(false)}/>}
+
+      {/* Modal Preview Desain Baju Custom */}
+      {previewOrder && (
+        <Modal
+          open
+          size="lg"
+          onClose={() => setPreviewOrder(null)}
+          icon={<Shirt size={20} />}
+          title={`Desain Baju: ${previewOrder.customerName || "Customer"}`}
+          subtitle={`${previewOrder.garment?.name || "Baju"} • ${previewOrder.color?.name || ""} (${previewOrder.orderCode || previewOrder.id})`}
+          footer={
+            <>
+              {previewOrder.mockupImage && (
+                <Btn
+                  outline
+                  onClick={() => {
+                    const a = document.createElement("a");
+                    a.href = previewOrder.mockupImage;
+                    a.download = `Desain-${(previewOrder.customerName || "Order").replace(/\s+/g, "_")}-${previewOrder.orderCode || "Mockup"}.png`;
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+                  }}
+                >
+                  <Download size={16} /> Unduh Mockup PNG
+                </Btn>
+              )}
+              {previewOrder.customerPhone && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    const num = String(previewOrder.customerPhone).replace(/\D/g, "");
+                    const text = `Halo Kak ${previewOrder.customerName}, kami dari JE Grup (JS Clothing) sedang memeriksa pesanan custom baju ${previewOrder.garment?.name || ""} Anda (${previewOrder.orderCode || ""}).`;
+                    window.open(`https://wa.me/${num}?text=${encodeURIComponent(text)}`, "_blank");
+                  }}
+                  className="press"
+                  style={{
+                    padding: "8px 14px",
+                    borderRadius: 10,
+                    background: "#25D366",
+                    color: "#FFF",
+                    fontWeight: 700,
+                    fontSize: 13,
+                    border: "none",
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: 6,
+                    cursor: "pointer",
+                  }}
+                >
+                  <MessageCircle size={16} /> Hubungi via WA
+                </button>
+              )}
+              <Btn outline onClick={() => setPreviewOrder(null)}>Tutup</Btn>
+            </>
+          }
+        >
+          <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+            {/* Mockup Full-Size Image */}
+            {previewOrder.mockupImage ? (
+              <div
+                style={{
+                  width: "100%",
+                  borderRadius: 14,
+                  overflow: "hidden",
+                  border: `1px solid ${C.bo1}`,
+                  background: "#182046",
+                  boxShadow: C.sh1,
+                }}
+              >
+                <img
+                  src={previewOrder.mockupImage}
+                  alt="Desain Kustom Baju"
+                  style={{ width: "100%", height: "auto", display: "block" }}
+                />
+              </div>
+            ) : (
+              <div style={{ padding: 24, textAlign: "center", background: C.bg3, borderRadius: 12, color: C.t2 }}>
+                Mockup gambar belum diunggah atau tidak tersedia.
+              </div>
+            )}
+
+            {/* Spesifikasi Pesanan */}
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 10 }}>
+              <div style={{ background: C.bg3, padding: "10px 14px", borderRadius: 12 }}>
+                <div style={{ fontSize: 11, color: C.t2 }}>Pemesan</div>
+                <div style={{ fontSize: 13.5, fontWeight: 800, marginTop: 2 }}>{previewOrder.customerName || "-"}</div>
+                {previewOrder.customerPhone && <div style={{ fontSize: 11.5, color: C.pri, marginTop: 2 }}>📞 {previewOrder.customerPhone}</div>}
+              </div>
+              <div style={{ background: C.bg3, padding: "10px 14px", borderRadius: 12 }}>
+                <div style={{ fontSize: 11, color: C.t2 }}>Model & Warna Baju</div>
+                <div style={{ fontSize: 13.5, fontWeight: 800, marginTop: 2 }}>{previewOrder.garment?.name}</div>
+                <div style={{ fontSize: 11.5, color: C.t1, marginTop: 2 }}>{previewOrder.color?.name} ({previewOrder.sides || "Depan"})</div>
+              </div>
+              <div style={{ background: C.bg3, padding: "10px 14px", borderRadius: 12 }}>
+                <div style={{ fontSize: 11, color: C.t2 }}>Jumlah & Ukuran</div>
+                <div style={{ fontSize: 13.5, fontWeight: 800, marginTop: 2 }}>
+                  {previewOrder.sizeBreakdown ? Object.entries(previewOrder.sizeBreakdown).filter(([_, q]) => q > 0).map(([s, q]) => `${s}: ${q} pcs`).join(", ") : `${previewOrder.totalPieces || 1} pcs`}
+                </div>
+                <div style={{ fontSize: 11.5, color: C.g, fontWeight: 700, marginTop: 2 }}>
+                  Total: {previewOrder.totalPieces || 1} pcs • {rp(previewOrder.estimatedPrice || 0)}
+                </div>
+              </div>
+            </div>
+
+            {previewOrder.notes && (
+              <div style={{ background: C.bg3, padding: "10px 14px", borderRadius: 12 }}>
+                <div style={{ fontSize: 11, color: C.t2, fontWeight: 700 }}>Catatan Pemesan:</div>
+                <div style={{ fontSize: 13, color: C.t0, marginTop: 3 }}>"{previewOrder.notes}"</div>
+              </div>
+            )}
+          </div>
+        </Modal>
+      )}
+
       
       {/* More drawer (mobile) */}
       {showMoreDrawer&&<div className="drawer-overlay" onClick={()=>setShowMoreDrawer(false)}>
@@ -4722,7 +4855,7 @@ function AppInner() {
                       <td style={{padding:"14px 13px"}}>
                         {(p.addons||[]).length>0
                           ?<span style={{padding:"2px 8px",borderRadius:20,fontSize:9.5,fontWeight:700,background:C.vi1,color:C.vi,border:`1px solid ${C.vi}22`,cursor:"pointer"}}
-                             title={(p.addons||[]).map(id=>prods.find(x=>x.id===id)?.name||id).join(", ")}>
+                             title={(p.addons||[]).map(id=>(prods||[]).find(x=>x&&x.id===id)?.name||id).join(", ")}>
                              +{(p.addons||[]).length} item</span>
                           :<span style={{fontSize:10,color:C.t3}}>—</span>}
                       </td>
@@ -4828,6 +4961,188 @@ function AppInner() {
               </div>;})}
           </div>
         </div>}
+
+
+        {/* ── PESANAN CUSTOM BAJU ── */}
+        {adminTab==="customorders"&&(()=>{
+          const q=(customOrderSearch||"").trim().toLowerCase();
+          const filter=customOrderFilter||"Semua";
+
+          const filteredOrders=(customOrders||[]).filter(o=>{
+            if(!o) return false;
+            const matchStatus=filter==="Semua"?true:(o.status||"Baru")===filter;
+            const matchSearch=!q||
+              (o.customerName||"").toLowerCase().includes(q)||
+              (o.customerPhone||"").toLowerCase().includes(q)||
+              (o.orderCode||"").toLowerCase().includes(q)||
+              (o.garment?.name||"").toLowerCase().includes(q);
+            return matchStatus&&matchSearch;
+          });
+
+          const countStatus=(st)=>(customOrders||[]).filter(o=>o&&(o.status||"Baru")===st).length;
+
+          return <div style={{display:"flex",flexDirection:"column",gap:14}}>
+            {/* Header */}
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",flexWrap:"wrap",gap:10}}>
+              <div>
+                <div style={{display:"flex",alignItems:"center",gap:8}}>
+                  <h2 style={{fontSize:16,fontWeight:800}}>Pesanan Custom Baju ({customOrders.length})</h2>
+                  {countStatus("Baru")>0&&(
+                    <span style={{padding:"3px 9px",borderRadius:20,background:C.a1,color:C.a,fontSize:11.5,fontWeight:800}}>
+                      {countStatus("Baru")} Baru
+                    </span>
+                  )}
+                </div>
+                <p style={{fontSize:12,color:C.t2,marginTop:3}}>
+                  Daftar pesanan baju custom dari Studio Desain pelanggan. Anda dapat melihat hasil mockup, rincian ukuran, dan follow-up langsung via WhatsApp.
+                </p>
+              </div>
+              <div style={{display:"flex",gap:8}}>
+                <Btn outline onClick={()=>setScreen("custom-baju")}>
+                  <Sparkles size={16}/> Buka Studio Desain
+                </Btn>
+              </div>
+            </div>
+
+            {/* Filter status tab cards */}
+            <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit, minmax(130px, 1fr))",gap:8}}>
+              {[
+                {label:"Semua",count:customOrders.length,color:C.pri,bg:C.pri1},
+                {label:"Baru",count:countStatus("Baru"),color:C.a,bg:C.a1},
+                {label:"Diproses",count:countStatus("Diproses"),color:C.vi,bg:C.vi1},
+                {label:"Selesai",count:countStatus("Selesai"),color:C.g,bg:C.g1},
+                {label:"Dibatalkan",count:countStatus("Dibatalkan"),color:C.r,bg:C.r1},
+              ].map(st=>{
+                const active=filter===st.label;
+                return <button key={st.label} onClick={()=>setCustomOrderFilter(st.label)} className="press"
+                  style={{padding:"10px 14px",borderRadius:12,background:active?st.bg:C.bg3,border:`1.5px solid ${active?st.color:C.bo0}`,textAlign:"left",cursor:"pointer"}}>
+                  <div style={{fontSize:11,color:active?st.color:C.t2,fontWeight:700}}>{st.label}</div>
+                  <div style={{fontSize:18,fontWeight:900,color:active?st.color:C.t0,marginTop:2}}>{st.count}</div>
+                </button>;
+              })}
+            </div>
+
+            {/* Search bar */}
+            <div style={{display:"flex",gap:8,alignItems:"center"}}>
+              <div style={{flex:1}}>
+                <Inp value={customOrderSearch} onChange={e=>setCustomOrderSearch(e.target.value)} placeholder="Cari kode pesanan, nama pemesan, no WA, atau tipe baju..." icon={<Search size={16}/>}/>
+              </div>
+              {customOrderSearch&&<Btn outline onClick={()=>setCustomOrderSearch("")}>Reset</Btn>}
+            </div>
+
+            {/* Order cards list */}
+            {filteredOrders.length===0?(
+              <EmptyState icon={<Shirt size={32}/>} title="Belum ada pesanan custom" hint={customOrderSearch?"Tidak ada pesanan yang sesuai dengan kata kunci.":"Pesanan yang dibuat pelanggan lewat Studio Desain akan otomatis tampil di sini."}/>
+            ):(
+              <div style={{display:"flex",flexDirection:"column",gap:12}}>
+                {filteredOrders.map(order=>{
+                  const statusColor=order.status==="Selesai"?C.g:order.status==="Diproses"?C.vi:order.status==="Dibatalkan"?C.r:C.a;
+                  const statusBg=order.status==="Selesai"?C.g1:order.status==="Diproses"?C.vi1:order.status==="Dibatalkan"?C.r1:C.a1;
+                  const sizes=order.sizeBreakdown?Object.entries(order.sizeBreakdown).filter(([_,q])=>q>0).map(([s,q])=>`${s}: ${q}`).join(" • "):"";
+
+                  return <Card key={order.id} style={{padding:"16px 18px",border:`1.5px solid ${C.bo0}`,borderRadius:16}}>
+                    <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",flexWrap:"wrap",gap:12}}>
+                      {/* Left: Thumbnail & specs */}
+                      <div style={{display:"flex",gap:14,flex:1,minWidth:260}}>
+                        <div onClick={()=>setPreviewOrder(order)} className="press" title="Klik untuk melihat mockup ukuran besar"
+                          style={{width:95,height:80,borderRadius:12,background:"#182046",border:`1px solid ${C.bo1}`,overflow:"hidden",flexShrink:0,cursor:"pointer",position:"relative",display:"grid",placeItems:"center"}}>
+                          {order.mockupImage?(
+                            <img src={order.mockupImage} alt="Mockup" style={{width:"100%",height:"100%",objectFit:"cover"}}/>
+                          ):(
+                            <div style={{textAlign:"center",color:C.t3}}>
+                              <Shirt size={26}/>
+                              <div style={{fontSize:9,marginTop:2}}>Preview</div>
+                            </div>
+                          )}
+                          <div style={{position:"absolute",inset:0,background:"rgba(0,0,0,0.35)",opacity:0,transition:"opacity .2s",display:"grid",placeItems:"center",color:"#FFF"}}
+                            onMouseEnter={e=>e.currentTarget.style.opacity=1} onMouseLeave={e=>e.currentTarget.style.opacity=0}>
+                            <Eye size={20}/>
+                          </div>
+                        </div>
+
+                        <div style={{flex:1,minWidth:0}}>
+                          <div style={{display:"flex",alignItems:"center",gap:8,flexWrap:"wrap"}}>
+                            <span style={{fontFamily:F.mono,fontSize:12,fontWeight:800,color:C.pri}}>{order.orderCode||order.id}</span>
+                            <span style={{fontSize:11,color:C.t3}}>•</span>
+                            <span style={{fontSize:11.5,color:C.t2}}>{order.date}</span>
+                            <span style={{padding:"2px 8px",borderRadius:12,background:statusBg,color:statusColor,fontSize:11,fontWeight:800}}>
+                              {order.status||"Baru"}
+                            </span>
+                          </div>
+
+                          <div style={{fontSize:15,fontWeight:800,color:C.t0,marginTop:4}}>
+                            {order.customerName||"Customer"}
+                            {order.customerPhone&&<span style={{fontSize:12.5,fontWeight:600,color:C.t2,marginLeft:8}}>({order.customerPhone})</span>}
+                          </div>
+
+                          <div style={{fontSize:12.5,color:C.t1,marginTop:3,display:"flex",alignItems:"center",gap:6,flexWrap:"wrap"}}>
+                            <span style={{fontWeight:700}}>{order.garment?.name||"Kaos"}</span>
+                            <span>—</span>
+                            <span style={{display:"inline-flex",alignItems:"center",gap:4}}>
+                              <span style={{width:10,height:10,borderRadius:"50%",background:order.color?.hex||"#000",border:"1px solid rgba(0,0,0,0.2)"}}/>
+                              <span>{order.color?.name||"Warna Kain"}</span>
+                            </span>
+                            <span>•</span>
+                            <span>{order.sides||"Depan"}</span>
+                          </div>
+
+                          <div style={{fontSize:12,color:C.t2,marginTop:4}}>
+                            <span>Ukuran: <b>{sizes||`${order.totalPieces||1} pcs`}</b></span>
+                            <span style={{margin:"0 6px"}}>•</span>
+                            <span>Total: <b>{order.totalPieces||1} pcs</b> ({rp(order.estimatedPrice||(order.totalPieces*(order.unitPrice||55000)))})</span>
+                          </div>
+
+                          {order.notes&&(
+                            <div style={{fontSize:11.5,color:C.t2,marginTop:5,background:C.bg3,padding:"5px 9px",borderRadius:8}}>
+                              📝 <i>"{order.notes}"</i>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Right: Actions */}
+                      <div style={{display:"flex",alignItems:"center",gap:8,flexWrap:"wrap"}}>
+                        <select value={order.status||"Baru"} onChange={e=>fbUpdateCustomOrderStatus(order.id,e.target.value,user.name)}
+                          style={{padding:"6px 10px",borderRadius:10,background:C.bg3,border:`1.5px solid ${C.bo1}`,color:C.t0,fontSize:12,fontWeight:700,outline:"none",cursor:"pointer"}}>
+                          <option value="Baru">Status: Baru</option>
+                          <option value="Diproses">Status: Diproses</option>
+                          <option value="Selesai">Status: Selesai</option>
+                          <option value="Dibatalkan">Status: Dibatalkan</option>
+                        </select>
+
+                        <button onClick={()=>setPreviewOrder(order)} className="press"
+                          style={{padding:"7px 12px",borderRadius:10,background:C.pri1,border:`1px solid ${C.pri}`,color:C.pri,fontSize:12,fontWeight:700,display:"inline-flex",alignItems:"center",gap:6,cursor:"pointer"}}>
+                          <Eye size={14}/> Lihat Hasil Desain
+                        </button>
+
+                        {order.customerPhone&&(
+                          <button onClick={()=>{
+                            const num=String(order.customerPhone).replace(/\D/g,"");
+                            const text=`Halo Kak ${order.customerName}, kami dari JE Grup (JS Clothing) mengonfirmasi pesanan custom baju ${order.garment?.name||"Kaos"} (${order.orderCode||""}) sejumlah ${order.totalPieces||1} pcs. Desain sudah kami terima dan siap diproses!`;
+                            window.open(`https://wa.me/${num}?text=${encodeURIComponent(text)}`,"_blank");
+                          }} className="press"
+                            style={{padding:"7px 12px",borderRadius:10,background:"#25D36622",border:"1px solid #25D36666",color:"#25D366",fontSize:12,fontWeight:700,display:"inline-flex",alignItems:"center",gap:6,cursor:"pointer"}}>
+                            <MessageCircle size={14}/> WhatsApp
+                          </button>
+                        )}
+
+                        <button onClick={()=>{
+                          if(window.confirm(`Hapus pesanan dari ${order.customerName}?`)){
+                            fbDeleteCustomOrder(order.id,user.name);
+                            toast("Pesanan dihapus");
+                          }
+                        }} className="press" title="Hapus Pesanan"
+                          style={{width:34,height:34,borderRadius:10,background:"transparent",border:`1px solid ${C.bo1}`,color:C.r,display:"grid",placeItems:"center",cursor:"pointer"}}>
+                          <Trash2 size={15}/>
+                        </button>
+                      </div>
+                    </div>
+                  </Card>;
+                })}
+              </div>
+            )}
+          </div>;
+        })()}
 
 
         {/* ── LANDING PAGE (ETALASE PUBLIK) ── */}

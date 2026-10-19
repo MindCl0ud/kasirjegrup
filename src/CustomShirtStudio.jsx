@@ -4,8 +4,9 @@ import {
   Trash2, Copy, Move, RotateCw, ZoomIn, ZoomOut, Check, ArrowLeft,
   MessageCircle, Download, Eye, Layers, Plus, Minus, X, AlertTriangle,
   Sliders, ChevronRight, RefreshCw, FlipHorizontal, ArrowUp, ArrowDown,
-  Info, ExternalLink, Scissors
+  Info, ExternalLink, Scissors, Phone
 } from "lucide-react";
+import { fbSaveCustomOrder } from "./firebase";
 
 // ─────────────────────────────────────────────────────────────
 //  GARMENT CATALOG & PRESETS
@@ -18,7 +19,7 @@ export const GARMENT_TYPES = [
     desc: "Bahan standar distro, adem, lembut, dan nyaman dipakai harian.",
     basePrice: 55000,
     minQty: 1,
-    tag: "Terlaris"
+    tag: "Bisa Satuan"
   },
   {
     id: "tshirt_heavy",
@@ -27,7 +28,7 @@ export const GARMENT_TYPES = [
     desc: "Bahan lebih tebal, potongan kokoh, sangat cocok untuk streetwear.",
     basePrice: 65000,
     minQty: 1,
-    tag: "Premium"
+    tag: "Bisa Satuan"
   },
   {
     id: "tshirt_long",
@@ -36,6 +37,7 @@ export const GARMENT_TYPES = [
     desc: "Lengan panjang dengan rib karet di pergelangan tangan.",
     basePrice: 70000,
     minQty: 1,
+    tag: "Bisa Satuan"
   },
   {
     id: "polo",
@@ -43,8 +45,8 @@ export const GARMENT_TYPES = [
     sub: "Lacoste Pique CVC",
     desc: "Bahan berpori halus dengan kerah formal dan kancing dada.",
     basePrice: 85000,
-    minQty: 6,
-    tag: "Seragam"
+    minQty: 1,
+    tag: "Bisa Satuan"
   },
   {
     id: "hoodie",
@@ -52,8 +54,8 @@ export const GARMENT_TYPES = [
     sub: "Cotton Fleece Tebal",
     desc: "Bahan fleece hangat dengan saku kangguru dan tali tudung.",
     basePrice: 135000,
-    minQty: 3,
-    tag: "Komunitas"
+    minQty: 1,
+    tag: "Bisa Satuan"
   }
 ];
 
@@ -582,7 +584,8 @@ export default function CustomShirtStudio({ onBack, onGoLanding, waNumber = "628
   // ── Desain Tersimpan (LocalStorage) ──
   const [savedDesigns, setSavedDesigns] = useState(() => {
     try {
-      return JSON.parse(localStorage.getItem("je_custom_shirts") || "[]");
+      const raw = JSON.parse(localStorage.getItem("je_custom_shirts") || "[]");
+      return Array.isArray(raw) ? raw.filter(x => x && typeof x === "object" && x.id) : [];
     } catch {
       return [];
     }
@@ -591,7 +594,8 @@ export default function CustomShirtStudio({ onBack, onGoLanding, waNumber = "628
   // ── Dialog Order WhatsApp ──
   const [showOrderModal, setShowOrderModal] = useState(false);
   const [orderName, setOrderName] = useState("");
-  const [orderQty, setOrderQty] = useState({ S: 0, M: 2, L: 4, XL: 2, XXL: 0 });
+  const [orderPhone, setOrderPhone] = useState("");
+  const [orderQty, setOrderQty] = useState({ S: 0, M: 0, L: 1, XL: 0, XXL: 0 });
   const [orderNotes, setOrderNotes] = useState("");
   const [isExporting, setIsExporting] = useState(false);
 
@@ -606,13 +610,17 @@ export default function CustomShirtStudio({ onBack, onGoLanding, waNumber = "628
   const canvasRef = useRef(null);
   const fileInputRef = useRef(null);
 
-  // Elemen aktif saat ini sesuai sisi aktif
-  const currentElements = activeSide === "front" ? frontElements : backElements;
+  // Elemen aktif saat ini sesuai sisi aktif (selalu difilter dari elemen null)
+  const currentElements = (activeSide === "front" ? frontElements : backElements).filter(Boolean);
   const setCurrentElements = (updater) => {
+    const sanitize = (prev) => {
+      const next = typeof updater === "function" ? updater(prev) : updater;
+      return Array.isArray(next) ? next.filter(Boolean) : [];
+    };
     if (activeSide === "front") {
-      setFrontElements(updater);
+      setFrontElements(sanitize);
     } else {
-      setBackElements(updater);
+      setBackElements(sanitize);
     }
   };
 
@@ -620,7 +628,10 @@ export default function CustomShirtStudio({ onBack, onGoLanding, waNumber = "628
   const recordHistory = useCallback((fEls, bEls) => {
     setHistory(prev => {
       const trimmed = prev.slice(0, histStep + 1);
-      return [...trimmed, { front: fEls, back: bEls }];
+      return [...trimmed, {
+        front: Array.isArray(fEls) ? fEls.filter(Boolean) : [],
+        back: Array.isArray(bEls) ? bEls.filter(Boolean) : []
+      }];
     });
     setHistStep(prev => prev + 1);
   }, [histStep]);
@@ -629,10 +640,12 @@ export default function CustomShirtStudio({ onBack, onGoLanding, waNumber = "628
   const handleUndo = () => {
     if (histStep > 0) {
       const target = history[histStep - 1];
-      setFrontElements(target.front);
-      setBackElements(target.back);
-      setHistStep(histStep - 1);
-      setSelectedId(null);
+      if (target) {
+        setFrontElements(Array.isArray(target.front) ? target.front.filter(Boolean) : []);
+        setBackElements(Array.isArray(target.back) ? target.back.filter(Boolean) : []);
+        setHistStep(histStep - 1);
+        setSelectedId(null);
+      }
     }
   };
 
@@ -640,10 +653,12 @@ export default function CustomShirtStudio({ onBack, onGoLanding, waNumber = "628
   const handleRedo = () => {
     if (histStep < history.length - 1) {
       const target = history[histStep + 1];
-      setFrontElements(target.front);
-      setBackElements(target.back);
-      setHistStep(histStep + 1);
-      setSelectedId(null);
+      if (target) {
+        setFrontElements(Array.isArray(target.front) ? target.front.filter(Boolean) : []);
+        setBackElements(Array.isArray(target.back) ? target.back.filter(Boolean) : []);
+        setHistStep(histStep + 1);
+        setSelectedId(null);
+      }
     }
   };
 
@@ -653,8 +668,8 @@ export default function CustomShirtStudio({ onBack, onGoLanding, waNumber = "628
       const draft = {
         garmentId: garmentType.id,
         colorId: garmentColor.id,
-        front: frontElements,
-        back: backElements,
+        front: (frontElements || []).filter(Boolean),
+        back: (backElements || []).filter(Boolean),
         updatedAt: Date.now()
       };
       localStorage.setItem("je_custom_draft", JSON.stringify(draft));
@@ -667,14 +682,16 @@ export default function CustomShirtStudio({ onBack, onGoLanding, waNumber = "628
       const saved = localStorage.getItem("je_custom_draft");
       if (saved) {
         const d = JSON.parse(saved);
-        if (d.front && d.front.length > 0 || d.back && d.back.length > 0) {
-          const g = GARMENT_TYPES.find(x => x.id === d.garmentId) || GARMENT_TYPES[0];
-          const c = GARMENT_COLORS.find(x => x.id === d.colorId) || GARMENT_COLORS[0];
+        if (d && ((Array.isArray(d.front) && d.front.length > 0) || (Array.isArray(d.back) && d.back.length > 0))) {
+          const g = GARMENT_TYPES.find(x => x && x.id === d.garmentId) || GARMENT_TYPES[0];
+          const c = GARMENT_COLORS.find(x => x && x.id === d.colorId) || GARMENT_COLORS[0];
           setGarmentType(g);
           setGarmentColor(c);
-          setFrontElements(d.front || []);
-          setBackElements(d.back || []);
-          setHistory([{ front: d.front || [], back: d.back || [] }]);
+          const safeFront = Array.isArray(d.front) ? d.front.filter(Boolean) : [];
+          const safeBack = Array.isArray(d.back) ? d.back.filter(Boolean) : [];
+          setFrontElements(safeFront);
+          setBackElements(safeBack);
+          setHistory([{ front: safeFront, back: safeBack }]);
           setHistStep(0);
         }
       }
@@ -770,17 +787,17 @@ export default function CustomShirtStudio({ onBack, onGoLanding, waNumber = "628
   const updateSelected = (updater) => {
     if (!selectedId) return;
     const next = currentElements.map(el => {
-      if (el.id === selectedId) {
+      if (el && el.id === selectedId) {
         return typeof updater === "function" ? updater(el) : { ...el, ...updater };
       }
       return el;
-    });
+    }).filter(Boolean);
     setCurrentElements(next);
   };
 
   const deleteSelected = () => {
     if (!selectedId) return;
-    const next = currentElements.filter(el => el.id !== selectedId);
+    const next = currentElements.filter(el => el && el.id !== selectedId);
     setCurrentElements(next);
     setSelectedId(null);
     recordHistory(activeSide === "front" ? next : frontElements, activeSide === "back" ? next : backElements);
@@ -789,27 +806,27 @@ export default function CustomShirtStudio({ onBack, onGoLanding, waNumber = "628
 
   const duplicateSelected = () => {
     if (!selectedId) return;
-    const src = currentElements.find(el => el.id === selectedId);
+    const src = currentElements.find(el => el && el.id === selectedId);
     if (!src) return;
     const clone = {
       ...src,
-      id: src.type + "_" + Date.now().toString(36),
-      x: Math.min(80, src.x + 5),
-      y: Math.min(80, src.y + 5),
+      id: (src.type || "el") + "_" + Date.now().toString(36),
+      x: Math.min(80, (src.x || 50) + 5),
+      y: Math.min(80, (src.y || 45) + 5),
     };
-    const next = [...currentElements, clone];
+    const next = [...currentElements.filter(Boolean), clone];
     setCurrentElements(next);
     setSelectedId(clone.id);
     recordHistory(activeSide === "front" ? next : frontElements, activeSide === "back" ? next : backElements);
     showToast("Elemen diduplikasi");
   };
 
-  const selectedElement = currentElements.find(el => el.id === selectedId);
+  const selectedElement = currentElements.find(el => el && el.id === selectedId);
 
   // Auto-sync text settings saat elemen teks dipilih agar bisa langsung diedit
   useEffect(() => {
     if (selectedElement && selectedElement.type === "text") {
-      setNewText(selectedElement.text);
+      setNewText(selectedElement.text || "");
       if (selectedElement.fontFamily) setNewFont(selectedElement.fontFamily);
       if (selectedElement.color) setNewColor(selectedElement.color);
     }
@@ -825,15 +842,15 @@ export default function CustomShirtStudio({ onBack, onGoLanding, waNumber = "628
     setSelectedId(elId);
     const clientX = e.touches ? e.touches[0].clientX : e.clientX;
     const clientY = e.touches ? e.touches[0].clientY : e.clientY;
-    const el = currentElements.find(x => x.id === elId);
+    const el = currentElements.find(x => x && x.id === elId);
     if (!el) return;
 
     dragRef.current = {
       id: elId,
       startX: clientX,
       startY: clientY,
-      origX: el.x,
-      origY: el.y,
+      origX: el.x || 50,
+      origY: el.y || 50,
     };
   };
 
@@ -848,10 +865,10 @@ export default function CustomShirtStudio({ onBack, onGoLanding, waNumber = "628
     const deltaXPercent = (dx / 260) * 100;
     const deltaYPercent = (dy / 340) * 100;
 
-    const newX = Math.max(10, Math.min(90, dragRef.current.origX + deltaXPercent));
-    const newY = Math.max(10, Math.min(90, dragRef.current.origY + deltaYPercent));
+    const newX = Math.max(10, Math.min(90, (dragRef.current.origX || 50) + deltaXPercent));
+    const newY = Math.max(10, Math.min(90, (dragRef.current.origY || 50) + deltaYPercent));
 
-    setCurrentElements(prev => prev.map(el => el.id === dragRef.current.id ? { ...el, x: Math.round(newX), y: Math.round(newY) } : el));
+    setCurrentElements(prev => (prev || []).filter(Boolean).map(el => (el && el.id === dragRef.current?.id) ? { ...el, x: Math.round(newX), y: Math.round(newY) } : el));
   };
 
   const handlePointerUp = () => {
@@ -869,7 +886,7 @@ export default function CustomShirtStudio({ onBack, onGoLanding, waNumber = "628
     let title = titleInput;
     if (!title) {
       const ask = window.prompt("Beri nama untuk desain ini:", defaultTitle);
-      if (ask === null) return; // User batalkan prompt
+      if (ask === null) return;
       title = ask.trim() || defaultTitle;
     }
     const item = {
@@ -878,11 +895,11 @@ export default function CustomShirtStudio({ onBack, onGoLanding, waNumber = "628
       date: new Date().toLocaleDateString("id-ID", { day: "numeric", month: "short", year: "numeric" }),
       garment: garmentType,
       color: garmentColor,
-      front: frontElements,
-      back: backElements,
+      front: (frontElements || []).filter(Boolean),
+      back: (backElements || []).filter(Boolean),
     };
 
-    const nextList = [item, ...savedDesigns.filter(x => x.title !== item.title)];
+    const nextList = [item, ...savedDesigns.filter(x => x && x.title !== item.title)];
     setSavedDesigns(nextList);
     try {
       localStorage.setItem("je_custom_shirts", JSON.stringify(nextList));
@@ -892,18 +909,24 @@ export default function CustomShirtStudio({ onBack, onGoLanding, waNumber = "628
   };
 
   const loadSavedDesign = (item) => {
-    setGarmentType(item.garment || GARMENT_TYPES[0]);
-    setGarmentColor(item.color || GARMENT_COLORS[0]);
-    setFrontElements(item.front || []);
-    setBackElements(item.back || []);
+    if (!item) return;
+    const g = GARMENT_TYPES.find(x => x && x.id === item.garment?.id) || item.garment || GARMENT_TYPES[0];
+    const c = GARMENT_COLORS.find(x => x && x.id === item.color?.id) || item.color || GARMENT_COLORS[0];
+    setGarmentType(g);
+    setGarmentColor(c);
+    const safeFront = Array.isArray(item.front) ? item.front.filter(Boolean) : [];
+    const safeBack = Array.isArray(item.back) ? item.back.filter(Boolean) : [];
+    setFrontElements(safeFront);
+    setBackElements(safeBack);
     setSelectedId(null);
-    recordHistory(item.front || [], item.back || []);
-    showToast(`Desain "${item.title}" dimuat`);
+    recordHistory(safeFront, safeBack);
+    showToast(`Desain "${item.title || "Kustom"}" dimuat`);
   };
 
   const deleteSavedDesign = (id) => {
+    if (!id) return;
     if (!window.confirm("Hapus desain ini dari daftar tersimpan?")) return;
-    const nextList = savedDesigns.filter(x => x.id !== id);
+    const nextList = savedDesigns.filter(x => x && x.id !== id);
     setSavedDesigns(nextList);
     try {
       localStorage.setItem("je_custom_shirts", JSON.stringify(nextList));
@@ -914,7 +937,7 @@ export default function CustomShirtStudio({ onBack, onGoLanding, waNumber = "628
   // ─────────────────────────────────────────────────────────────
   //  EXPORT HIGH-RES MOCKUP KE CANVAS & DOWNLOAD PNG
   // ─────────────────────────────────────────────────────────────
-  const renderMockupImage = useCallback(async () => {
+  const renderMockupImage = useCallback(async (format = "png") => {
     const canvas = document.createElement("canvas");
     canvas.width = 1200;
     canvas.height = 800;
@@ -944,7 +967,8 @@ export default function CustomShirtStudio({ onBack, onGoLanding, waNumber = "628
 
     // Helper untuk merender mockup ke canvas
     const drawSide = async (sideName, xOffset) => {
-      const els = sideName === "front" ? frontElements : backElements;
+      const rawEls = sideName === "front" ? frontElements : backElements;
+      const els = (rawEls || []).filter(Boolean);
 
       // Buat SVG garment string dinamis sesuai tipe & warna pakaian
       const svgString = getGarmentSvgMarkup(garmentType.id, garmentColor.hex, sideName);
@@ -969,9 +993,10 @@ export default function CustomShirtStudio({ onBack, onGoLanding, waNumber = "628
 
       // Render sablon elements (Safe Zone: left 28%, top 23%, width 44%, height 54%)
       for (const el of els) {
+        if (!el) continue;
         ctx.save();
-        const posX = xOffset + 128.8 + (el.x / 100) * 202.4;
-        const posY = 160 + 114.3 + (el.y / 100) * 268.4;
+        const posX = xOffset + 128.8 + ((el.x || 50) / 100) * 202.4;
+        const posY = 160 + 114.3 + ((el.y || 45) / 100) * 268.4;
         ctx.translate(posX, posY);
         if (el.rotation) ctx.rotate((el.rotation * Math.PI) / 180);
         if (el.scale) ctx.scale(el.scale, el.scale);
@@ -979,8 +1004,8 @@ export default function CustomShirtStudio({ onBack, onGoLanding, waNumber = "628
         if (el.type === "text") {
           ctx.fillStyle = el.color || "#FFFFFF";
           ctx.textAlign = el.align || "center";
-          ctx.font = `${el.isBold ? "bold " : ""}${el.isItalic ? "italic " : ""}${el.fontSize * 1.3}px ${el.fontFamily || "sans-serif"}`;
-          ctx.fillText(el.text, 0, 0);
+          ctx.font = `${el.isBold ? "bold " : ""}${el.isItalic ? "italic " : ""}${(el.fontSize || 26) * 1.3}px ${el.fontFamily || "sans-serif"}`;
+          ctx.fillText(el.text || "", 0, 0);
         } else if (el.type === "image" && el.src) {
           const artImg = new Image();
           await new Promise(res => {
@@ -1023,6 +1048,9 @@ export default function CustomShirtStudio({ onBack, onGoLanding, waNumber = "628
     ctx.font = "14px sans-serif";
     ctx.fillText("Desain Resmi JE Grup • Hubungi WhatsApp untuk pemesanan & info sablon", 50, 765);
 
+    if (format === "jpeg") {
+      return canvas.toDataURL("image/jpeg", 0.85);
+    }
     return canvas.toDataURL("image/png");
   }, [garmentType, garmentColor, frontElements, backElements]);
 
@@ -1030,7 +1058,7 @@ export default function CustomShirtStudio({ onBack, onGoLanding, waNumber = "628
   const handleDownloadMockup = async () => {
     setIsExporting(true);
     try {
-      const dataUrl = await renderMockupImage();
+      const dataUrl = await renderMockupImage("png");
       if (!dataUrl) return;
       const a = document.createElement("a");
       a.href = dataUrl;
@@ -1053,12 +1081,19 @@ export default function CustomShirtStudio({ onBack, onGoLanding, waNumber = "628
   const estimatedPrice = totalPieces * garmentType.basePrice;
 
   const handleSendToWhatsApp = async () => {
-    if (totalPieces < garmentType.minQty) {
-      alert(`Minimal pemesanan untuk ${garmentType.name} adalah ${garmentType.minQty} pcs.`);
+    if (totalPieces < 1) {
+      alert("Silakan masukkan jumlah pesanan minimal 1 pcs (bisa pesan satuan).");
       return;
     }
 
     setIsExporting(true);
+
+    let mockupJpeg = "";
+    try {
+      mockupJpeg = await renderMockupImage("jpeg");
+    } catch (e) {
+      console.warn("Gagal membuat thumbnail JPEG mockup:", e);
+    }
 
     // Download mockup gambar otomatis agar customer bisa langsung lampirkan di WA
     try {
@@ -1066,36 +1101,71 @@ export default function CustomShirtStudio({ onBack, onGoLanding, waNumber = "628
     } catch {}
 
     // Rangkum elemen sablon
-    const frontDesc = frontElements.length === 0
-      ? "Polos"
-      : frontElements.map(x => x.type === "text" ? `Teks: "${x.text}"` : (x.name || "Gambar/Logo")).join(", ");
+    const frontList = (frontElements || []).filter(Boolean);
+    const backList = (backElements || []).filter(Boolean);
 
-    const backDesc = backElements.length === 0
+    const frontDesc = frontList.length === 0
       ? "Polos"
-      : backElements.map(x => x.type === "text" ? `Teks: "${x.text}"` : (x.name || "Gambar/Logo")).join(", ");
+      : frontList.map(x => x.type === "text" ? `Teks: "${x.text}"` : (x.name || "Gambar/Logo")).join(", ");
+
+    const backDesc = backList.length === 0
+      ? "Polos"
+      : backList.map(x => x.type === "text" ? `Teks: "${x.text}"` : (x.name || "Gambar/Logo")).join(", ");
 
     const sizeBreakdown = Object.entries(orderQty)
       .filter(([_, q]) => q > 0)
       .map(([s, q]) => `${s}: ${q} pcs`)
       .join(", ");
 
+    // Simpan pesanan ke database Firestore & Local Backup agar admin dapat melihat hasil desainnya
+    try {
+      await fbSaveCustomOrder({
+        orderCode: "CST-" + Date.now().toString(36).toUpperCase(),
+        customerName: orderName.trim() || "Customer",
+        customerPhone: orderPhone.trim() || "",
+        garment: {
+          id: garmentType.id,
+          name: garmentType.name,
+          sub: garmentType.sub,
+          basePrice: garmentType.basePrice,
+        },
+        color: {
+          id: garmentColor.id,
+          name: garmentColor.name,
+          hex: garmentColor.hex,
+        },
+        sizeBreakdown: orderQty,
+        totalPieces,
+        unitPrice: garmentType.basePrice,
+        estimatedPrice,
+        notes: orderNotes.trim(),
+        sides: frontList.length > 0 && backList.length > 0 ? "Depan & Belakang" : frontList.length > 0 ? "Hanya Depan" : "Hanya Belakang",
+        frontElements: frontList,
+        backElements: backList,
+        mockupImage: mockupJpeg,
+        status: "Baru",
+      });
+    } catch (err) {
+      console.warn("fbSaveCustomOrder error:", err);
+    }
+
     const textMsg = `Halo JS Clothing (JE Grup), saya ingin memesan baju custom dengan hasil rancangan dari Studio Desain:
 
 📋 *SPESIFIKASI PESANAN CUSTOM*
 • *Jenis Pakaian*: ${garmentType.name} (${garmentType.sub})
 • *Warna Kain*: ${garmentColor.name}
-• *Sisi Sablon*: ${frontElements.length > 0 && backElements.length > 0 ? "Depan & Belakang" : (frontElements.length > 0 ? "Hanya Depan" : "Hanya Belakang")}
+• *Sisi Sablon*: ${frontList.length > 0 && backList.length > 0 ? "Depan & Belakang" : (frontList.length > 0 ? "Hanya Depan" : "Hanya Belakang")}
 • *Desain Depan*: ${frontDesc}
 • *Desain Belakang*: ${backDesc}
 
 📦 *RINCIAN UKURAN & JUMLAH*
-• *Pilihan Ukuran*: ${sizeBreakdown}
+• *Pilihan Ukuran*: ${sizeBreakdown || "1 pcs"}
 • *Total Pesanan*: ${totalPieces} pcs
 • *Estimasi Dasar*: ${rp(estimatedPrice)}
 
 👤 *Pemesan*: ${orderName.trim() || "Customer"}
-${orderNotes ? `📝 *Catatan Tambahan*: ${orderNotes}\n` : ""}
-_(Gambar mockup desain otomatis telah saya simpan dan akan saya lampirkan di chat ini)_. Mohon info ketersediaan stok bahan dan jadwal produksinya ya. Terima kasih!`;
+${orderPhone ? `📞 *No. Kontak*: ${orderPhone.trim()}\n` : ""}${orderNotes ? `📝 *Catatan Tambahan*: ${orderNotes}\n` : ""}
+_(Gambar mockup desain otomatis telah saya simpan dan tersinkron ke sistem JE Grup)_. Mohon info ketersediaan stok bahan dan jadwal produksinya ya. Terima kasih!`;
 
     const cleanNum = String(waNumber).replace(/\D/g, "");
     const waUrl = `https://wa.me/${cleanNum}?text=${encodeURIComponent(textMsg)}`;
@@ -1473,7 +1543,7 @@ ${orderNotes ? `• Catatan: ${orderNotes}\n` : ""}`;
                 <div style={{ fontSize: 11.5, color: C.t2 }}>Klik tombol "Simpan" di atas untuk menyimpan rancangan baju Anda.</div>
               </div>
             ) : (
-              savedDesigns.map(item => (
+              savedDesigns.filter(item => item && item.id).map(item => (
                 <div
                   key={item.id}
                   style={{
@@ -2051,7 +2121,8 @@ ${orderNotes ? `• Catatan: ${orderNotes}\n` : ""}`;
               )}
 
               {/* Render Canvas Elements for Active Side */}
-              {currentElements.map(el => {
+              {currentElements.filter(Boolean).map(el => {
+                if (!el || !el.id) return null;
                 const isSel = el.id === selectedId;
 
                 return (
@@ -2523,25 +2594,52 @@ ${orderNotes ? `• Catatan: ${orderNotes}\n` : ""}`;
               </div>
             </div>
 
-            {/* Nama Pemesan */}
-            <div>
-              <label style={{ display: "block", fontSize: 12, fontWeight: 800, marginBottom: 5 }}>Nama Pemesan / Komunitas</label>
-              <input
-                type="text"
-                value={orderName}
-                onChange={e => setOrderName(e.target.value)}
-                placeholder="Contoh: Budi Santoso / Alumni 2020"
-                style={{
-                  width: "100%",
-                  padding: "10px 12px",
-                  borderRadius: 10,
-                  border: `1.5px solid ${C.bo1}`,
-                  background: C.bg1,
-                  color: C.t0,
-                  fontSize: 13,
-                  outline: "none",
-                }}
-              />
+            {/* Badge Bebas Minimal Order */}
+            <div style={{ display: "flex", alignItems: "center", gap: 6, padding: "7px 11px", background: C.g1, borderRadius: 10, color: C.g, fontSize: 11.5, fontWeight: 700 }}>
+              <Check size={14} strokeWidth={3} />
+              <span>Bisa pesan satuan (mulai 1 pcs) atau partai banyak untuk tim/event.</span>
+            </div>
+
+            {/* Nama & Kontak Pemesan */}
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+              <div>
+                <label style={{ display: "block", fontSize: 12, fontWeight: 800, marginBottom: 5 }}>Nama Pemesan / Tim</label>
+                <input
+                  type="text"
+                  value={orderName}
+                  onChange={e => setOrderName(e.target.value)}
+                  placeholder="Contoh: Budi Santoso"
+                  style={{
+                    width: "100%",
+                    padding: "10px 12px",
+                    borderRadius: 10,
+                    border: `1.5px solid ${C.bo1}`,
+                    background: C.bg1,
+                    color: C.t0,
+                    fontSize: 13,
+                    outline: "none",
+                  }}
+                />
+              </div>
+              <div>
+                <label style={{ display: "block", fontSize: 12, fontWeight: 800, marginBottom: 5 }}>No. WhatsApp Anda</label>
+                <input
+                  type="tel"
+                  value={orderPhone}
+                  onChange={e => setOrderPhone(e.target.value)}
+                  placeholder="08123456789"
+                  style={{
+                    width: "100%",
+                    padding: "10px 12px",
+                    borderRadius: 10,
+                    border: `1.5px solid ${C.bo1}`,
+                    background: C.bg1,
+                    color: C.t0,
+                    fontSize: 13,
+                    outline: "none",
+                  }}
+                />
+              </div>
             </div>
 
             {/* Rincian Ukuran & Jumlah */}

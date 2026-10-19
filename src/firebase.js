@@ -356,3 +356,86 @@ export const fbSetLanding = async (data, actor) => {
   await setDoc(doc(_db,"settings","landing"), { ...data, updatedAt:serverTimestamp() }, { merge:true });
   if (actor) await fbLogActivity(actor, "Etalase Publik", "Perbarui foto / nomor WA landing page");
 };
+
+// ── Pesanan Baju Custom ────────────────────────────────────────
+export const subscribeCustomOrders = (cb, n = 200) => {
+  if (!_db) return () => {};
+  return onSnapshot(
+    query(collection(_db, "customOrders"), orderBy("createdAt", "desc"), limit(n)),
+    s => cb(s.docs.map(d => ({ ...d.data(), id: d.id }))),
+    console.warn
+  );
+};
+
+export const fbSaveCustomOrder = async (orderData) => {
+  const localId = "cst_" + Date.now().toString(36);
+  const payload = {
+    ...orderData,
+    date: new Date().toLocaleDateString("id-ID", { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" }),
+    createdAt: serverTimestamp(),
+    status: orderData.status || "Baru",
+  };
+
+  // Always keep in local backup for offline or immediate viewing
+  try {
+    const raw = localStorage.getItem("je_custom_orders_backup");
+    const list = raw ? JSON.parse(raw) : [];
+    localStorage.setItem("je_custom_orders_backup", JSON.stringify([
+      { ...payload, id: localId, createdAt: new Date().toISOString() },
+      ...list.slice(0, 99)
+    ]));
+  } catch {}
+
+  if (!_db) return localId;
+  try {
+    const ref = await addDoc(collection(_db, "customOrders"), payload);
+    return ref.id;
+  } catch (err) {
+    console.warn("fbSaveCustomOrder Firestore error:", err);
+    return localId;
+  }
+};
+
+export const fbUpdateCustomOrderStatus = async (orderId, status, actor) => {
+  // Update local backup
+  try {
+    const raw = localStorage.getItem("je_custom_orders_backup");
+    if (raw) {
+      const list = JSON.parse(raw);
+      const updated = list.map(o => o.id === orderId ? { ...o, status } : o);
+      localStorage.setItem("je_custom_orders_backup", JSON.stringify(updated));
+    }
+  } catch {}
+
+  if (!_db) return;
+  try {
+    await updateDoc(doc(_db, "customOrders", String(orderId)), {
+      status,
+      updatedAt: serverTimestamp(),
+    });
+    if (actor) await fbLogActivity(actor, "Status Pesanan Custom", `Pesanan ${orderId} diubah ke ${status}`);
+  } catch (err) {
+    console.warn("fbUpdateCustomOrderStatus error:", err);
+  }
+};
+
+export const fbDeleteCustomOrder = async (orderId, actor) => {
+  // Remove from local backup
+  try {
+    const raw = localStorage.getItem("je_custom_orders_backup");
+    if (raw) {
+      const list = JSON.parse(raw);
+      const updated = list.filter(o => o.id !== orderId);
+      localStorage.setItem("je_custom_orders_backup", JSON.stringify(updated));
+    }
+  } catch {}
+
+  if (!_db) return;
+  try {
+    await deleteDoc(doc(_db, "customOrders", String(orderId)));
+    if (actor) await fbLogActivity(actor, "Hapus Pesanan Custom", `Pesanan ${orderId} dihapus`);
+  } catch (err) {
+    console.warn("fbDeleteCustomOrder error:", err);
+  }
+};
+
