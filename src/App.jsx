@@ -1671,6 +1671,165 @@ function LowStockDashboardCard({ prods, className = "dash-half" }) {
   );
 }
 
+function TablePagination({
+  page = 1,
+  perPage = 10,
+  totalItems = 0,
+  onPageChange,
+  onPerPageChange,
+  perPageOptions = [10, 20, 50, 100],
+  style = {},
+}) {
+  const totalPages = Math.max(1, Math.ceil(totalItems / perPage));
+  const curPage = Math.min(Math.max(1, page), totalPages);
+
+  const getPageNumbers = () => {
+    const pages = [];
+    if (totalPages <= 5) {
+      for (let i = 1; i <= totalPages; i++) pages.push(i);
+    } else {
+      if (curPage <= 3) {
+        pages.push(1, 2, 3, 4, "...", totalPages);
+      } else if (curPage >= totalPages - 2) {
+        pages.push(1, "...", totalPages - 3, totalPages - 2, totalPages - 1, totalPages);
+      } else {
+        pages.push(1, "...", curPage - 1, curPage, curPage + 1, "...", totalPages);
+      }
+    }
+    return pages;
+  };
+
+  return (
+    <div
+      style={{
+        display: "flex",
+        justifyContent: "space-between",
+        alignItems: "center",
+        gap: 8,
+        flexWrap: "wrap",
+        padding: "10px 14px",
+        borderTop: `1px solid ${C.bo0}`,
+        fontSize: 12,
+        color: C.t2,
+        background: C.bg2,
+        borderRadius: "0 0 16px 16px",
+        ...style,
+      }}
+    >
+      <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+        <span>Tampilkan</span>
+        <select
+          value={perPage}
+          onChange={e => {
+            onPerPageChange && onPerPageChange(Number(e.target.value));
+            onPageChange && onPageChange(1);
+          }}
+          style={{
+            padding: "4px 8px",
+            borderRadius: 8,
+            background: C.bg3,
+            border: `1.5px solid ${C.bo1}`,
+            color: C.t0,
+            fontSize: 12,
+            fontWeight: 700,
+            fontFamily: F.sans,
+            cursor: "pointer",
+          }}
+        >
+          {perPageOptions.map(n => (
+            <option key={n} value={n}>
+              {n} baris
+            </option>
+          ))}
+        </select>
+        {totalItems > 0 && (
+          <span className="mn" style={{ color: C.t2, fontWeight: 600 }}>
+            ({(curPage - 1) * perPage + 1}–{Math.min(curPage * perPage, totalItems)} dari {totalItems})
+          </span>
+        )}
+      </div>
+
+      {totalPages > 1 && (
+        <div style={{ display: "flex", justifyContent: "center", alignItems: "center", gap: 4, flexWrap: "wrap" }}>
+          <button
+            type="button"
+            className="press"
+            disabled={curPage <= 1}
+            onClick={() => onPageChange && onPageChange(Math.max(1, curPage - 1))}
+            style={{
+              minHeight: 30,
+              padding: "0 9px",
+              borderRadius: 8,
+              border: `1px solid ${C.bo1}`,
+              background: curPage <= 1 ? C.bg3 : "transparent",
+              color: curPage <= 1 ? C.t3 : C.t0,
+              fontSize: 12,
+              fontWeight: 700,
+              display: "inline-flex",
+              alignItems: "center",
+              gap: 3,
+              cursor: curPage <= 1 ? "default" : "pointer",
+            }}
+          >
+            <ChevronLeft size={13} /> Prev
+          </button>
+          {getPageNumbers().map((num, idx) =>
+            num === "..." ? (
+              <span key={`dots-${idx}`} style={{ padding: "0 4px", color: C.t3, fontSize: 12 }}>
+                …
+              </span>
+            ) : (
+              <button
+                key={num}
+                type="button"
+                onClick={() => onPageChange && onPageChange(num)}
+                className="press"
+                style={{
+                  minWidth: 30,
+                  height: 30,
+                  borderRadius: 8,
+                  border: `1.5px solid ${curPage === num ? C.pri : C.bo1}`,
+                  background: curPage === num ? C.pri : "transparent",
+                  color: curPage === num ? C.on : C.t0,
+                  fontSize: 12,
+                  fontWeight: 700,
+                  display: "grid",
+                  placeItems: "center",
+                  cursor: "pointer",
+                }}
+              >
+                {num}
+              </button>
+            )
+          )}
+          <button
+            type="button"
+            className="press"
+            disabled={curPage >= totalPages}
+            onClick={() => onPageChange && onPageChange(Math.min(totalPages, curPage + 1))}
+            style={{
+              minHeight: 30,
+              padding: "0 9px",
+              borderRadius: 8,
+              border: `1px solid ${C.bo1}`,
+              background: curPage >= totalPages ? C.bg3 : "transparent",
+              color: curPage >= totalPages ? C.t3 : C.t0,
+              fontSize: 12,
+              fontWeight: 700,
+              display: "inline-flex",
+              alignItems: "center",
+              gap: 3,
+              cursor: curPage >= totalPages ? "default" : "pointer",
+            }}
+          >
+            Next <ChevronRight size={13} />
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
 
 // ─────────────────────────────────────────────────────────────
 //  ADDON PROMPT MODAL
@@ -3313,9 +3472,28 @@ function AppInner() {
   const [expandedTrx,setExpandedTrx]=useState({}); // {trxId: true}
   const [lapFrom,setLapFrom]=useState("");
   const [lapTo,setLapTo]=useState("");
-  const [lowStockPage,setLowStockPage]=useState(1);
-  const [lowStockPer,setLowStockPer]=useState(()=>Number(localStorage.getItem("je_lowstock_per"))||5);
-    const [gsLoad,setGsLoad]=useState(false);
+  // ─── Table Pagination States ───
+  const [userPage, setUserPage] = useState(1);
+  const [userPerPage, setUserPerPage] = useState(10);
+  const [prodPage, setProdPage] = useState(1);
+  const [prodPerPage, setProdPerPage] = useState(10);
+  const [lapPage, setLapPage] = useState(1);
+  const [lapPerPage, setLapPerPage] = useState(20);
+  const [lapProdPage, setLapProdPage] = useState(1);
+  const [lapProdPerPage, setLapProdPerPage] = useState(20);
+  const [expPage, setExpPage] = useState(1);
+  const [expPerPage, setExpPerPage] = useState(10);
+  const [slogPage, setSlogPage] = useState(1);
+  const [slogPerPage, setSlogPerPage] = useState(15);
+  const [retPage, setRetPage] = useState(1);
+  const [retPerPage, setRetPerPage] = useState(10);
+  const [actPage, setActPage] = useState(1);
+  const [actPerPage, setActPerPage] = useState(15);
+  const [attPage, setAttPage] = useState(1);
+  const [attPerPage, setAttPerPage] = useState(15);
+  const [cstOrderPage, setCstOrderPage] = useState(1);
+  const [cstOrderPerPage, setCstOrderPerPage] = useState(10);
+  const [gsLoad,setGsLoad]=useState(false);
   const [copyDone,setCopyDone]=useState(false);
   const [uModal,setUModal]=useState(false);
   const [uForm,setUForm]=useState({});
@@ -3363,6 +3541,14 @@ function AppInner() {
   const [showCreateOpname, setShowCreateOpname] = useState(false);
   const [showImportOpname, setShowImportOpname] = useState(false);
   const [importOpnameRows, setImportOpnameRows] = useState([]);
+
+  // Reset pagination on filter changes
+  useEffect(() => { setProdPage(1); }, [adminBiz, searchQ, filterAdvertised]);
+  useEffect(() => { setCstOrderPage(1); }, [customOrderFilter, customOrderSearch]);
+  useEffect(() => { setLapPage(1); setLapProdPage(1); }, [reportBiz, reportKasir, reportCategory, reportRange, lapFrom, lapTo, searchInvoice]);
+  useEffect(() => { setExpPage(1); }, [expBiz, expCat, expRange, expFrom, expTo, expQ]);
+  useEffect(() => { setSlogPage(1); }, [slogBiz, slogType, slogRange, slogFrom, slogTo]);
+  useEffect(() => { setAttPage(1); }, [selUser, attRange, attFrom, attTo]);
 
   // ─── Helpers ───
   const bizProds=(b=biz)=>prods.filter(p=>p.business===b);
@@ -4683,6 +4869,7 @@ function AppInner() {
     ];
     const isMoreTab=MORE_TABS.some(t=>t.id===adminTab);
     const adminPs=prods.filter(p=>p.business===adminBiz&&(!searchQ||p.name.toLowerCase().includes(searchQ.toLowerCase())||p.barcode.includes(searchQ))&&(filterAdvertised?p.advertised:true));
+    const paginatedAdminPs=adminPs.slice((prodPage - 1) * prodPerPage, prodPage * prodPerPage);
 
     return <div style={{fontFamily:F.sans,background:C.bg1,color:C.t0,height:"100vh",display:"flex",flexDirection:"column"}}>
       <style>{CSS}</style><Toast n={notif}/>
@@ -5024,7 +5211,7 @@ function AppInner() {
               <TableWrap>
                 <table style={{width:"100%",borderCollapse:"collapse",fontSize:12,minWidth:600}}>
                   <THead cols={["#","Username","Nama","Role","Akses","Wajah","Status","Aksi"]}/>
-                  <tbody>{users.map((u,i)=><tr key={u.id} className="hrow" style={{borderTop:`1px solid ${C.bo0}`,background:i%2===0?"transparent":C.bg0}}>
+                  <tbody>{users.slice((userPage - 1) * userPerPage, userPage * userPerPage).map((u,i)=><tr key={u.id} className="hrow" style={{borderTop:`1px solid ${C.bo0}`,background:i%2===0?"transparent":C.bg0}}>
                     <td style={{padding:"14px 13px",fontFamily:F.mono,color:C.t3,fontSize:10}}>{u.id}</td>
                     <td style={{padding:"14px 13px",fontFamily:F.mono,fontSize:11}}>{u.username}</td>
                     <td style={{padding:"14px 13px",fontWeight:600}}>{u.name}</td>
@@ -5047,11 +5234,19 @@ function AppInner() {
                   </tr>)}</tbody>
                 </table>
               </TableWrap>
+              <TablePagination
+                page={userPage}
+                perPage={userPerPage}
+                totalItems={users.length}
+                onPageChange={setUserPage}
+                onPerPageChange={setUserPerPage}
+                perPageOptions={[5, 10, 20]}
+              />
             </Card>
           </div>
           {/* Mobile card list */}
           <div className="hide-desktop mobile-card-list">
-            {users.map((u,_ui)=><div key={u.id} className="mcard card-in" style={{background:C.bg2,borderRadius:16,border:`1px solid ${C.bo0}`,padding:"14px 15px"}}>
+            {users.slice((userPage - 1) * userPerPage, userPage * userPerPage).map((u,_ui)=><div key={u.id} className="mcard card-in" style={{background:C.bg2,borderRadius:16,border:`1px solid ${C.bo0}`,padding:"14px 15px"}}>
               <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:10}}>
                 <Avatar name={u.name} size={44}/>
                 <div style={{flex:1,minWidth:0}}>
@@ -5077,6 +5272,15 @@ function AppInner() {
                 <button onClick={()=>delUser(u)} className="press" style={{padding:"10px 14px",background:C.r1,border:`1.5px solid ${C.r}33`,borderRadius:10,color:C.r,fontSize:12,fontFamily:F.sans}}><Ico e="🗑"/></button>
               </div>
             </div>)}
+            <TablePagination
+              page={userPage}
+              perPage={userPerPage}
+              totalItems={users.length}
+              onPageChange={setUserPage}
+              onPerPageChange={setUserPerPage}
+              perPageOptions={[5, 10, 20]}
+              style={{ borderRadius: 14, border: `1px solid ${C.bo0}`, marginTop: 10 }}
+            />
           </div>
         </div>}
 
@@ -5227,7 +5431,7 @@ function AppInner() {
               <TableWrap>
                 <table style={{width:"100%",borderCollapse:"collapse",fontSize:12,minWidth:580}}>
                   <THead cols={["Barcode","Nama","Kategori","HPP","Harga Jual","Margin","Stok","Expire","Add-on","Iklan","Aksi"]}/>
-                  <tbody>{adminPs.map((p,i)=>{const mg=p.price>0?((p.price-(p.hpp||0))/p.price*100).toFixed(0)+"%":"-";
+                  <tbody>{paginatedAdminPs.map((p,i)=>{const mg=p.price>0?((p.price-(p.hpp||0))/p.price*100).toFixed(0)+"%":"-";
                     return <tr key={p.id} className="hrow" style={{borderTop:`1px solid ${C.bo0}`,background:i%2===0?"transparent":C.bg0}}>
                       <td style={{padding:"14px 13px",fontFamily:F.mono,fontSize:10,color:C.t2}}>{p.barcode}</td>
                       <td style={{padding:"14px 13px",fontWeight:600}}>{p.name}</td>
@@ -5301,11 +5505,19 @@ function AppInner() {
                   </tbody>
                 </table>
               </TableWrap>
+              <TablePagination
+                page={prodPage}
+                perPage={prodPerPage}
+                totalItems={adminPs.length}
+                onPageChange={setProdPage}
+                onPerPageChange={setProdPerPage}
+                perPageOptions={[10, 20, 50, 100]}
+              />
             </Card>
           </div>
           {/* Mobile card list */}
           <div className="hide-desktop mobile-card-list">
-            {adminPs.map((p,_pi)=>{const mg=p.price>0?((p.price-(p.hpp||0))/p.price*100).toFixed(0)+"%":"-";
+            {paginatedAdminPs.map((p,_pi)=>{const mg=p.price>0?((p.price-(p.hpp||0))/p.price*100).toFixed(0)+"%":"-";
               return <div key={p.id} className="card-in" style={{background:C.bg2,borderRadius:16,border:`1px solid ${C.bo0}`,padding:"14px 15px",animationDelay:_pi*0.04+"s"}}>
                 <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:8,marginBottom:8}}>
                   <div style={{flex:1,minWidth:0}}>
@@ -5361,7 +5573,7 @@ function AppInner() {
                     }catch(err){toast("Gagal: "+err.message,"err");}
                   }} className="press"
                     style={{padding:"11px 14px",background:p.advertised?C.pri1:C.bg3,border:`1.5px solid ${p.advertised?C.pri:C.bo0}`,borderRadius:10,color:p.advertised?C.pri:C.t2,fontSize:13,fontWeight:700,display:"flex",alignItems:"center",gap:6}}>
-                    <Megaphone size={16}/> {p.advertised?"Iklan ON":"Iklankan"}
+                      <Megaphone size={16}/> {p.advertised?"Iklan ON":"Iklankan"}
                   </button>
                   <button onClick={()=>openEditP(p)} className="press"
                     style={{flex:1,padding:"11px",
@@ -5372,6 +5584,15 @@ function AppInner() {
                   <button onClick={()=>fbDeleteProduct(p.id,p.name,p.business,user.name).then(()=>toast("Produk dihapus")).catch(e=>toast(e.message,"err"))} className="press" style={{padding:"11px 16px",background:C.r1,border:`1.5px solid ${C.r}33`,borderRadius:10,color:C.r,fontSize:13,fontFamily:F.sans}}><Ico e="🗑"/></button>
                 </div>
               </div>;})}
+            <TablePagination
+              page={prodPage}
+              perPage={prodPerPage}
+              totalItems={adminPs.length}
+              onPageChange={setProdPage}
+              onPerPageChange={setProdPerPage}
+              perPageOptions={[10, 20, 50, 100]}
+              style={{ borderRadius: 14, border: `1px solid ${C.bo0}`, marginTop: 10 }}
+            />
           </div>
         </div>}
 
@@ -5391,6 +5612,7 @@ function AppInner() {
               (o.garment?.name||"").toLowerCase().includes(q);
             return matchStatus&&matchSearch;
           });
+          const paginatedOrders=filteredOrders.slice((cstOrderPage - 1) * cstOrderPerPage, cstOrderPage * cstOrderPerPage);
 
           const countStatus=(st)=>(customOrders||[]).filter(o=>o&&(o.status||"Baru")===st).length;
 
@@ -5448,7 +5670,7 @@ function AppInner() {
               <EmptyState icon={<Shirt size={32}/>} title="Belum ada pesanan custom" hint={customOrderSearch?"Tidak ada pesanan yang sesuai dengan kata kunci.":"Pesanan yang dibuat pelanggan lewat Studio Desain akan otomatis tampil di sini."}/>
             ):(
               <div style={{display:"flex",flexDirection:"column",gap:12}}>
-                {filteredOrders.map(order=>{
+                {paginatedOrders.map(order=>{
                   const statusColor=order.status==="Selesai"?C.g:order.status==="Diproses"?C.vi:order.status==="Dibatalkan"?C.r:C.a;
                   const statusBg=order.status==="Selesai"?C.g1:order.status==="Diproses"?C.vi1:order.status==="Dibatalkan"?C.r1:C.a1;
                   const sizes=order.sizeBreakdown?Object.entries(order.sizeBreakdown).filter(([_,q])=>q>0).map(([s,q])=>`${s}: ${q}`).join(" • "):"";
@@ -5552,6 +5774,15 @@ function AppInner() {
                     </div>
                   </Card>;
                 })}
+                <TablePagination
+                  page={cstOrderPage}
+                  perPage={cstOrderPerPage}
+                  totalItems={filteredOrders.length}
+                  onPageChange={setCstOrderPage}
+                  onPerPageChange={setCstOrderPerPage}
+                  perPageOptions={[5, 10, 20, 50]}
+                  style={{ borderRadius: 14, border: `1px solid ${C.bo0}` }}
+                />
               </div>
             )}
           </div>;
@@ -5848,6 +6079,7 @@ function AppInner() {
               });
             });
             if(!rows.length) return null;
+            const paginatedRows = rows.slice((lapProdPage - 1) * lapProdPerPage, lapProdPage * lapProdPerPage);
             return <Card noPad style={{overflow:"hidden"}}>
               <div style={{padding:"12px 14px",borderBottom:`1px solid ${C.bo0}`,display:"flex",justifyContent:"space-between",alignItems:"center",flexWrap:"wrap",gap:8}}>
                 <span style={{fontSize:12,fontWeight:700,color:C.t2,textTransform:"none",letterSpacing:0}}>
@@ -5873,7 +6105,7 @@ function AppInner() {
               <div className="hide-mobile"><TableWrap>
                 <table style={{width:"100%",borderCollapse:"collapse",fontSize:12,minWidth:620}}>
                   <THead cols={["Tanggal","Nama Pembeli","Kasir","Produk","Qty","Harga","Subtotal","Bayar"]}/>
-                  <tbody>{rows.slice(0,200).map((r,i)=>(
+                  <tbody>{paginatedRows.map((r,i)=>(
                     <tr key={i} className="hrow" style={{borderTop:`1px solid ${C.bo0}`,background:i%2===0?"transparent":C.bg0}}>
                       <td style={{padding:"11px 13px",fontSize:10,color:C.t2,whiteSpace:"nowrap"}}>{r.date}</td>
                       <td style={{padding:"11px 13px",fontWeight:600,fontSize:12}}>
@@ -5896,13 +6128,19 @@ function AppInner() {
                     </tr>
                   ))}</tbody>
                 </table>
-                {rows.length>200&&<div style={{padding:"10px 14px",fontSize:11,color:C.t3,borderTop:`1px solid ${C.bo0}`}}>
-                  Menampilkan 200 dari {rows.length} baris. Download Excel untuk data lengkap.
-                </div>}
-              </TableWrap></div>
+              </TableWrap>
+              <TablePagination
+                page={lapProdPage}
+                perPage={lapProdPerPage}
+                totalItems={rows.length}
+                onPageChange={setLapProdPage}
+                onPerPageChange={setLapProdPerPage}
+                perPageOptions={[10, 20, 50, 100]}
+              />
+              </div>
               {/* Mobile cards */}
               <div className="hide-desktop" style={{padding:"8px 10px",display:"flex",flexDirection:"column",gap:8}}>
-                {rows.slice(0,50).map((r,i)=>(
+                {paginatedRows.map((r,i)=>(
                   <div key={i} style={{background:C.bg3,borderRadius:10,padding:"10px 12px",border:`1px solid ${C.bo0}`}}>
                     <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:6}}>
                       <div>
@@ -5919,7 +6157,15 @@ function AppInner() {
                     </div>
                   </div>
                 ))}
-                {rows.length>50&&<div style={{textAlign:"center",fontSize:11,color:C.t3,padding:"8px"}}>+{rows.length-50} baris lainnya. Download Excel untuk lengkap.</div>}
+                <TablePagination
+                  page={lapProdPage}
+                  perPage={lapProdPerPage}
+                  totalItems={rows.length}
+                  onPageChange={setLapProdPage}
+                  onPerPageChange={setLapProdPerPage}
+                  perPageOptions={[10, 20, 50, 100]}
+                  style={{ borderRadius: 14, border: `1px solid ${C.bo0}`, marginTop: 8 }}
+                />
               </div>
             </Card>;
             })()}
@@ -5933,6 +6179,7 @@ function AppInner() {
               (t.id||"").toLowerCase().includes(sq)||
               (t.kasir||"").toLowerCase().includes(sq)
             );
+            const paginatedTrx=trxFiltered.slice((lapPage - 1) * lapPerPage, lapPage * lapPerPage);
             const toggleExpand=id=>setExpandedTrx(p=>({...p,[id]:!p[id]}));
             return <Card noPad style={{overflow:"hidden"}}>
               <div style={{padding:"12px 14px",borderBottom:`1px solid ${C.bo0}`,display:"flex",gap:8,alignItems:"center",flexWrap:"wrap"}}>
@@ -5965,7 +6212,7 @@ function AppInner() {
                   {searchInvoice?"Tidak ditemukan: "+searchInvoice:"Belum ada transaksi"}
                 </div>
                 :<div>
-                  {trxFiltered.slice(0,150).map((t,i)=>{
+                  {paginatedTrx.map((t,i)=>{
                     const expanded=!!expandedTrx[t.id];
                     const itemCount=(t.items||[]).reduce((s,it)=>s+it.qty,0);
                     const hasPembeli=t.namaPembeli&&t.namaPembeli!=="Umum";
@@ -6053,10 +6300,14 @@ function AppInner() {
                       </div>}
                     </div>;
                   })}
-                  {trxFiltered.length>150&&<div style={{padding:"12px 14px",fontSize:11,color:C.t3,
-                    textAlign:"center",borderTop:`1px solid ${C.bo0}`}}>
-                    Tampil 150 dari {trxFiltered.length}. Gunakan filter/pencarian untuk mempersempit.
-                  </div>}
+                  <TablePagination
+                    page={lapPage}
+                    perPage={lapPerPage}
+                    totalItems={trxFiltered.length}
+                    onPageChange={setLapPage}
+                    onPerPageChange={setLapPerPage}
+                    perPageOptions={[15, 30, 50, 100]}
+                  />
                 </div>}
             </Card>;
           })()}
@@ -6109,11 +6360,13 @@ function AppInner() {
               <Stat icon="🧾" label="Jumlah catatan" value={list.length} color={C.cy}/>
               <Stat icon="📋" label="Kategori terbesar" value={top?top[0]:"–"} color={C.a} sub={top?rp(top[1]):undefined}/>
             </div>
-            {list.length===0?<Card><EmptyState icon={<ShoppingBasket size={24} strokeWidth={1.6}/>} title="Belum ada belanja operasional" hint="Catat pengeluaran seperti listrik, sewa, kemasan, atau transport, lalu hasilnya muncul di Laba Rugi."/></Card>:<>
+            {list.length===0?<Card><EmptyState icon={<ShoppingBasket size={24} strokeWidth={1.6}/>} title="Belum ada belanja operasional" hint="Catat pengeluaran seperti listrik, sewa, kemasan, atau transport, lalu hasilnya muncul di Laba Rugi."/></Card>:(()=>{
+              const paginatedExpenses = list.slice((expPage - 1) * expPerPage, expPage * expPerPage);
+              return <>
               <div className="hide-mobile"><Card noPad style={{overflow:"hidden"}}><TableWrap>
                 <table style={{width:"100%",borderCollapse:"collapse",minWidth:720}}>
                   <THead cols={["Tanggal","Bisnis","Kategori","Keterangan","Dibayar","Dicatat oleh","Jumlah",""]}/>
-                  <tbody>{list.map((e,i)=><tr key={e.id} className="hrow" style={{borderTop:`1px solid ${C.bo0}`,background:i%2===0?"transparent":C.bg0}}>
+                  <tbody>{paginatedExpenses.map((e,i)=><tr key={e.id} className="hrow" style={{borderTop:`1px solid ${C.bo0}`,background:i%2===0?"transparent":C.bg0}}>
                     <td style={{padding:"12px 14px",whiteSpace:"nowrap",color:C.t2}}>{e.date}</td>
                     <td style={{padding:"12px 14px"}}><BizChip biz={e.business} sm/></td>
                     <td style={{padding:"12px 14px",fontWeight:600}}>{e.category}</td>
@@ -6124,9 +6377,18 @@ function AppInner() {
                     <td style={{padding:"8px 14px"}}><button aria-label="Hapus" onClick={()=>del(e)} className="press" style={{width:36,height:36,border:"none",background:C.r1,color:C.r,borderRadius:10,display:"grid",placeItems:"center"}}><Trash2 size={16}/></button></td>
                   </tr>)}</tbody>
                 </table>
-              </TableWrap></Card></div>
+              </TableWrap>
+              <TablePagination
+                page={expPage}
+                perPage={expPerPage}
+                totalItems={list.length}
+                onPageChange={setExpPage}
+                onPerPageChange={setExpPerPage}
+                perPageOptions={[10, 20, 50]}
+              />
+              </Card></div>
               <div className="hide-desktop mobile-card-list">
-                {list.map(e=><div key={e.id} className="card-in" style={{background:C.bg2,borderRadius:16,border:`1px solid ${C.bo0}`,padding:"13px 15px"}}>
+                {paginatedExpenses.map(e=><div key={e.id} className="card-in" style={{background:C.bg2,borderRadius:16,border:`1px solid ${C.bo0}`,padding:"13px 15px"}}>
                   <div style={{display:"flex",justifyContent:"space-between",gap:10,alignItems:"flex-start"}}>
                     <div style={{minWidth:0}}>
                       <div style={{fontWeight:700,fontSize:14.5}}>{e.category}</div>
@@ -6140,8 +6402,18 @@ function AppInner() {
                     <button aria-label="Hapus" onClick={()=>del(e)} className="press" style={{width:38,height:38,border:"none",background:C.r1,color:C.r,borderRadius:10,display:"grid",placeItems:"center"}}><Trash2 size={17}/></button>
                   </div>
                 </div>)}
+                <TablePagination
+                  page={expPage}
+                  perPage={expPerPage}
+                  totalItems={list.length}
+                  onPageChange={setExpPage}
+                  onPerPageChange={setExpPerPage}
+                  perPageOptions={[10, 20, 50]}
+                  style={{ borderRadius: 14, border: `1px solid ${C.bo0}`, marginTop: 10 }}
+                />
               </div>
-            </>}
+            </>;
+            })()}
           </div>;
         })()}
 
@@ -6312,11 +6584,14 @@ function AppInner() {
               <span style={{fontSize:12,fontWeight:700,color:C.t2,textTransform:"none",letterSpacing:0}}>Detail Absensi ({attFiltered.length})</span>
             </div>
             {attFiltered.length===0?<EmptyState pad={24} title="Tidak ada data"/>
-            :<>
+            :(()=>{
+              const sortedAtt=[...attFiltered].sort((a,b)=>{try{return new Date(b.checkInISO||b.checkIn)-new Date(a.checkInISO||a.checkIn);}catch{return 0;}});
+              const paginatedAtt=sortedAtt.slice((attPage - 1) * attPerPage, attPage * attPerPage);
+              return <>
               <div className="hide-mobile"><TableWrap>
                 <table style={{width:"100%",borderCollapse:"collapse",fontSize:12,minWidth:540}}>
                   <THead cols={["Tanggal","Pegawai","Role","Bisnis","Jam Masuk","Jam Pulang","Durasi"]}/>
-                  <tbody>{[...attFiltered].sort((a,b)=>{try{return new Date(b.checkInISO||b.checkIn)-new Date(a.checkInISO||a.checkIn);}catch{return 0;}}).map((a,i)=>(
+                  <tbody>{paginatedAtt.map((a,i)=>(
                     <tr key={a.id} className="hrow" style={{borderTop:`1px solid ${C.bo0}`,background:i%2===0?"transparent":C.bg0}}>
                       <td style={{padding:"14px 13px",fontFamily:F.mono,fontSize:10,color:C.t2,whiteSpace:"nowrap"}}>{a.date}</td>
                       <td style={{padding:"14px 13px",fontWeight:600,display:"flex",alignItems:"center",gap:5}}>
@@ -6330,9 +6605,18 @@ function AppInner() {
                     </tr>))}
                   </tbody>
                 </table>
-              </TableWrap></div>
+              </TableWrap>
+              <TablePagination
+                page={attPage}
+                perPage={attPerPage}
+                totalItems={sortedAtt.length}
+                onPageChange={setAttPage}
+                onPerPageChange={setAttPerPage}
+                perPageOptions={[10, 15, 30, 50]}
+              />
+              </div>
               <div className="hide-desktop mobile-card-list">
-                {[...attFiltered].sort((a,b)=>{try{return new Date(b.checkInISO||b.checkIn)-new Date(a.checkInISO||a.checkIn);}catch{return 0;}}).map(a=>(
+                {paginatedAtt.map(a=>(
                   <div key={a.id} style={{background:C.bg2,borderRadius:14,border:`1px solid ${a.checkOut?C.bo0:C.a+"44"}`,padding:"13px 14px"}}>
                     <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:8}}>
                       <Avatar name={a.name} size={40}/>
@@ -6354,8 +6638,18 @@ function AppInner() {
                       <div><div style={{fontSize:9,color:C.t3,marginBottom:1}}>PULANG</div><div className="mn" style={{fontSize:12,color:a.checkOut?C.t1:C.a,fontWeight:600}}>{a.checkOut||"Belum pulang"}</div></div>
                     </div>
                   </div>))}
+                <TablePagination
+                  page={attPage}
+                  perPage={attPerPage}
+                  totalItems={sortedAtt.length}
+                  onPageChange={setAttPage}
+                  onPerPageChange={setAttPerPage}
+                  perPageOptions={[10, 15, 30, 50]}
+                  style={{ borderRadius: 14, border: `1px solid ${C.bo0}`, marginTop: 10 }}
+                />
               </div>
-            </>}
+            </>;
+            })()}
           </Card>
         </div>}
 
@@ -6407,12 +6701,13 @@ function AppInner() {
                 </>}
               </div>
             </Card>
-            {slogsFiltered.length===0?<Card><EmptyState title="Tidak ada data" hint="Coba ubah filter atau rentang waktu."/></Card>
-            :<Card noPad style={{overflow:"hidden"}}>
+            {slogsFiltered.length===0?<Card><EmptyState title="Tidak ada data" hint="Coba ubah filter atau rentang waktu."/></Card>:(()=>{
+              const paginatedSlogs = slogsFiltered.slice((slogPage - 1) * slogPerPage, slogPage * slogPerPage);
+              return <Card noPad style={{overflow:"hidden"}}>
               <TableWrap>
                 <table style={{width:"100%",borderCollapse:"collapse",fontSize:11.5,minWidth:540}}>
                   <THead cols={["Waktu","Produk","Bisnis","Tipe","Qty","Sblm","Ssdh","Oleh"]}/>
-                  <tbody>{slogsFiltered.map((l,i)=><tr key={l.id||i} className="hrow" style={{borderTop:`1px solid ${C.bo0}`,background:i%2===0?"transparent":C.bg0}}>
+                  <tbody>{paginatedSlogs.map((l,i)=><tr key={l.id||i} className="hrow" style={{borderTop:`1px solid ${C.bo0}`,background:i%2===0?"transparent":C.bg0}}>
                     <td style={{padding:"14px 13px",color:C.t2,fontSize:10,whiteSpace:"nowrap"}}>{l.date}</td>
                     <td style={{padding:"14px 13px",fontWeight:500,fontSize:12}}>{l.name}<div className="mn" style={{fontSize:9,color:C.t3}}>{l.barcode}</div></td>
                     <td style={{padding:"14px 13px"}}><BizChip biz={l.business} sm/></td>
@@ -6426,7 +6721,16 @@ function AppInner() {
                   </tr>)}</tbody>
                 </table>
               </TableWrap>
-            </Card>}
+              <TablePagination
+                page={slogPage}
+                perPage={slogPerPage}
+                totalItems={slogsFiltered.length}
+                onPageChange={setSlogPage}
+                onPerPageChange={setSlogPerPage}
+                perPageOptions={[15, 30, 50, 100]}
+              />
+            </Card>;
+            })()}
           </div>;
         })()}
 
@@ -6444,11 +6748,13 @@ function AppInner() {
           </div>
           {returns.length===0
             ?<Card><EmptyState icon={<Undo2 size={24} strokeWidth={1.6}/>} title="Belum ada retur" hint="Transaksi yang dibatalkan akan tercatat di sini."/></Card>
-            :<Card noPad style={{overflow:"hidden"}}>
+            :(()=>{
+              const paginatedReturns = returns.slice((retPage - 1) * retPerPage, retPage * retPerPage);
+              return <Card noPad style={{overflow:"hidden"}}>
               <TableWrap>
                 <table style={{width:"100%",borderCollapse:"collapse",fontSize:12,minWidth:520}}>
                   <THead cols={["ID Retur","Tanggal","Kasir","Bisnis","TRX Asal","Nilai","Detail"]}/>
-                  <tbody>{returns.map((r,i)=><tr key={r.id} className="hrow" style={{borderTop:`1px solid ${C.bo0}`,background:i%2===0?"transparent":C.bg0}}>
+                  <tbody>{paginatedReturns.map((r,i)=><tr key={r.id} className="hrow" style={{borderTop:`1px solid ${C.bo0}`,background:i%2===0?"transparent":C.bg0}}>
                     <td style={{padding:"12px 13px",fontFamily:F.mono,fontSize:10,color:C.a}}>{r.id?.slice(-12)}</td>
                     <td style={{padding:"12px 13px",fontSize:10,color:C.t2}}>{r.date}</td>
                     <td style={{padding:"12px 13px",fontWeight:500}}>{r.kasir}</td>
@@ -6463,18 +6769,28 @@ function AppInner() {
                   </tr>)}</tbody>
                 </table>
               </TableWrap>
-            </Card>}
+              <TablePagination
+                page={retPage}
+                perPage={retPerPage}
+                totalItems={returns.length}
+                onPageChange={setRetPage}
+                onPerPageChange={setRetPerPage}
+                perPageOptions={[10, 20, 50]}
+              />
+            </Card>;
+            })()}
         </div>}
 
         {/* ── AKTIVITAS ── */}
         {adminTab==="actlog"&&<div style={{display:"flex",flexDirection:"column",gap:10}}>
           <h2 style={{fontSize:15,fontWeight:800}}>Log Aktivitas</h2>
-          {actLogs.length===0?<Card><EmptyState icon={<Activity size={24} strokeWidth={1.6}/>} title="Belum ada aktivitas" hint="Login, perubahan data, dan transaksi akan dicatat di sini."/></Card>:
-          <Card noPad style={{overflow:"hidden"}}>
+          {actLogs.length===0?<Card><EmptyState icon={<Activity size={24} strokeWidth={1.6}/>} title="Belum ada aktivitas" hint="Login, perubahan data, dan transaksi akan dicatat di sini."/></Card>:(()=>{
+            const paginatedActLogs = actLogs.slice((actPage - 1) * actPerPage, actPage * actPerPage);
+            return <Card noPad style={{overflow:"hidden"}}>
             <TableWrap>
               <table style={{width:"100%",borderCollapse:"collapse",fontSize:12,minWidth:520}}>
                 <THead cols={["Waktu","Aktor","Aksi","Detail","Bisnis"]}/>
-                <tbody>{actLogs.map((l,i)=><tr key={i} className="hrow" style={{borderTop:`1px solid ${C.bo0}`,background:i%2===0?"transparent":C.bg0}}>
+                <tbody>{paginatedActLogs.map((l,i)=><tr key={i} className="hrow" style={{borderTop:`1px solid ${C.bo0}`,background:i%2===0?"transparent":C.bg0}}>
                   <td style={{padding:"12px 13px",fontSize:10,color:C.t2,whiteSpace:"nowrap"}}>{l.date}</td>
                   <td style={{padding:"12px 13px",fontWeight:600}}>{l.actor}</td>
                   <td style={{padding:"12px 13px"}}><span style={{padding:"2px 8px",borderRadius:20,fontSize:10,fontWeight:700,background:C.b1,color:C.b}}>{l.action}</span></td>
@@ -6483,7 +6799,16 @@ function AppInner() {
                 </tr>)}</tbody>
               </table>
             </TableWrap>
-          </Card>}
+            <TablePagination
+              page={actPage}
+              perPage={actPerPage}
+              totalItems={actLogs.length}
+              onPageChange={setActPage}
+              onPerPageChange={setActPerPage}
+              perPageOptions={[15, 30, 50, 100]}
+            />
+          </Card>;
+          })()}
         </div>}
 
         {/* ── OPNAME ── */}
