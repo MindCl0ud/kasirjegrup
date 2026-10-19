@@ -1151,25 +1151,26 @@ export default function CustomShirtStudio({ onBack, onGoLanding, waNumber = "628
       console.warn("fbSaveCustomOrder error:", err);
     }
 
-    const textMsg = `Halo JS Clothing (JE Grup), saya ingin memesan baju custom dengan hasil rancangan dari Studio Desain:
+    const textMsg = `*PESANAN BAJU CUSTOM - JS CLOTHING (JE GRUP)*
+----------------------------------------------
+*KODE PESANAN*: #${orderCode}
+*Pemesan*: ${orderName.trim() || "Customer"}
+${orderPhone ? `*No. WhatsApp*: ${orderPhone.trim()}\n` : ""}
+[ SPESIFIKASI BAJU ]
+• Model Pakaian: ${garmentType.name} (${garmentType.sub})
+• Warna Kain: ${garmentColor.name}
+• Sisi Sablon: ${frontList.length > 0 && backList.length > 0 ? "Depan & Belakang" : (frontList.length > 0 ? "Hanya Depan" : "Hanya Belakang")}
+• Desain Depan: ${frontDesc}
+• Desain Belakang: ${backDesc}
 
-🔖 *KODE PESANAN*: #${orderCode}
-👤 *Pemesan*: ${orderName.trim() || "Customer"}
-${orderPhone ? `📞 *No. WhatsApp*: ${orderPhone.trim()}\n` : ""}
-📋 *SPESIFIKASI PESANAN CUSTOM*
-• *Model Pakaian*: ${garmentType.name} (${garmentType.sub})
-• *Warna Kain*: ${garmentColor.name}
-• *Sisi Sablon*: ${frontList.length > 0 && backList.length > 0 ? "Depan & Belakang" : (frontList.length > 0 ? "Hanya Depan" : "Hanya Belakang")}
-• *Desain Depan*: ${frontDesc}
-• *Desain Belakang*: ${backDesc}
-
-📦 *RINCIAN UKURAN & JUMLAH*
-• *Pilihan Ukuran*: ${sizeBreakdown || "1 pcs"}
-• *Total Pesanan*: ${totalPieces} pcs
-• *Estimasi Total*: ${rp(estimatedPrice)}
-${orderNotes ? `📝 *Catatan Tambahan*: ${orderNotes}\n` : ""}
-🖼️ *HASIL GAMBAR MOCKUP DESAIN*:
-Gambar mockup desain baju ini sudah *TERSIMPAN OTOMATIS* di Admin Panel JE Grup. Admin dapat langsung mengecek gambar mockup ukuran penuh & spesifikasi sablon di menu *Pesanan Baju* (Cari Kode: *#${orderCode}*).
+[ RINCIAN UKURAN & JUMLAH ]
+• Ukuran: ${sizeBreakdown || "1 pcs"}
+• Total: ${totalPieces} pcs
+• Estimasi Total: ${rp(estimatedPrice)}
+${orderNotes ? `• Catatan: ${orderNotes}\n` : ""}
+----------------------------------------------
+*HASIL GAMBAR MOCKUP DESAIN*:
+Gambar rancangan mockup baju ini sudah *TERSIMPAN OTOMATIS* di Admin Panel JE Grup. Admin dapat langsung mengecek gambar mockup ukuran penuh & spesifikasi sablon di menu *Pesanan Baju* (Cari Kode: *#${orderCode}*).
 
 Mohon info ketersediaan bahan dan jadwal produksinya ya. Terima kasih!`;
 
