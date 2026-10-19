@@ -2198,23 +2198,12 @@ function ProductLandingPage({ prods, cfg, user, onLogin, onToggleTheme, isDark, 
     if (typeof document !== "undefined") document.getElementById("katalog")?.scrollIntoView({ behavior:"smooth", block:"start" });
   };
 
-  const eyebrow = { display:"inline-flex", alignItems:"center", gap:7, padding:"6px 13px", borderRadius:50,
-    background:C.pri1, color:C.pri, fontSize:12, fontWeight:700 };
-  const btnPrimary = { height:52, padding:"0 22px", borderRadius:14, background:C.pri, color:C.on,
+  const btnPrimary = { height:50, padding:"0 22px", borderRadius:14, background:C.pri, color:C.on,
     fontWeight:700, fontSize:14.5, border:"none", display:"inline-flex", alignItems:"center", gap:9,
     textDecoration:"none", whiteSpace:"nowrap" };
-  const btnGhost = { height:52, padding:"0 20px", borderRadius:14, background:"transparent", color:C.t0,
+  const btnGhost = { height:50, padding:"0 20px", borderRadius:14, background:"transparent", color:C.t0,
     border:`1.5px solid ${C.bo2}`, fontWeight:700, fontSize:14.5, display:"inline-flex", alignItems:"center",
     gap:9, textDecoration:"none", whiteSpace:"nowrap" };
-
-  const businesses = [
-    { k:"JS_CLOTHING", name:"JS Clothing", tag:"Konveksi", tone:C.b, toneBg:C.b1, icon:<Shirt size={18}/>,
-      n:jsCount, img:photo("js",1200,900),
-      desc:"Kaos, kemeja, celana, dan jaket. Bisa pesan jumlah banyak untuk seragam atau komunitas." },
-    { k:"JB_STORE", name:"JB Store", tag:"Skincare", tone:C.p, toneBg:C.p1, icon:<Sparkles size={18}/>,
-      n:jbCount, img:photo("jb",1200,900),
-      desc:"Serum, sunscreen, toner, dan pelembab original untuk perawatan kulit harian." },
-  ];
 
   return (
     <div style={{minHeight:"100dvh",background:C.bg1,color:C.t0,display:"flex",flexDirection:"column",fontFamily:F.sans}}>
@@ -2222,11 +2211,11 @@ function ProductLandingPage({ prods, cfg, user, onLogin, onToggleTheme, isDark, 
       <div className="lp-header-wrap">
         <header className="lp-navbar" role="banner">
           <div style={{display:"flex",alignItems:"center",gap:12,minWidth:0}}>
-            <a href="#" style={{display:"flex",alignItems:"center",gap:10,textDecoration:"none",color:C.t0,minWidth:0}} aria-label="Beranda JE Grup">
+            <a href="#" style={{display:"flex",alignItems:"center",gap:10,textDecoration:"none",color:C.t0,minWidth:0}} aria-label="Beranda Katalog">
               <BrandMark size={35}/>
               <div style={{minWidth:0}}>
-                <div style={{fontSize:15,fontWeight:800,letterSpacing:"-.025em",lineHeight:1.15,whiteSpace:"nowrap"}}>JE Grup</div>
-                <div style={{fontSize:11,color:C.t2,fontWeight:600,whiteSpace:"nowrap",letterSpacing:"-.01em"}}>JS Clothing &amp; JB Store</div>
+                <div style={{fontSize:15,fontWeight:800,letterSpacing:"-.025em",lineHeight:1.15,whiteSpace:"nowrap"}}>JE Store</div>
+                <div style={{fontSize:11,color:C.t2,fontWeight:600,whiteSpace:"nowrap",letterSpacing:"-.01em"}}>Katalog Produk &amp; Custom</div>
               </div>
             </a>
           </div>
@@ -2234,7 +2223,7 @@ function ProductLandingPage({ prods, cfg, user, onLogin, onToggleTheme, isDark, 
           {/* Navigasi kapsul di tengah (desktop & tablet) */}
           <nav className="lp-nav-links" aria-label="Navigasi cepat etalase">
             <div className="lp-nav-pill">
-              <a href="#katalog" className="nav-link">Koleksi</a>
+              <a href="#katalog" className="nav-link">Katalog Produk</a>
               {onOpenCustomizer && (
                 <button
                   onClick={onOpenCustomizer}
@@ -2253,8 +2242,10 @@ function ProductLandingPage({ prods, cfg, user, onLogin, onToggleTheme, isDark, 
                   <Shirt size={14} /> Desain Baju
                 </button>
               )}
-              <a href="#tentang" className="nav-link">Keunggulan</a>
-              <a href="#kontak" className="nav-link">Kontak</a>
+              <a href="#keunggulan" className="nav-link">Keunggulan</a>
+              <a href={waHref("Halo, saya mau tanya produk katalog.")} target="_blank" rel="noreferrer" className="nav-link">
+                Hubungi WA
+              </a>
             </div>
           </nav>
 
@@ -2273,24 +2264,29 @@ function ProductLandingPage({ prods, cfg, user, onLogin, onToggleTheme, isDark, 
         </header>
       </div>
 
-      {/* ── Hero: split asimetris, teks + kolase foto ── */}
+      {/* ── Hero: Fokus Iklan Produk & Custom ── */}
       <section style={{maxWidth:1180,width:"100%",margin:"0 auto",padding:"40px 20px 34px"}}>
         <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(330px,1fr))",gap:"clamp(28px,5vw,56px)",alignItems:"center"}}>
           <div>
-            <h1 className="lp-title" style={{fontWeight:800,letterSpacing:"-.03em",lineHeight:1.06,margin:"0 0 16px"}}>
-              Konveksi dan skincare, satu etalase resmi.
+            <div style={{display:"inline-flex",alignItems:"center",gap:7,padding:"5px 13px",borderRadius:50,background:C.pri1,color:C.pri,fontSize:12,fontWeight:800,marginBottom:14}}>
+              <Sparkles size={14}/> Katalog Produk Pilihan Siap Pesan
+            </div>
+            <h1 className="lp-title" style={{fontWeight:800,letterSpacing:"-.03em",lineHeight:1.08,margin:"0 0 16px"}}>
+              Koleksi Produk Pilihan &amp; Desain Baju Custom
             </h1>
-            <p style={{fontSize:16,color:C.t1,lineHeight:1.65,maxWidth:460,marginBottom:26}}>
-              Pakaian konveksi siap kirim dari JS Clothing dan produk perawatan kulit original dari JB Store. Pesan langsung, kami balas cepat.
+            <p style={{fontSize:16,color:C.t1,lineHeight:1.65,maxWidth:480,marginBottom:26}}>
+              Pilih produk favorit Anda atau rancang kaos custom Anda sendiri. Pesan langsung via WhatsApp dengan respon cepat, produk berkualitas, dan harga resmi terpercaya.
             </p>
             <div style={{display:"flex",gap:10,flexWrap:"wrap"}}>
+              <a href="#katalog" className="press" style={btnPrimary}>
+                <ShoppingBag size={17}/> Lihat Katalog Produk
+              </a>
               {onOpenCustomizer && (
-                <button onClick={onOpenCustomizer} className="press" style={{...btnPrimary, background:C.b, color:"#fff"}}>
-                  <Shirt size={17}/> Desain Baju Custom
+                <button onClick={onOpenCustomizer} className="press" style={{...btnGhost, background:C.b1, color:C.b, border:`1.5px solid ${C.b}44`}}>
+                  <Shirt size={17}/> Buat Kaos Custom
                 </button>
               )}
-              <a href="#katalog" className="press" style={btnGhost}><ShoppingBag size={17}/> Lihat Katalog</a>
-              <a href={waHref("Halo, saya mau tanya produk JE Grup.")} target="_blank" rel="noreferrer" className="press" style={btnGhost}>
+              <a href={waHref("Halo, saya mau tanya produk katalog.")} target="_blank" rel="noreferrer" className="press" style={btnGhost}>
                 <MessageCircle size={17}/> Chat WhatsApp
               </a>
             </div>
@@ -2298,21 +2294,23 @@ function ProductLandingPage({ prods, cfg, user, onLogin, onToggleTheme, isDark, 
 
           <div style={{display:"grid",gridTemplateColumns:"1.12fr .88fr",gap:14}}>
             <div className="lp-shot" style={{aspectRatio:"4 / 5",borderRadius:24}}>
-              <img src={photo("hero",1200,1500)} alt="Produk konveksi JS Clothing" className="lp-photo" loading="eager" decoding="async"/>
+              <img src={photo("hero",1200,1500)} alt="Produk Pakaian Pilihan" className="lp-photo" loading="eager" decoding="async"/>
             </div>
             <div style={{display:"flex",flexDirection:"column",gap:14}}>
               <div className="lp-shot" style={{aspectRatio:"1 / 1",borderRadius:20}}>
-                <img src={photo("hero2",800,800)} alt="Produk skincare JB Store" className="lp-photo" loading="lazy" decoding="async"/>
+                <img src={photo("hero2",800,800)} alt="Produk Perawatan Original" className="lp-photo" loading="lazy" decoding="async"/>
               </div>
               <div style={{flex:1,minHeight:96,borderRadius:20,background:C.bg2,border:`1px solid ${C.bo1}`,
                 padding:"16px 16px 14px",display:"flex",flexDirection:"column",justifyContent:"center",gap:7}}>
                 <div style={{display:"flex",gap:6}}>
-                  <span style={{flex:1,height:4,borderRadius:2,background:"var(--ik3)"}}/>
-                  <span style={{flex:1,height:4,borderRadius:2,background:"var(--ik1)"}}/>
+                  <span style={{flex:1,height:4,borderRadius:2,background:"#25D366"}}/>
+                  <span style={{flex:1,height:4,borderRadius:2,background:C.pri}}/>
                   <span style={{flex:1,height:4,borderRadius:2,background:"var(--ik2)"}}/>
                 </div>
-                <div className="mn" style={{fontSize:26,fontWeight:850,letterSpacing:"-.03em",lineHeight:1}}>2</div>
-                <div style={{fontSize:12,color:C.t2,fontWeight:600,lineHeight:1.35}}>usaha dalam satu grup</div>
+                <div className="mn" style={{fontSize:20,fontWeight:850,letterSpacing:"-.02em",lineHeight:1.1,color:"#25D366",display:"flex",alignItems:"center",gap:7}}>
+                  <MessageCircle size={20}/> Pesan via WA
+                </div>
+                <div style={{fontSize:12,color:C.t2,fontWeight:600,lineHeight:1.35}}>Klik produk &amp; langsung kirim pesanan</div>
               </div>
             </div>
           </div>
@@ -2321,55 +2319,6 @@ function ProductLandingPage({ prods, cfg, user, onLogin, onToggleTheme, isDark, 
 
       {/* Pita ikat (ciri merek) */}
       <div className="ikat-band" aria-hidden="true"/>
-
-      {/* ── Dua usaha: kartu foto 2 kolom ── */}
-      <section style={{maxWidth:1180,width:"100%",margin:"0 auto",padding:"44px 20px 8px"}}>
-        <h2 style={{fontSize:"clamp(22px,3vw,28px)",fontWeight:800,letterSpacing:"-.025em",marginBottom:20}}>Dua usaha, satu grup</h2>
-        <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(300px,1fr))",gap:18}}>
-          {businesses.map(b => (
-            <button key={b.k} onClick={()=>pickBiz(b.k)} className="press lp-lift"
-              style={{display:"block",width:"100%",textAlign:"left",padding:0,cursor:"pointer",
-                background:C.bg2,border:`1px solid ${C.bo1}`,borderRadius:20,overflow:"hidden"}}>
-              <div className="lp-shot" style={{aspectRatio:"16 / 10"}}>
-                <img src={b.img} alt={`Produk ${b.name}`} className="lp-photo" loading="lazy" decoding="async"/>
-              </div>
-              <div style={{padding:"18px 19px 20px"}}>
-                <div style={{display:"flex",alignItems:"center",gap:9,marginBottom:10}}>
-                  <span style={{width:34,height:34,borderRadius:10,background:b.toneBg,color:b.tone,display:"grid",placeItems:"center",flexShrink:0}}>{b.icon}</span>
-                  <span style={{fontSize:11.5,fontWeight:700,color:b.tone,background:b.toneBg,padding:"3px 10px",borderRadius:50}}>{b.tag}</span>
-                  <span style={{fontSize:11.5,color:C.t2,fontWeight:600,marginLeft:"auto"}}>{b.n} produk</span>
-                </div>
-                <div style={{fontSize:18,fontWeight:800,letterSpacing:"-.02em",marginBottom:5}}>{b.name}</div>
-                <p style={{fontSize:13.5,color:C.t1,lineHeight:1.55}}>{b.desc}</p>
-                <div style={{marginTop:14,display:"flex",alignItems:"center",justifyContent:"space-between",gap:8,flexWrap:"wrap"}}>
-                  <div style={{display:"inline-flex",alignItems:"center",gap:6,fontSize:13,fontWeight:700,color:b.tone}}>
-                    Lihat koleksi <ArrowRight size={15}/>
-                  </div>
-                  {b.k === "JS_CLOTHING" && onOpenCustomizer && (
-                    <span
-                      onClick={(e) => { e.stopPropagation(); onOpenCustomizer(); }}
-                      style={{
-                        padding:"5px 12px",
-                        borderRadius:8,
-                        background:C.b1,
-                        color:C.b,
-                        border:`1px solid ${C.b}44`,
-                        fontSize:12,
-                        fontWeight:800,
-                        display:"inline-flex",
-                        alignItems:"center",
-                        gap:5
-                      }}
-                    >
-                      <Shirt size={13}/> Studio Desain
-                    </span>
-                  )}
-                </div>
-              </div>
-            </button>
-          ))}
-        </div>
-      </section>
 
       {/* ── Highlight Banner: Studio Desain Baju Custom ── */}
       {onOpenCustomizer && (
@@ -2423,30 +2372,37 @@ function ProductLandingPage({ prods, cfg, user, onLogin, onToggleTheme, isDark, 
         </section>
       )}
 
-      {/* ── Katalog ── */}
+      {/* ── Katalog Produk (Fokus Utama Iklan Produk) ── */}
       <section id="katalog" style={{flex:1,maxWidth:1180,width:"100%",margin:"0 auto",padding:"40px 20px 56px"}}>
-        <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-end",flexWrap:"wrap",gap:16,marginBottom:22}}>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-end",flexWrap:"wrap",gap:16,marginBottom:24}}>
           <div>
-            <h2 style={{fontSize:"clamp(22px,3vw,28px)",fontWeight:800,letterSpacing:"-.025em"}}>Etalase produk</h2>
-            <p style={{fontSize:13.5,color:C.t2,marginTop:4}}>Produk yang sedang kami promosikan. Harga resmi toko.</p>
+            <h2 style={{fontSize:"clamp(22px,3vw,30px)",fontWeight:800,letterSpacing:"-.025em"}}>Katalog Produk Siap Pesan</h2>
+            <p style={{fontSize:14,color:C.t2,marginTop:4}}>Pilih produk favorit Anda, lalu klik tombol <b>Pesan Sekarang</b> untuk langsung order via WhatsApp.</p>
           </div>
           <div style={{display:"flex",gap:8,alignItems:"center",flexWrap:"wrap"}}>
+            {/* Filter Jenis Produk */}
             <div style={{display:"flex",gap:6,background:C.bg3,padding:4,borderRadius:12,border:`1px solid ${C.bo0}`}}>
-              {[["ALL","Semua"],["JS_CLOTHING","JS Clothing"],["JB_STORE","JB Store"]].map(([k,label]) => {
+              {[
+                ["ALL", "Semua Produk", ShoppingBag],
+                ["JS_CLOTHING", "Pakaian & Kaos", Shirt],
+                ["JB_STORE", "Skincare & Perawatan", Sparkles]
+              ].map(([k, label, IconComp]) => {
                 const active = selectedBiz === k;
                 return (
                   <button key={k} onClick={()=>setSelectedBiz(k)} className="press fbtn"
-                    style={{border:"none",borderRadius:8,padding:"8px 13px",fontSize:12.5,
+                    style={{border:"none",borderRadius:8,padding:"8px 14px",fontSize:12.5,
                       fontWeight:active?800:600,background:active?C.bg2:"transparent",
-                      color:active?C.pri:C.t2,boxShadow:active?C.sh:"none"}}>
+                      color:active?C.pri:C.t2,boxShadow:active?C.sh:"none",display:"inline-flex",alignItems:"center",gap:6}}>
+                    <IconComp size={14}/>
                     {label}
                   </button>
                 );
               })}
             </div>
+            {/* Pencarian Produk */}
             <div style={{position:"relative",flex:"1 1 200px",minWidth:180}}>
               <Search size={15} style={{position:"absolute",left:12,top:"50%",transform:"translateY(-50%)",color:C.t2}}/>
-              <input value={searchWord} onChange={e=>setSearchWord(e.target.value)} placeholder="Cari produk..." aria-label="Cari produk"
+              <input value={searchWord} onChange={e=>setSearchWord(e.target.value)} placeholder="Cari nama produk..." aria-label="Cari produk"
                 style={{width:"100%",padding:"10px 12px 10px 34px",background:C.bg2,border:`1.5px solid ${C.bo1}`,
                   borderRadius:10,fontSize:13,color:C.t0,fontFamily:F.sans}}/>
             </div>
@@ -2460,36 +2416,72 @@ function ProductLandingPage({ prods, cfg, user, onLogin, onToggleTheme, isDark, 
               <Package size={26}/>
             </div>
             <div style={{fontSize:16,fontWeight:800}}>Produk tidak ditemukan</div>
-            <div style={{fontSize:13.5,color:C.t2,maxWidth:320}}>Ubah kata kunci atau ganti filter bisnis di atas.</div>
+            <div style={{fontSize:13.5,color:C.t2,maxWidth:320}}>Ubah kata kunci pencarian atau ganti filter kategori di atas.</div>
           </div>
         ) : (
-          <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(215px,1fr))",gap:16}}>
+          <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(225px,1fr))",gap:18}}>
             {filtered.map(p => {
               const isJ = p.business === "JS_CLOTHING";
               const tone = isJ ? C.b : C.p;
               const toneBg = isJ ? C.b1 : C.p1;
               const out = p.stock <= 0;
+              const orderText = `Halo, saya tertarik untuk memesan produk *${p.name}* (${rp(p.price)}). Apakah stok masih tersedia?`;
+
               return (
                 <article key={p.id} className="lp-card-in lp-lift"
-                  style={{background:C.bg2,border:`1px solid ${C.bo1}`,borderRadius:20,overflow:"hidden",display:"flex",flexDirection:"column"}}>
-                  <div className="lp-shot" style={{aspectRatio:"1 / 1"}}>
+                  style={{background:C.bg2,border:`1px solid ${C.bo1}`,borderRadius:20,overflow:"hidden",display:"flex",flexDirection:"column",boxShadow:C.sh}}>
+                  <div className="lp-shot" style={{aspectRatio:"1 / 1",position:"relative"}}>
                     <img src={productPhoto(p)} alt={p.name} className="lp-photo" loading="lazy" decoding="async"/>
+                    {out && (
+                      <div style={{position:"absolute",top:10,right:10,background:"rgba(220,38,38,0.92)",color:"#fff",fontSize:10.5,fontWeight:800,padding:"3px 8px",borderRadius:6,backdropFilter:"blur(4px)"}}>
+                        Stok Habis
+                      </div>
+                    )}
                   </div>
-                  <div style={{padding:"13px 14px 15px",display:"flex",flexDirection:"column",flex:1}}>
+                  <div style={{padding:"14px 15px 16px",display:"flex",flexDirection:"column",flex:1}}>
                     <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:8}}>
                       <span style={{fontSize:10.5,fontWeight:800,padding:"3px 9px",borderRadius:50,background:toneBg,color:tone,display:"inline-flex",alignItems:"center",gap:4}}>
-                        {isJ ? <Shirt size={11}/> : <Sparkles size={11}/>} {BIZ[p.business]?.name || p.business}
+                        {isJ ? <Shirt size={11}/> : <Sparkles size={11}/>} {p.category || (isJ ? "Pakaian" : "Perawatan")}
                       </span>
-                      {p.category && (
-                        <span style={{fontSize:10.5,fontWeight:600,color:C.t2,background:C.bg3,padding:"3px 8px",
-                          borderRadius:50,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{p.category}</span>
-                      )}
+                      <span style={{fontSize:11,fontWeight:700,color:out?C.r:(p.stock<10?C.a:C.g),marginLeft:"auto"}}>
+                        {stockLabel(p)}
+                      </span>
                     </div>
-                    <h3 style={{fontSize:14.5,fontWeight:700,lineHeight:1.35,marginBottom:"auto"}}>{p.name}</h3>
-                    <div style={{marginTop:12,display:"flex",alignItems:"flex-end",justifyContent:"space-between",gap:8}}>
-                      <div className="mn" style={{fontSize:17,fontWeight:850}}>{rp(p.price)}</div>
-                      <span style={{fontSize:11,fontWeight:700,color:out?C.r:(p.stock<10?C.a:C.g)}}>{stockLabel(p)}</span>
+
+                    <h3 style={{fontSize:14.5,fontWeight:700,lineHeight:1.35,marginBottom:"auto",color:C.t0}}>{p.name}</h3>
+
+                    <div style={{marginTop:12,display:"flex",alignItems:"baseline",justifyContent:"space-between",gap:8}}>
+                      <div className="mn" style={{fontSize:18,fontWeight:850,color:C.pri}}>{rp(p.price)}</div>
                     </div>
+
+                    {/* Tombol Pesan Sekarang Mengarah ke WA dengan Nama Produk */}
+                    <a
+                      href={waHref(orderText)}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="press"
+                      style={{
+                        display:"inline-flex",
+                        alignItems:"center",
+                        justifyContent:"center",
+                        gap:7,
+                        width:"100%",
+                        padding:"10px 14px",
+                        borderRadius:12,
+                        background: out ? C.bg3 : "#25D366",
+                        color: out ? C.t2 : "#FFFFFF",
+                        fontWeight: 800,
+                        fontSize: 13,
+                        textDecoration:"none",
+                        marginTop: 14,
+                        border: out ? `1px solid ${C.bo1}` : "none",
+                        boxShadow: out ? "none" : "0 4px 14px rgba(37,211,102,0.30)",
+                        transition:"all .15s ease",
+                      }}
+                    >
+                      <MessageCircle size={16}/>
+                      {out ? "Tanya Ketersediaan" : "Pesan Sekarang"}
+                    </a>
                   </div>
                 </article>
               );
@@ -2498,51 +2490,66 @@ function ProductLandingPage({ prods, cfg, user, onLogin, onToggleTheme, isDark, 
         )}
       </section>
 
-      {/* ── Kenapa belanja di sini: bento 1 lebar + 2 kecil ── */}
-      <section id="tentang" style={{maxWidth:1180,width:"100%",margin:"0 auto",padding:"8px 20px 56px"}}>
-        <h2 style={{fontSize:"clamp(22px,3vw,28px)",fontWeight:800,letterSpacing:"-.025em",marginBottom:6}}>Kenapa belanja di sini</h2>
-        <p style={{fontSize:13.5,color:C.t2,marginBottom:18}}>Kualitas produksi langsung dari konveksi dan keaslian produk terjamin.</p>
+      {/* ── Keunggulan Belanja di Sini: Benefit Pembeli ── */}
+      <section id="keunggulan" style={{maxWidth:1180,width:"100%",margin:"0 auto",padding:"8px 20px 56px"}}>
+        <h2 style={{fontSize:"clamp(22px,3vw,28px)",fontWeight:800,letterSpacing:"-.025em",marginBottom:6}}>Keunggulan Belanja di Sini</h2>
+        <p style={{fontSize:14,color:C.t2,marginBottom:20}}>Kemudahan berbelanja langsung dengan jaminan kualitas terbaik dan respon cepat.</p>
         <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(280px,1fr))",gap:16}}>
-          <div style={{gridColumn:"1 / -1",background:C.bg2,border:`1px solid ${C.bo1}`,borderRadius:20,overflow:"hidden"}}>
-            <div className="lp-shot" style={{aspectRatio:"16 / 7"}}>
-              <img src={photo("atelier",1400,900)} alt="Workshop konveksi JE Grup" className="lp-photo" loading="lazy" decoding="async"/>
-            </div>
-            <div style={{padding:"20px 22px 22px"}}>
-              <div style={{fontSize:19,fontWeight:800,letterSpacing:"-.02em",marginBottom:6}}>Dijahit di workshop sendiri</div>
-              <p style={{fontSize:13.5,color:C.t1,lineHeight:1.6,maxWidth:560}}>
-                Pesanan seragam, komunitas, maupun satuan dikerjakan langsung oleh tim kami, jadi ukuran dan jahitan bisa disesuaikan.
-              </p>
-            </div>
-          </div>
           {[
-            { icon:<ShieldCheck size={22}/>, tone:C.g, toneBg:C.g1, bg:C.bg2, t:"Produk original", d:"Skincare resmi dari distributor, bukan barang tiruan atau kadaluarsa." },
-            { icon:<MessageCircle size={22}/>, tone:C.pri, toneBg:C.pri1, bg:C.bg3, t:"Pesan langsung", d:"Tanya stok dan ukuran lewat WhatsApp, kami balas cepat di jam kerja." },
+            {
+              icon:<ShieldCheck size={22}/>,
+              tone:C.g,
+              toneBg:C.g1,
+              bg:C.bg2,
+              t:"Produk Berkualitas & Original",
+              d:"Pakaian dengan bahan katun combed standar distro yang nyaman, serta produk skincare original teruji langsung dari distributor resmi."
+            },
+            {
+              icon:<MessageCircle size={22}/>,
+              tone:"#25D366",
+              toneBg:"rgba(37,211,102,0.12)",
+              bg:C.bg2,
+              t:"Pesan Cepat via WhatsApp",
+              d:"Cukup klik tombol Pesan Sekarang pada produk, pesan otomatis terformat rapi dan langsung dibalas cepat oleh tim kami."
+            },
+            {
+              icon:<Shirt size={22}/>,
+              tone:C.b,
+              toneBg:C.b1,
+              bg:C.bg2,
+              t:"Bisa Custom & Grosir",
+              d:"Melayani pembuatan kaos custom satuan, seragam komunitas, maupun pesanan grosir partai besar dengan harga khusus."
+            },
           ].map(c => (
-            <div key={c.t} style={{background:c.bg,border:`1px solid ${C.bo1}`,borderRadius:20,padding:"20px 21px",
-              display:"flex",flexDirection:"column",gap:10,minHeight:150}}>
-              <span style={{width:42,height:42,borderRadius:12,background:c.toneBg,color:c.tone,display:"grid",placeItems:"center"}}>{c.icon}</span>
-              <div style={{fontSize:16,fontWeight:800,letterSpacing:"-.015em"}}>{c.t}</div>
-              <p style={{fontSize:13.5,color:C.t1,lineHeight:1.55}}>{c.d}</p>
+            <div key={c.t} style={{background:c.bg,border:`1px solid ${C.bo1}`,borderRadius:20,padding:"22px 22px",
+              display:"flex",flexDirection:"column",gap:12,boxShadow:C.sh}}>
+              <span style={{width:44,height:44,borderRadius:12,background:c.toneBg,color:c.tone,display:"grid",placeItems:"center"}}>{c.icon}</span>
+              <div style={{fontSize:16.5,fontWeight:800,letterSpacing:"-.015em"}}>{c.t}</div>
+              <p style={{fontSize:13.5,color:C.t1,lineHeight:1.6}}>{c.d}</p>
             </div>
           ))}
         </div>
       </section>
 
-      {/* ── Ajakan penutup ── */}
+      {/* ── Ajakan Penutup ── */}
       <section id="kontak" style={{maxWidth:1180,width:"100%",margin:"0 auto",padding:"0 20px 56px"}}>
         <div style={{position:"relative",overflow:"hidden",borderRadius:24,background:"var(--ik1)",
           padding:"clamp(30px,5vw,52px)",display:"flex",flexWrap:"wrap",alignItems:"center",justifyContent:"space-between",gap:24}}>
           <div style={{position:"absolute",top:0,left:0,right:0,height:6,
-            background:"repeating-linear-gradient(90deg,var(--ik3) 0 4px,var(--ik2) 4px 8px)"}}/>
+            background:"repeating-linear-gradient(90deg,#25D366 0 4px,var(--ik2) 4px 8px)"}}/>
           <div style={{position:"relative",maxWidth:520}}>
-            <h2 style={{fontSize:"clamp(22px,3.4vw,32px)",fontWeight:800,letterSpacing:"-.03em",color:"#fff",lineHeight:1.12,marginBottom:10}}>
-              Mau pesan atau tanya stok?
+            <h2 style={{fontSize:"clamp(22px,3.4vw,32px)",fontWeight:800,letterSpacing:"-.03em",color:"#fff",lineHeight:1.15,marginBottom:10}}>
+              Tertarik dengan Produk Kami?
             </h2>
-            <p style={{fontSize:14.5,color:"rgba(255,255,255,.78)",lineHeight:1.6}}>Sebutkan produk dan jumlahnya, kami balas harga beserta ongkir.</p>
+            <p style={{fontSize:14.5,color:"rgba(255,255,255,.82)",lineHeight:1.6}}>
+              Hubungi kami langsung via WhatsApp untuk menanyakan ketersediaan ukuran, konsultasi bahan, atau pemesanan khusus.
+            </p>
           </div>
           <div style={{position:"relative",display:"flex",gap:10,flexWrap:"wrap"}}>
-            <a href={waHref("Halo, saya mau pesan produk JE Grup.")} target="_blank" rel="noreferrer" className="press"
-              style={{...btnPrimary,background:"var(--ik2)",color:"var(--ik1)"}}><MessageCircle size={17}/> Chat WhatsApp</a>
+            <a href={waHref("Halo, saya ingin memesan produk dari katalog.")} target="_blank" rel="noreferrer" className="press"
+              style={{...btnPrimary,background:"#25D366",color:"#fff"}}>
+              <MessageCircle size={18}/> Chat WhatsApp Sekarang
+            </a>
             <button onClick={onLogin} className="press"
               style={{...btnGhost,color:"#fff",borderColor:"rgba(255,255,255,.35)"}}>
               {user ? <LayoutDashboard size={16}/> : <Lock size={16}/>}
@@ -2559,13 +2566,18 @@ function ProductLandingPage({ prods, cfg, user, onLogin, onToggleTheme, isDark, 
           <div style={{display:"flex",alignItems:"center",gap:10}}>
             <BrandMark size={30}/>
             <div>
-              <div style={{fontSize:14,fontWeight:800}}>JE Grup</div>
-              <div style={{fontSize:12,color:C.t2}}>JS Clothing &amp; JB Store</div>
+              <div style={{fontSize:14,fontWeight:800}}>JE Store</div>
+              <div style={{fontSize:12,color:C.t2}}>Katalog Produk &amp; Custom Desain</div>
             </div>
           </div>
           <div style={{display:"flex",alignItems:"center",gap:16,flexWrap:"wrap"}}>
-            <a href="#katalog" style={{fontSize:13,fontWeight:600,color:C.t1,textDecoration:"none"}}>Lihat Katalog</a>
-            <a href={waHref("Halo, saya mau tanya produk JE Grup.")} target="_blank" rel="noreferrer"
+            <a href="#katalog" style={{fontSize:13,fontWeight:600,color:C.t1,textDecoration:"none"}}>Katalog Produk</a>
+            {onOpenCustomizer && (
+              <button onClick={onOpenCustomizer} style={{background:"transparent",border:"none",padding:0,fontSize:13,fontWeight:600,color:C.b,cursor:"pointer"}}>
+                Studio Desain
+              </button>
+            )}
+            <a href={waHref("Halo, saya mau tanya produk katalog.")} target="_blank" rel="noreferrer"
               style={{fontSize:13,fontWeight:600,color:C.t1,textDecoration:"none"}}>Chat WhatsApp</a>
             <button onClick={onLogin} className="press"
               style={{fontSize:13,fontWeight:700,color:C.pri,background:"transparent",border:"none",padding:0}}>
@@ -2574,7 +2586,7 @@ function ProductLandingPage({ prods, cfg, user, onLogin, onToggleTheme, isDark, 
           </div>
         </div>
         <div style={{maxWidth:1180,margin:"20px auto 0",fontSize:12,color:C.t3}}>
-          &copy; {new Date().getFullYear()} JE Grup. Semua harga dalam Rupiah.
+          &copy; {new Date().getFullYear()} JE Store. Semua harga dalam Rupiah resmi.
         </div>
       </footer>
     </div>
