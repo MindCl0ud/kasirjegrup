@@ -2620,30 +2620,8 @@ function AdminSidebar({tabs,groups,active,onSelect,label="Menu admin",storeKey="
 
   return <aside ref={ref} className="hide-mobile" style={{width:w,flexShrink:0,position:"relative",background:C.bg2,borderRight:`1px solid ${C.bo0}`,
     transition:drag?"none":"width .18s cubic-bezier(0.4, 0, 0.2, 1)",display:"flex",flexDirection:"column",minHeight:0,userSelect:"none"}}>
-    {/* Sidebar Brand Header */}
-    <div style={{padding:rail?"14px 0":"14px 14px 12px",display:"flex",alignItems:"center",justifyContent:rail?"center":"space-between",gap:10,borderBottom:`1px solid ${C.bo0}`,flexShrink:0}}>
-      <div style={{display:"flex",alignItems:"center",gap:10,minWidth:0}}>
-        <div style={{width:32,height:32,borderRadius:10,background:`linear-gradient(135deg, ${C.pri}, #4B5ECA)`,color:"#FFF",display:"grid",placeItems:"center",fontWeight:900,fontSize:13,letterSpacing:"-.02em",flexShrink:0,boxShadow:"0 2px 6px rgba(47,60,148,0.25)"}}>
-          JE
-        </div>
-        {!rail && (
-          <div style={{minWidth:0}}>
-            <div style={{fontSize:13,fontWeight:800,color:C.t0,letterSpacing:"-.01em",lineHeight:1.2,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>
-              JE GRUP
-            </div>
-            <div style={{display:"flex",alignItems:"center",gap:5,marginTop:2}}>
-              <span style={{width:6,height:6,borderRadius:"50%",background:C.g}}/>
-              <span style={{fontSize:10.5,fontWeight:700,color:C.t2,textTransform:"uppercase",letterSpacing:"0.03em"}}>
-                Admin Panel
-              </span>
-            </div>
-          </div>
-        )}
-      </div>
-    </div>
-
     {/* Nav List with Group Sections */}
-    <nav aria-label={label} style={{flex:1,overflowY:"auto",overflowX:"hidden",padding:rail?"10px 8px":"10px 10px 14px",display:"flex",flexDirection:"column",gap:2}}>
+    <nav aria-label={label} style={{flex:1,overflowY:"auto",overflowX:"hidden",padding:rail?"12px 8px":"12px 10px 14px",display:"flex",flexDirection:"column",gap:2}}>
       {renderedGroups.map((g, gIdx) => (
         <div key={g.id || gIdx} style={{marginTop:gIdx===0?2:12}}>
           {g.title ? (
@@ -4339,7 +4317,7 @@ function AppInner() {
     return <div style={{fontFamily:F.sans,background:C.bg1,color:C.t0,height:"100vh",display:"flex",flexDirection:"column"}}>
       <style>{CSS}</style><Toast n={notif}/>
       {UpdateBannerEl}
-      <Header title="Admin Panel" user={user} online={online} onLogout={doLogout} lowStockCount={lowStockCount} onToggleTheme={toggleTheme} isDark={isDark} onLowStockClick={()=>setShowLowStock(true)} expireCount={nearExpiry.length} expiredCount={expiredProds.length} onExpireClick={()=>setShowExpirePopup(true)} onGoLanding={()=>setScreen("landing")} onOpenCustomizer={()=>setScreen("custom-baju")}/>
+      <Header title="JE GRUP" user={user} online={online} onLogout={doLogout} lowStockCount={lowStockCount} onToggleTheme={toggleTheme} isDark={isDark} onLowStockClick={()=>setShowLowStock(true)} expireCount={nearExpiry.length} expiredCount={expiredProds.length} onExpireClick={()=>setShowExpirePopup(true)} onGoLanding={()=>setScreen("landing")} onOpenCustomizer={()=>setScreen("custom-baju")}/>
 
       {/* Change password modal */}
       <ExpenseFormModal open={expenseModal} onClose={()=>setExpenseModal(false)} onSave={saveExpense} access={user.access} user={user}/>
