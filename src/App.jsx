@@ -2864,7 +2864,7 @@ function AppInner() {
         sessionStorage.setItem("je_session", JSON.stringify({
           ...prev,
           userId: user.id,
-          biz: biz || user.access[0],
+          biz: biz || user?.access?.[0] || "JS_CLOTHING",
           screen: screen,
           adminTab: adminTab,
           t: sessionStart || Date.now(),
@@ -3854,6 +3854,20 @@ function AppInner() {
   //  KASIR SCREEN
   // ─────────────────────────────────────────────────────────────
   if(screen==="kasir") {
+    if(!user) {
+      const hasSaved = typeof sessionStorage !== "undefined" && !!sessionStorage.getItem("je_session");
+      if(hasSaved && (!fbReady || !users.length)) {
+        return <div style={{fontFamily:F.sans,background:C.bg1,color:C.t0,height:"100vh",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:14}}>
+          <style>{CSS}</style>
+          <div style={{width:40,height:40,border:`2.5px solid ${C.bg4}`,borderTopColor:C.pri,borderRadius:"50%",animation:"spin 1s linear infinite"}}/>
+          <div style={{fontSize:13,color:C.t2,fontWeight:600}}>Memuat sesi kasir...</div>
+        </div>;
+      }
+      if(!hasSaved) {
+        setScreen("login");
+        return null;
+      }
+    }
     const subtotal=cart.reduce((s,c)=>s+c.price*c.qty,0);
     const discAmt=calcDiscount(subtotal);
     const total=subtotal-discAmt;
@@ -4075,6 +4089,20 @@ function AppInner() {
   //  STOK SCREEN
   // ─────────────────────────────────────────────────────────────
   if(screen==="stok") {
+    if(!user) {
+      const hasSaved = typeof sessionStorage !== "undefined" && !!sessionStorage.getItem("je_session");
+      if(hasSaved && (!fbReady || !users.length)) {
+        return <div style={{fontFamily:F.sans,background:C.bg1,color:C.t0,height:"100vh",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:14}}>
+          <style>{CSS}</style>
+          <div style={{width:40,height:40,border:`2.5px solid ${C.bg4}`,borderTopColor:C.pri,borderRadius:"50%",animation:"spin 1s linear infinite"}}/>
+          <div style={{fontSize:13,color:C.t2,fontWeight:600}}>Memuat sesi stok...</div>
+        </div>;
+      }
+      if(!hasSaved) {
+        setScreen("login");
+        return null;
+      }
+    }
     const bc=biz==="JS_CLOTHING"?C.b:C.p;
     const filtered=bizProds().filter(p=>!stokSearch||p.name.toLowerCase().includes(stokSearch.toLowerCase())||p.barcode.includes(stokSearch));
     return <div style={{fontFamily:F.sans,background:C.bg1,color:C.t0,height:"100vh",display:"flex",flexDirection:"column"}}>
@@ -4310,6 +4338,20 @@ function AppInner() {
   //  ADMIN SCREEN
   // ─────────────────────────────────────────────────────────────
   if(screen==="admin") {
+    if(!user) {
+      const hasSaved = typeof sessionStorage !== "undefined" && !!sessionStorage.getItem("je_session");
+      if(hasSaved && (!fbReady || !users.length)) {
+        return <div style={{fontFamily:F.sans,background:C.bg1,color:C.t0,height:"100vh",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:14}}>
+          <style>{CSS}</style>
+          <div style={{width:40,height:40,border:`2.5px solid ${C.bg4}`,borderTopColor:C.pri,borderRadius:"50%",animation:"spin 1s linear infinite"}}/>
+          <div style={{fontSize:13,color:C.t2,fontWeight:600}}>Memuat sesi admin...</div>
+        </div>;
+      }
+      if(!hasSaved) {
+        setScreen("login");
+        return null;
+      }
+    }
     const IS={width:"100%",padding:"11px 13px",background:C.bg3,border:`1.5px solid ${C.bo0}`,borderRadius:10,color:C.t0,fontSize:13,fontFamily:F.mono,transition:"border-color .15s"};
     const newCustomOrdersCount = (customOrders||[]).filter(o => o && (o.status || "Baru") === "Baru").length;
     const ADMIN_TAB_GROUPS = [
@@ -4384,7 +4426,7 @@ function AppInner() {
       <Header title="JE GRUP" user={user} online={online} onLogout={doLogout} lowStockCount={lowStockCount} onToggleTheme={toggleTheme} isDark={isDark} onLowStockClick={()=>setShowLowStock(true)} expireCount={nearExpiry.length} expiredCount={expiredProds.length} onExpireClick={()=>setShowExpirePopup(true)} onGoLanding={()=>setScreen("landing")} onOpenCustomizer={()=>setScreen("custom-baju")}/>
 
       {/* Change password modal */}
-      <ExpenseFormModal open={expenseModal} onClose={()=>setExpenseModal(false)} onSave={saveExpense} access={user.access} user={user}/>
+      <ExpenseFormModal open={expenseModal} onClose={()=>setExpenseModal(false)} onSave={saveExpense} access={user?.access||[]} user={user}/>
       <ProductFormModal open={pModal} editing={editPid!==null} editId={editPid} form={pForm} setForm={setPForm} prods={prods} biz={adminBiz}
         onSave={saveProd} onClose={()=>{setPModal(false);setEditPid(null);setInlineAddMode(false);}} toast={toast}/>
       {invTrx&&<Invoice receipt={invTrx} biz={invTrx.business} onClose={()=>setInvTrx(null)}/>}
@@ -4393,7 +4435,7 @@ function AppInner() {
         subtitle={users.find(u=>u.id===cpwdModal)?.name}
         footer={<><Btn outline onClick={()=>setCpwdModal(null)}>Batal</Btn><Btn onClick={doChangePassword}>Simpan</Btn></>}>
         <div style={{display:"flex",flexDirection:"column",gap:14}}>
-          {user.role!=="admin"&&<Inp label="Password lama" type="password" value={cpwdForm.old} onChange={e=>setCpwdForm(x=>({...x,old:e.target.value}))}/>}
+          {user?.role!=="admin"&&<Inp label="Password lama" type="password" value={cpwdForm.old} onChange={e=>setCpwdForm(x=>({...x,old:e.target.value}))}/>}
           <Inp label="Password baru *" type="password" value={cpwdForm.n1} onChange={e=>setCpwdForm(x=>({...x,n1:e.target.value}))}/>
           <Inp label="Konfirmasi password *" type="password" value={cpwdForm.n2} onChange={e=>setCpwdForm(x=>({...x,n2:e.target.value}))}/>
         </div>
