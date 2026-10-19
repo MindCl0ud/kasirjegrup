@@ -3509,7 +3509,7 @@ function AppInner() {
   const [userPage, setUserPage] = useState(1);
   const [userPerPage, setUserPerPage] = useState(10);
   const [prodPage, setProdPage] = useState(1);
-  const [prodPerPage, setProdPerPage] = useState(10);
+  const [prodPerPage, setProdPerPage] = useState(20);
   const [lapPage, setLapPage] = useState(1);
   const [lapPerPage, setLapPerPage] = useState(20);
   const [lapProdPage, setLapProdPage] = useState(1);
@@ -5544,7 +5544,7 @@ function AppInner() {
                 totalItems={adminPs.length}
                 onPageChange={setProdPage}
                 onPerPageChange={setProdPerPage}
-                perPageOptions={[10, 20, 50, 100]}
+                perPageOptions={[20, 50, 100, 200]}
               />
             </Card>
           </div>
@@ -5623,7 +5623,7 @@ function AppInner() {
               totalItems={adminPs.length}
               onPageChange={setProdPage}
               onPerPageChange={setProdPerPage}
-              perPageOptions={[10, 20, 50, 100]}
+              perPageOptions={[20, 50, 100, 200]}
               style={{ borderRadius: 14, border: `1px solid ${C.bo0}`, marginTop: 10 }}
             />
           </div>
