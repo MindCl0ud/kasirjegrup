@@ -1117,10 +1117,12 @@ export default function CustomShirtStudio({ onBack, onGoLanding, waNumber = "628
       .map(([s, q]) => `${s}: ${q} pcs`)
       .join(", ");
 
+    const orderCode = "JE-CST-" + Math.floor(1000 + Math.random() * 9000);
+
     // Simpan pesanan ke database Firestore & Local Backup agar admin dapat melihat hasil desainnya
     try {
       await fbSaveCustomOrder({
-        orderCode: "CST-" + Date.now().toString(36).toUpperCase(),
+        orderCode,
         customerName: orderName.trim() || "Customer",
         customerPhone: orderPhone.trim() || "",
         garment: {
@@ -1151,8 +1153,11 @@ export default function CustomShirtStudio({ onBack, onGoLanding, waNumber = "628
 
     const textMsg = `Halo JS Clothing (JE Grup), saya ingin memesan baju custom dengan hasil rancangan dari Studio Desain:
 
+🔖 *KODE PESANAN*: #${orderCode}
+👤 *Pemesan*: ${orderName.trim() || "Customer"}
+${orderPhone ? `📞 *No. WhatsApp*: ${orderPhone.trim()}\n` : ""}
 📋 *SPESIFIKASI PESANAN CUSTOM*
-• *Jenis Pakaian*: ${garmentType.name} (${garmentType.sub})
+• *Model Pakaian*: ${garmentType.name} (${garmentType.sub})
 • *Warna Kain*: ${garmentColor.name}
 • *Sisi Sablon*: ${frontList.length > 0 && backList.length > 0 ? "Depan & Belakang" : (frontList.length > 0 ? "Hanya Depan" : "Hanya Belakang")}
 • *Desain Depan*: ${frontDesc}
@@ -1161,17 +1166,19 @@ export default function CustomShirtStudio({ onBack, onGoLanding, waNumber = "628
 📦 *RINCIAN UKURAN & JUMLAH*
 • *Pilihan Ukuran*: ${sizeBreakdown || "1 pcs"}
 • *Total Pesanan*: ${totalPieces} pcs
-• *Estimasi Dasar*: ${rp(estimatedPrice)}
+• *Estimasi Total*: ${rp(estimatedPrice)}
+${orderNotes ? `📝 *Catatan Tambahan*: ${orderNotes}\n` : ""}
+🖼️ *HASIL GAMBAR MOCKUP DESAIN*:
+Gambar mockup desain baju ini sudah *TERSIMPAN OTOMATIS* di Admin Panel JE Grup. Admin dapat langsung mengecek gambar mockup ukuran penuh & spesifikasi sablon di menu *Pesanan Baju* (Cari Kode: *#${orderCode}*).
 
-👤 *Pemesan*: ${orderName.trim() || "Customer"}
-${orderPhone ? `📞 *No. Kontak*: ${orderPhone.trim()}\n` : ""}${orderNotes ? `📝 *Catatan Tambahan*: ${orderNotes}\n` : ""}
-_(Gambar mockup desain otomatis telah saya simpan dan tersinkron ke sistem JE Grup)_. Mohon info ketersediaan stok bahan dan jadwal produksinya ya. Terima kasih!`;
+Mohon info ketersediaan bahan dan jadwal produksinya ya. Terima kasih!`;
 
     const cleanNum = String(waNumber).replace(/\D/g, "");
     const waUrl = `https://wa.me/${cleanNum}?text=${encodeURIComponent(textMsg)}`;
 
     setIsExporting(false);
     setShowOrderModal(false);
+    showToast(`Pesanan #${orderCode} berhasil disimpan ke sistem!`);
     window.open(waUrl, "_blank");
   };
 
@@ -2598,6 +2605,14 @@ ${orderNotes ? `• Catatan: ${orderNotes}\n` : ""}`;
             <div style={{ display: "flex", alignItems: "center", gap: 6, padding: "7px 11px", background: C.g1, borderRadius: 10, color: C.g, fontSize: 11.5, fontWeight: 700 }}>
               <Check size={14} strokeWidth={3} />
               <span>Bisa pesan satuan (mulai 1 pcs) atau partai banyak untuk tim/event.</span>
+            </div>
+
+            {/* Banner Otomatis Tersimpan ke Admin */}
+            <div style={{ padding: "9px 12px", background: C.pri1, borderRadius: 10, border: `1px solid ${C.pri}33`, display: "flex", gap: 8, alignItems: "flex-start" }}>
+              <Sparkles size={16} color={C.pri} style={{ flexShrink: 0, marginTop: 1 }} />
+              <div style={{ fontSize: 11.5, color: C.t0, lineHeight: 1.45 }}>
+                <b>Desain Otomatis Tersimpan</b>: Anda tidak perlu repot melampirkan gambar manual di WhatsApp. Rancangan mockup Anda otomatis tersimpan ke Admin Panel JE Grup sehingga admin dapat langsung mengeceknya.
+              </div>
             </div>
 
             {/* Nama & Kontak Pemesan */}

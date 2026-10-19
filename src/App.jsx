@@ -2623,7 +2623,9 @@ function AdminSidebar({tabs,active,onSelect,label="Menu admin",storeKey="je_side
           style={{display:"flex",alignItems:"center",gap:12,width:"100%",height:44,padding:rail?0:"0 12px",justifyContent:rail?"center":"flex-start",marginBottom:2,
             border:"none",borderRadius:12,background:on?C.pri1:undefined,color:on?C.pri:C.t1,fontSize:14,fontWeight:on?700:600,whiteSpace:"nowrap"}}>
           <t.ic size={20} strokeWidth={on?2.2:1.8} style={{flexShrink:0}}/>
-          {!rail&&<span style={{overflow:"hidden",textOverflow:"ellipsis"}}>{t.l}</span>}
+          {!rail&&<span style={{overflow:"hidden",textOverflow:"ellipsis",flex:1}}>{t.l}</span>}
+          {!rail&&t.badge>0&&<span style={{padding:"2px 7px",borderRadius:10,background:C.a,color:"#FFF",fontSize:11,fontWeight:800}}>{t.badge}</span>}
+          {rail&&t.badge>0&&<span style={{position:"absolute",top:8,right:14,width:8,height:8,borderRadius:"50%",background:C.a}}/>}
         </button>;})}
     </nav>
     <div style={{padding:rail?"10px":"10px 12px",borderTop:`1px solid ${C.bo0}`}}>
@@ -4218,11 +4220,12 @@ function AppInner() {
   // ─────────────────────────────────────────────────────────────
   if(screen==="admin") {
     const IS={width:"100%",padding:"11px 13px",background:C.bg3,border:`1.5px solid ${C.bo0}`,borderRadius:10,color:C.t0,fontSize:13,fontFamily:F.mono,transition:"border-color .15s"};
+    const newCustomOrdersCount = (customOrders||[]).filter(o => o && (o.status || "Baru") === "Baru").length;
     const TABS=[
       {id:"dashboard",l:"Dashboard",ic:LayoutDashboard},{id:"users",l:"Pengguna",ic:Users},{id:"products",l:"Produk",ic:Package},
       {id:"laporan",l:"Laporan",ic:Wallet},{id:"labarugi",l:"Laba Rugi",ic:TrendingUp},{id:"operasional",l:"Operasional",ic:ShoppingBasket},{id:"absensi",l:"Absensi",ic:Clock},{id:"stoklog",l:"Log Stok",ic:ClipboardList},
       {id:"returns",l:"Retur",ic:Undo2},{id:"actlog",l:"Aktivitas",ic:Activity},{id:"opname",l:"Opname",ic:ClipboardCheck},
-      {id:"customorders",l:"Pesanan Baju",ic:Shirt},
+      {id:"customorders",l:"Pesanan Baju",ic:Shirt,badge:newCustomOrdersCount},
       {id:"landing",l:"Landing Page",ic:Megaphone},
     ];
     const BNAV_TABS=[
@@ -4232,7 +4235,7 @@ function AppInner() {
       {id:"absensi",ic:Clock,label:"Absensi"},
     ];
     const MORE_TABS=[
-      {id:"customorders",ic:Shirt,label:"Pesanan Baju"},
+      {id:"customorders",ic:Shirt,label:"Pesanan Baju",badge:newCustomOrdersCount},
       {id:"users",ic:Users,label:"Pengguna"},
       {id:"labarugi",ic:TrendingUp,label:"Laba Rugi"},
       {id:"operasional",ic:ShoppingBasket,label:"Operasional"},
