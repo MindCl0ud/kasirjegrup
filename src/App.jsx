@@ -2781,15 +2781,23 @@ function AppInner() {
       const u=users.find(x=>x.id===s.userId&&x.active);
       if(!u){sessionStorage.removeItem("je_session");return;}
       setUser(u);setBiz(s.biz);setSessionStart(s.t);
-      if(s.screen==="admin") setAdminTab(s.adminTab||"dashboard");
-      // Jika refresh dilakukan saat sedang melihat preview landing page, tetap di landing
+      if(s.adminTab) setAdminTab(s.adminTab);
+
       const hash = window.location.hash.toLowerCase();
-      if(s.screen==="landing" || hash==="#landing" || hash==="#katalog"){
+      if(hash==="#landing"||hash==="#katalog"){
         setScreen("landing");
-      } else if(s.screen==="custom-baju" || hash==="#custom-baju" || hash==="#desain-baju"){
+      } else if(hash==="#custom-baju"||hash==="#desain-baju"||hash==="#custom"){
         setScreen("custom-baju");
-      } else {
+      } else if(hash==="#admin" && u.role==="admin"){
+        setScreen("admin");
+      } else if(hash==="#kasir"){
+        setScreen("kasir");
+      } else if(hash==="#stok"){
+        setScreen("stok");
+      } else if(s.screen){
         setScreen(s.screen);
+      } else {
+        setScreen(u.role==="admin"?"admin":(u.role==="kasir"?"kasir":"stok"));
       }
     }catch{sessionStorage.removeItem("je_session");}
   },[fbReady,users]);
@@ -2804,6 +2812,23 @@ function AppInner() {
   // ─── Auth & Navigation ───
   const [screen,setScreen]=useState(()=>{
     const hash = window.location.hash.toLowerCase();
+    try {
+      const saved = sessionStorage.getItem("je_session");
+      if (saved) {
+        const s = JSON.parse(saved);
+        if (s && s.screen) {
+          if (hash === "#admin" || (s.screen === "admin" && (hash === "" || hash === "#admin"))) return "admin";
+          if (hash === "#kasir" || (s.screen === "kasir" && (hash === "" || hash === "#kasir"))) return "kasir";
+          if (hash === "#stok" || (s.screen === "stok" && (hash === "" || hash === "#stok"))) return "stok";
+          if (hash === "#landing" || hash === "#katalog") return "landing";
+          if (hash === "#custom-baju" || hash === "#desain-baju" || hash === "#custom") return "custom-baju";
+          return s.screen;
+        }
+      }
+    } catch {}
+    if(hash==="#admin") return "admin";
+    if(hash==="#kasir") return "kasir";
+    if(hash==="#stok") return "stok";
     if(hash==="#login") return "login";
     if(hash==="#custom-baju"||hash==="#desain-baju"||hash==="#custom") return "custom-baju";
     if(hash==="#katalog"||hash==="#landing"||hash==="") return "landing";
@@ -2823,8 +2848,29 @@ function AppInner() {
       window.location.hash="login";
     } else if(screen==="custom-baju") {
       window.location.hash="custom-baju";
+    } else if(screen==="admin") {
+      window.location.hash="admin";
+    } else if(screen==="kasir") {
+      window.location.hash="kasir";
+    } else if(screen==="stok") {
+      window.location.hash="stok";
     }
-  },[screen]);
+
+    if(user) {
+      try {
+        const saved = sessionStorage.getItem("je_session");
+        const prev = saved ? JSON.parse(saved) : {};
+        sessionStorage.setItem("je_session", JSON.stringify({
+          ...prev,
+          userId: user.id,
+          biz: biz || user.access[0],
+          screen: screen,
+          adminTab: adminTab,
+          t: sessionStart || Date.now(),
+        }));
+      } catch {}
+    }
+  },[screen,user,biz,adminTab]);
 
   useEffect(()=>{
     const handleHash=()=>{
@@ -2833,6 +2879,24 @@ function AppInner() {
         setScreen("landing");
       } else if(h==="#custom-baju"||h==="#desain-baju"||h==="#custom") {
         setScreen("custom-baju");
+      } else if(h==="#admin") {
+        if(user && user.role==="admin") {
+          setScreen("admin");
+        } else if(!user) {
+          setScreen("login");
+        }
+      } else if(h==="#kasir") {
+        if(user) {
+          setScreen("kasir");
+        } else {
+          setScreen("login");
+        }
+      } else if(h==="#stok") {
+        if(user) {
+          setScreen("stok");
+        } else {
+          setScreen("login");
+        }
       } else if(h==="#login") {
         if(!user) {
           setScreen("login");
