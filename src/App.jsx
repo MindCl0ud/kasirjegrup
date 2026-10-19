@@ -2839,6 +2839,7 @@ function AppInner() {
   const [pending,setPending]=useState(null);
   const [faceReg,setFaceReg]=useState(null);
   const [sessionStart,setSessionStart]=useState(null);
+  const [adminTab,setAdminTab]=useState("dashboard");
 
   // Sync window hash when screen changes & listen to hash navigation
   useEffect(()=>{
@@ -3034,7 +3035,6 @@ function AppInner() {
   useEffect(()=>{if(screen==="stok")setTimeout(()=>stokScanRef.current?.focus(),100);},[screen]);
   useEffect(()=>{if(stokTarget)setTimeout(()=>stokQRef.current?.focus(),100);},[stokTarget]);
   // ─── Admin state ───
-  const [adminTab,setAdminTab]=useState("dashboard");
   const [adminScanQ,setAdminScanQ]=useState("");
   const [adminBiz,setAdminBiz]=useState("JS_CLOTHING");
   const [searchQ,setSearchQ]=useState("");
