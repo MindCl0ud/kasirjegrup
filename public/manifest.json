@@ -1,12 +1,12 @@
 {
-  "name": "Kasir JE Grup",
-  "short_name": "JE Kasir",
+  "name": "JE Grup",
+  "short_name": "JE Grup",
   "description": "Sistem Kasir & Inventori JS Clothing & JB Store",
   "start_url": "/",
   "display": "standalone",
   "orientation": "portrait-primary",
-  "background_color": "#232C75",
-  "theme_color": "#232C75",
+  "background_color": "#C2185B",
+  "theme_color": "#C2185B",
   "categories": [
     "business",
     "finance",

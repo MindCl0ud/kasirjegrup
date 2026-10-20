@@ -39,7 +39,7 @@ const BIZ = {
 };
 const SEED_USERS = [
   { id:1, username:"admin",    password:"admin123", name:"Administrator",  role:"admin", access:["JS_CLOTHING","JB_STORE"], avatar:"👑", active:true, faceDescriptor:null },
-  { id:2, username:"kasir",    password:"kasir123", name:"Kasir JE Grup",  role:"kasir", access:["JS_CLOTHING","JB_STORE"], avatar:"🧑‍💼", active:true, faceDescriptor:null },
+  { id:2, username:"kasir",    password:"kasir123", name:"JE Grup",  role:"kasir", access:["JS_CLOTHING","JB_STORE"], avatar:"🧑‍💼", active:true, faceDescriptor:null },
   { id:4, username:"stok.js",  password:"stok123",  name:"Stok JS Cloth",  role:"stok",  access:["JS_CLOTHING"],           avatar:"🧑‍🏭", active:true, faceDescriptor:null },
   { id:5, username:"stok.jb",  password:"stok123",  name:"Stok JB Store",  role:"stok",  access:["JB_STORE"],              avatar:"👩‍🏭", active:true, faceDescriptor:null },
 ];
@@ -737,7 +737,7 @@ function Header({title,biz,user,onLogout,onSwitchBiz,onAbsenPulang,hasCheckedIn,
               <div style={{fontSize:11,fontWeight:600,color:bc,lineHeight:1.2}}>{b.desc}</div>
             </div>)
           : <div style={{minWidth:0}}>
-              <div style={{fontSize:15,fontWeight:800,color:C.t0,lineHeight:1.15,letterSpacing:"-.015em"}}>{title||"Kasir JE Grup"}</div>
+              <div style={{fontSize:15,fontWeight:800,color:C.t0,lineHeight:1.15,letterSpacing:"-.015em"}}>{title||"JE Grup"}</div>
               <div style={{fontSize:11,fontWeight:600,color:C.t2,lineHeight:1.2}}>JS Clothing · JB Store</div>
             </div>}
       </div>
@@ -4637,7 +4637,7 @@ function AppInner() {
           <BrandMark size={44} onDark/>
           <OnlineDot online={online} onDark/>
         </div>
-        <h1 style={{fontSize:30,fontWeight:800,letterSpacing:"-.03em",lineHeight:1.1,marginBottom:10}}>Kasir JE Grup</h1>
+        <h1 style={{fontSize:30,fontWeight:800,letterSpacing:"-.03em",lineHeight:1.1,marginBottom:10}}>JE Grup</h1>
         <p style={{fontSize:14.5,lineHeight:1.5,color:"rgba(255,255,255,.78)",maxWidth:320,textWrap:"balance"}}>Penjualan dan stok untuk JS Clothing dan JB Store.</p>
       </section>
       <div className="ikat-band" aria-hidden="true"/>

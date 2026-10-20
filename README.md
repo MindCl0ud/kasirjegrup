@@ -1,4 +1,4 @@
-# 🏬 Kasir JE Grup — v3.0 PWA
+# 🏬 JE Grup — v4.0 PWA
 
 Sistem Manajemen Kasir & Stok untuk **JS Clothing** dan **JB Store**.  
 Mendukung **100% offline** setelah setup awal.
