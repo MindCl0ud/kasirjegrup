@@ -35,7 +35,7 @@ import CustomShirtStudio from "./CustomShirtStudio.jsx";
 // ─────────────────────────────────────────────────────────────
 const BIZ = {
   JS_CLOTHING:{ id:"JS_CLOTHING", name:"JS Clothing", desc:"Usaha Konveksi", icon:"👕", color:"#38bdf8" },
-  JB_STORE:   { id:"JB_STORE",    name:"JB Store",    desc:"Toko Skincare",  icon:"✨", color:"#f472b6" },
+  JB_STORE:   { id:"JB_STORE",    name:"JB Store",    desc:"Toko Skincare",  icon:"✨", color:"#F5C518" },
 };
 const SEED_USERS = [
   { id:1, username:"admin",    password:"admin123", name:"Administrator",  role:"admin", access:["JS_CLOTHING","JB_STORE"], avatar:"👑", active:true, faceDescriptor:null },
@@ -80,35 +80,35 @@ const SESSION_TTL = 8 * 60 * 60 * 1000; // 8 hours
 // ─────────────────────────────────────────────────────────────
 //  DESIGN TOKENS
 // ─────────────────────────────────────────────────────────────
-// Palet "Tenun Sumba": indigo tarum sebagai warna merek, hijau khusus untuk sukses/uang.
-// Catatan: C.on = warna teks di atas warna aksen (putih di tema terang, indigo gelap di tema gelap).
+// Palet baru "Sumba Ceria": pink fuchsia sebagai warna merek, kuning sebagai aksen,
+// hijau khusus untuk sukses/uang. C.on = teks di atas warna aksen.
 const DARK_C = {
-  bg0:"#0A0D1F",bg1:"#0F1330",bg2:"#171C40",bg3:"#1E2450",bg4:"#2A3166",
-  bo0:"rgba(190,200,255,0.09)",bo1:"rgba(190,200,255,0.16)",bo2:"rgba(190,200,255,0.26)",
-  t0:"#EEF0FF",t1:"#B8BFE3",t2:"#8991BC",t3:"#6F78AB",
-  pri:"#8E9CFF",pri1:"rgba(142,156,255,0.16)",on:"#0F1330",
+  bg0:"#120C14",bg1:"#18101A",bg2:"#221527",bg3:"#2B1B31",bg4:"#3A2540",
+  bo0:"rgba(255,205,225,0.09)",bo1:"rgba(255,205,225,0.16)",bo2:"rgba(255,205,225,0.26)",
+  t0:"#FFF0F6",t1:"#E8CBD9",t2:"#BC98AE",t3:"#9C7A8E",
+  pri:"#FF7AB8",pri1:"rgba(255,122,184,0.18)",on:"#2B0A1C",
   g:"#3FD99B",g1:"rgba(63,217,155,0.14)",g2:"rgba(63,217,155,0.07)",
-  a:"#F5B945",a1:"rgba(245,185,69,0.15)",
+  a:"#F5C518",a1:"rgba(245,197,24,0.16)",
   r:"#FF7B8C",r1:"rgba(255,123,140,0.15)",
   b:"#62B6F5",b1:"rgba(98,182,245,0.15)",
-  p:"#F27BAE",p1:"rgba(242,123,174,0.15)",
+  p:"#FF9EC9",p1:"rgba(255,158,201,0.15)",
   cy:"#4CC9DB",cy1:"rgba(76,201,219,0.14)",
   vi:"#B49BFF",vi1:"rgba(180,155,255,0.15)",
-  sh:"0 1px 0 rgba(255,255,255,0.03)",sh2:"0 16px 40px rgba(2,4,20,0.6)",
+  sh:"0 1px 0 rgba(255,255,255,0.03)",sh2:"0 16px 40px rgba(20,4,16,0.6)",
 };
 const LIGHT_C = {
-  bg0:"#E6E9F3",bg1:"#F4F5FA",bg2:"#FFFFFF",bg3:"#F0F2F9",bg4:"#E1E5F1",
-  bo0:"rgba(28,36,88,0.09)",bo1:"rgba(28,36,88,0.15)",bo2:"rgba(28,36,88,0.26)",
-  t0:"#12173A",t1:"#3E4670",t2:"#5F678E",t3:"#8E95B5",
-  pri:"#2F3C94",pri1:"rgba(47,60,148,0.09)",on:"#FFFFFF",
+  bg0:"#EDE9F1",bg1:"#F8F6F9",bg2:"#FFFFFF",bg3:"#F2EFF4",bg4:"#E6E1E9",
+  bo0:"rgba(46,30,56,0.09)",bo1:"rgba(46,30,56,0.15)",bo2:"rgba(46,30,56,0.26)",
+  t0:"#211426",t1:"#4C3A52",t2:"#6E5C73",t3:"#9C8AA1",
+  pri:"#C2185B",pri1:"rgba(194,24,91,0.10)",on:"#FFFFFF",
   g:"#0F7B58",g1:"rgba(15,123,88,0.10)",g2:"rgba(15,123,88,0.05)",
-  a:"#A85F00",a1:"rgba(168,95,0,0.11)",
+  a:"#8A6A00",a1:"rgba(245,197,24,0.18)",
   r:"#C4263B",r1:"rgba(196,38,59,0.10)",
   b:"#1B64B0",b1:"rgba(27,100,176,0.10)",
-  p:"#B8316A",p1:"rgba(184,49,106,0.10)",
+  p:"#A91E5E",p1:"rgba(169,30,94,0.10)",
   cy:"#0B7487",cy1:"rgba(11,116,135,0.10)",
   vi:"#6842BD",vi1:"rgba(104,66,189,0.10)",
-  sh:"0 1px 2px rgba(18,23,58,0.05), 0 4px 14px rgba(18,23,58,0.04)",sh2:"0 12px 36px rgba(18,23,58,0.18)",
+  sh:"0 1px 2px rgba(60,20,45,0.05), 0 4px 14px rgba(60,20,45,0.05)",sh2:"0 12px 36px rgba(60,20,45,0.16)",
 };
 let C = { ...(localStorage.getItem("je_theme")==="dark" ? DARK_C : LIGHT_C) };
 const isDarkTheme = () => C.bg2 === DARK_C.bg2;
@@ -116,8 +116,8 @@ const F = { sans:"'Figtree Variable','Figtree',system-ui,-apple-system,'Segoe UI
 const syncThemeColor = () => { try { document.querySelector('meta[name="theme-color"]')?.setAttribute("content", C.bg2); } catch {} };
 syncThemeColor();
 
-// Pita ikat (elemen khas): deretan belah ketupat gading + merah mengkudu di atas indigo.
-const IKAT_TILE = encodeURIComponent("<svg xmlns='http://www.w3.org/2000/svg' width='28' height='28' viewBox='0 0 28 28'><path d='M14 2 26 14 14 26 2 14Z' fill='none' stroke='#E9E1CC' stroke-width='1.6'/><path d='M14 8 20 14 14 20 8 14Z' fill='#A33A2D'/></svg>");
+// Pita ikat (elemen khas): deretan belah ketupat kuning gading di atas pink.
+const IKAT_TILE = encodeURIComponent("<svg xmlns='http://www.w3.org/2000/svg' width='28' height='28' viewBox='0 0 28 28'><path d='M14 2 26 14 14 26 2 14Z' fill='none' stroke='#F5C518' stroke-width='1.6'/><path d='M14 8 20 14 14 20 8 14Z' fill='#FFE7B8'/></svg>");
 
 // ─────────────────────────────────────────────────────────────
 //  XLSX DOWNLOAD
@@ -148,7 +148,7 @@ const downloadXLSX = async (rows, cols, sheetName, filename) => {
 // ─────────────────────────────────────────────────────────────
 const makeCSS = () => `
   :root{color-scheme:${isDarkTheme()?"dark":"light"};--safe-t:env(safe-area-inset-top,0px);--safe-b:env(safe-area-inset-bottom,0px);
-    --ik1:#232C75;--ik2:#E9E1CC;--ik3:#A33A2D;}
+    --ik1:#C2185B;--ik2:#F5C518;--ik3:#FFE7B8;}
   *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
   html{height:100%;-webkit-tap-highlight-color:transparent;-webkit-text-size-adjust:100%;overflow-x:hidden;max-width:100vw;width:100%;}
   body{font-family:${F.sans};background:${C.bg1};color:${C.t0};height:100%;-webkit-font-smoothing:antialiased;
@@ -363,7 +363,7 @@ const makeCSS = () => `
   .lp-hero-shot{aspect-ratio:4 / 5;border-radius:24px;}
   @media(max-width:640px){.lp-hero-shot{aspect-ratio:1 / 1;}}
   .lp-shot-scrim{position:absolute;left:0;right:0;bottom:0;height:52%;pointer-events:none;
-    background:linear-gradient(to top,rgba(8,11,30,.9) 0%,rgba(8,11,30,.55) 45%,rgba(8,11,30,0) 100%);}
+    background:linear-gradient(to top,rgba(22,8,18,.9) 0%,rgba(22,8,18,.55) 45%,rgba(22,8,18,0) 100%);}
   .lp-shot-cap{position:absolute;left:20px;right:20px;bottom:18px;z-index:2;display:flex;flex-direction:column;gap:3px;
     color:#fff;font-size:13.5px;font-weight:600;line-height:1.4;text-shadow:0 1px 10px rgba(0,0,0,.45);}
   .lp-shot-cap-k{font-size:10.5px;font-weight:800;letter-spacing:.16em;text-transform:uppercase;color:rgba(255,255,255,.75);}
@@ -374,7 +374,7 @@ const makeCSS = () => `
   .lp-video-poster{position:absolute;inset:0;width:100%;height:100%;padding:0;margin:0;border:none;background:none;
     cursor:pointer;display:block;overflow:hidden;}
   .lp-video-poster>.lp-photo{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;}
-  .lp-video-scrim{position:absolute;inset:0;background:linear-gradient(180deg,rgba(8,11,30,.32),rgba(8,11,30,.62));}
+  .lp-video-scrim{position:absolute;inset:0;background:linear-gradient(180deg,rgba(22,8,18,.32),rgba(22,8,18,.62));}
   .lp-video-play{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);z-index:2;
     width:76px;height:76px;border-radius:50%;display:grid;place-items:center;padding-left:4px;
     background:${isDarkTheme()?"rgba(255,255,255,.94)":"#fff"};color:${C.pri};
@@ -390,13 +390,13 @@ const makeCSS = () => `
     background:${C.bg3};border:1px solid ${C.bo1};cursor:pointer;box-shadow:${C.sh};}
   .lp-gal-item>.lp-photo{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;transition:transform .4s cubic-bezier(.16,1,.3,1);}
   .lp-gal-item:hover>.lp-photo{transform:scale(1.06);}
-  .lp-gal-scrim{position:absolute;inset:0;background:linear-gradient(180deg,rgba(8,11,30,0) 44%,rgba(8,11,30,.74));pointer-events:none;}
+  .lp-gal-scrim{position:absolute;inset:0;background:linear-gradient(180deg,rgba(22,8,18,0) 44%,rgba(22,8,18,.74));pointer-events:none;}
   .lp-gal-cap{position:absolute;left:13px;right:13px;bottom:12px;text-align:left;color:#fff;pointer-events:none;}
   .lp-gal-cap b{display:block;font-size:13.5px;font-weight:800;line-height:1.25;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
   .lp-gal-cap i{display:block;font-style:normal;font-size:11.5px;font-weight:600;opacity:.78;margin-top:2px;
     white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
   .lp-gal-zoom{position:absolute;top:10px;right:10px;display:inline-flex;align-items:center;gap:5px;padding:5px 10px;
-    border-radius:20px;background:rgba(8,11,30,.55);backdrop-filter:blur(6px);color:#fff;font-size:11px;font-weight:700;
+    border-radius:20px;background:rgba(22,8,18,.55);backdrop-filter:blur(6px);color:#fff;font-size:11px;font-weight:700;
     opacity:0;transform:translateY(-5px);transition:all .18s ease;pointer-events:none;}
   .lp-gal-item:hover .lp-gal-zoom,.lp-gal-item:focus-visible .lp-gal-zoom{opacity:1;transform:none;}
   @media(hover:none){.lp-gal-zoom{opacity:1;transform:none;}}
@@ -421,6 +421,12 @@ const makeCSS = () => `
   .lp-tools{min-width:0;max-width:100%;}
   .lp-chips{min-width:0;max-width:100%;}
   .lp-search{position:relative;flex:1 1 200px;min-width:180px;}
+  /* ── Karousel katalog (satu baris per bisnis) ── */
+  .lp-rail{display:grid;grid-auto-flow:column;grid-auto-columns:minmax(215px,238px);gap:16px;overflow-x:auto;
+    scroll-snap-type:x mandatory;padding:6px 2px 16px;scrollbar-width:none;-webkit-overflow-scrolling:touch;}
+  .lp-rail::-webkit-scrollbar{display:none;}
+  .lp-rail>*{scroll-snap-align:start;width:100%;}
+  @media(max-width:560px){.lp-rail{grid-auto-columns:minmax(180px,68vw);gap:12px;}}
   @media(max-width:640px){
     .lp-tools{width:100%;flex-direction:column;align-items:stretch;gap:10px;}
     .lp-chips{scroll-snap-type:x proximity;}
@@ -431,12 +437,12 @@ const makeCSS = () => `
   @media(min-width:641px){.lp-header-wrap{padding:calc(14px + var(--safe-t)) 24px 8px;}}
   .lp-navbar{max-width:1180px;margin:0 auto;height:60px;padding:0 14px 0 16px;
     display:flex;align-items:center;justify-content:space-between;gap:12;
-    background:${isDarkTheme()?"rgba(18,23,58,0.72)":"rgba(255,255,255,0.78)"};
+    background:${isDarkTheme()?"rgba(60,20,45,0.72)":"rgba(255,255,255,0.78)"};
     backdrop-filter:blur(20px) saturate(180%);-webkit-backdrop-filter:blur(20px) saturate(180%);
-    border:1px solid ${isDarkTheme()?"rgba(255,255,255,0.12)":"rgba(18,23,58,0.08)"};
-    border-radius:20px;box-shadow:${isDarkTheme()?"0 12px 32px rgba(0,0,0,0.35), inset 0 1px 0 rgba(255,255,255,0.1)":"0 10px 30px rgba(18,23,58,0.06), inset 0 1px 0 rgba(255,255,255,0.8)"};
+    border:1px solid ${isDarkTheme()?"rgba(255,255,255,0.12)":"rgba(60,20,45,0.08)"};
+    border-radius:20px;box-shadow:${isDarkTheme()?"0 12px 32px rgba(0,0,0,0.35), inset 0 1px 0 rgba(255,255,255,0.1)":"0 10px 30px rgba(60,20,45,0.06), inset 0 1px 0 rgba(255,255,255,0.8)"};
     transition:box-shadow .2s ease,border-color .2s ease;}
-  .lp-nav-pill{display:flex;align-items:center;gap:2px;background:${isDarkTheme()?"rgba(255,255,255,0.05)":"rgba(18,23,58,0.04)"};padding:3px;border-radius:14px;border:1px solid ${isDarkTheme()?"rgba(255,255,255,0.06)":"rgba(18,23,58,0.04)"};}
+  .lp-nav-pill{display:flex;align-items:center;gap:2px;background:${isDarkTheme()?"rgba(255,255,255,0.05)":"rgba(60,20,45,0.04)"};padding:3px;border-radius:14px;border:1px solid ${isDarkTheme()?"rgba(255,255,255,0.06)":"rgba(60,20,45,0.04)"};}
   .nav-link{display:inline-flex;align-items:center;padding:7px 14px;border-radius:11px;font-size:13px;font-weight:600;color:${C.t2};text-decoration:none;transition:all .15s ease;}
   .nav-link:hover{color:${C.t0};background:${isDarkTheme()?"rgba(255,255,255,0.08)":"rgba(255,255,255,0.9)"};box-shadow:${isDarkTheme()?"none":"0 2px 6px rgba(0,0,0,0.04)"};}
   .lp-status-badge{display:inline-flex;align-items:center;gap:6px;padding:3px 9px 3px 7px;border-radius:20px;background:${C.g1};border:1px solid ${C.g}33;font-size:11.5px;font-weight:700;color:${C.g};}
@@ -578,10 +584,10 @@ function RoleTag({role}) {
 }
 function BizChip({biz,sm}) {
   if(!biz||!BIZ[biz]) return null;
-  const b=BIZ[biz],isJ=biz==="JS_CLOTHING",cl=isJ?C.b:C.p;
+  const b=BIZ[biz],isJ=biz==="JS_CLOTHING",cl=isJ?C.b:C.a;
   return <span style={{display:"inline-flex",alignItems:"center",gap:5,
     padding:sm?"2px 8px":"4px 11px",borderRadius:20,fontSize:sm?11:12,fontWeight:700,
-    background:isJ?C.b1:C.p1,color:cl}}>
+    background:isJ?C.b1:C.a1,color:cl}}>
     <Ico e={b.icon} size={sm?12:14}/> {b.name}</span>;
 }
 function StockBadge({s}) {
@@ -702,7 +708,7 @@ function Header({title,biz,user,onLogout,onSwitchBiz,onAbsenPulang,hasCheckedIn,
   const b=BIZ[biz];
   const [sheet,setSheet]=React.useState(null);
   const alertN=lowStockCount+expireCount+expiredCount;
-  const bc=b?(biz==="JS_CLOTHING"?C.b:C.p):C.pri;
+  const bc=b?(biz==="JS_CLOTHING"?C.b:C.a):C.pri;
   const canSwitch=!!onSwitchBiz&&user?.access?.length>1;
   const close=()=>setSheet(null);
   const run=fn=>()=>{close();fn&&fn();};
@@ -2106,23 +2112,23 @@ class ErrorBoundary extends Component {
   componentDidCatch(err,info){console.error("App crash:",err,info);}
   render(){
     if(this.state.hasError){
-      return <div style={{fontFamily:"system-ui",background:"#020817",color:"#e8f4ff",
+      return <div style={{fontFamily:"system-ui",background:"#1A0F18",color:"#FFE7F2",
         height:"100vh",display:"flex",flexDirection:"column",alignItems:"center",
         justifyContent:"center",gap:16,padding:24,textAlign:"center"}}>
         <div style={{fontSize:40}}><Ico e="⚠️" size={40}/></div>
         <h2 style={{fontSize:18,fontWeight:700}}>Terjadi Error</h2>
-        <p style={{fontSize:13,color:"#4a6480",maxWidth:400,lineHeight:1.6}}>
+        <p style={{fontSize:13,color:"#B08A9E",maxWidth:400,lineHeight:1.6}}>
           {String(this.state.error?.message||this.state.error)}
         </p>
         <div style={{display:"flex",gap:10,flexWrap:"wrap",justifyContent:"center"}}>
           <button onClick={()=>window.location.reload()}
             style={{padding:"10px 20px",background:"#00e5a0",border:"none",borderRadius:9,
-              color:"#020817",fontWeight:700,fontSize:13,cursor:"pointer"}}>
+              color:"#1A0F18",fontWeight:700,fontSize:13,cursor:"pointer"}}>
             <Ico e="🔄"/> Reload
           </button>
           <button onClick={()=>{localStorage.clear();window.location.reload();}}
-            style={{padding:"10px 20px",background:"transparent",border:"1px solid #4a6480",
-              borderRadius:9,color:"#8aaac8",fontSize:13,cursor:"pointer"}}>
+            style={{padding:"10px 20px",background:"transparent",border:"1px solid #B08A9E",
+              borderRadius:9,color:"#D9A9BC",fontSize:13,cursor:"pointer"}}>
             Reset & Reload
           </button>
         </div>
@@ -2144,7 +2150,7 @@ function KasirStokPanel({prods, biz, onClose, onAdjust, onAddToCart}) {
   const list = prods.filter(p=>!search ||
     p.name.toLowerCase().includes(search.toLowerCase()) ||
     p.barcode.includes(search));
-  const bc = !biz ? C.pri : biz==="JS_CLOTHING" ? C.b : C.p;
+  const bc = !biz ? C.pri : biz==="JS_CLOTHING" ? C.b : C.a;
   return (
     <div style={{position:"fixed",inset:0,background:"rgba(12,16,46,.55)",zIndex:600,
       display:"flex",alignItems:"flex-end",justifyContent:"center",fontFamily:F.sans}}
@@ -2862,6 +2868,13 @@ function ProductLandingPage({ prods, cfg, user, onLogin, onToggleTheme, isDark, 
     if (typeof document !== "undefined") document.getElementById("katalog")?.scrollIntoView({ behavior:"smooth", block:"start" });
   };
 
+  // Rel karousel katalog: satu rel per bisnis (JS Clothing & JB Store).
+  const rails = React.useRef({});
+  const scrollRail = (id, dir) => {
+    const el = rails.current[id];
+    if (el) el.scrollBy({ left: dir * Math.max(240, el.clientWidth * 0.8), behavior: "smooth" });
+  };
+
   const btnPrimary = { height:50, padding:"0 22px", borderRadius:14, background:C.pri, color:C.on,
     fontWeight:700, fontSize:14.5, border:"none", display:"inline-flex", alignItems:"center", gap:9,
     textDecoration:"none", whiteSpace:"nowrap" };
@@ -3070,71 +3083,115 @@ function ProductLandingPage({ prods, cfg, user, onLogin, onToggleTheme, isDark, 
             <div style={{fontSize:13.5,color:C.t2,maxWidth:320}}>Ubah kata kunci pencarian atau ganti filter kategori di atas.</div>
           </div>
         ) : (
-          <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(225px,1fr))",gap:18}}>
-            {filtered.map(p => {
-              const isJ = p.business === "JS_CLOTHING";
-              const tone = isJ ? C.b : C.p;
-              const toneBg = isJ ? C.b1 : C.p1;
-              const out = p.stock <= 0;
-              const orderText = `Halo, saya tertarik untuk memesan produk *${p.name}* (${rp(p.price)}). Apakah stok masih tersedia?`;
-
+          <div style={{display:"flex",flexDirection:"column",gap:6}}>
+            {[
+              { id:"JS_CLOTHING", title:"JS Clothing", sub:"Pakaian, kaos custom & seragam", Icon:Shirt },
+              { id:"JB_STORE",    title:"JB Store",    sub:"Beauty & skincare original",     Icon:Sparkles },
+            ].map(row => {
+              const items = filtered.filter(p => p.business === row.id);
+              if (!items.length && (selectedBiz !== "ALL" || searchWord.trim())) return null;
+              const IconComp = row.Icon;
               return (
-                <article key={p.id} className="lp-card-in lp-lift"
-                  style={{background:C.bg2,border:`1px solid ${C.bo1}`,borderRadius:20,overflow:"hidden",display:"flex",flexDirection:"column",boxShadow:C.sh}}>
-                  <div className="lp-shot" style={{aspectRatio:"1 / 1",position:"relative"}}>
-                    <img src={productPhoto(p)} alt={p.name} className="lp-photo" loading="lazy" decoding="async"/>
-                    {out && (
-                      <div style={{position:"absolute",top:10,right:10,background:"rgba(220,38,38,0.92)",color:"#fff",fontSize:10.5,fontWeight:800,padding:"3px 8px",borderRadius:6,backdropFilter:"blur(4px)"}}>
-                        Stok Habis
+                <div key={row.id} style={{paddingTop:12}}>
+                  <div style={{display:"flex",alignItems:"flex-end",justifyContent:"space-between",gap:12,flexWrap:"wrap",marginBottom:10}}>
+                    <div style={{display:"flex",alignItems:"center",gap:11,minWidth:0}}>
+                      <span style={{width:40,height:40,borderRadius:13,background:row.id==="JS_CLOTHING"?C.b1:C.a1,
+                        color:row.id==="JS_CLOTHING"?C.b:C.a,display:"grid",placeItems:"center",flexShrink:0}}>
+                        <IconComp size={20}/>
+                      </span>
+                      <div style={{minWidth:0}}>
+                        <h3 style={{fontSize:18,fontWeight:800,letterSpacing:"-.02em",lineHeight:1.2}}>{row.title}</h3>
+                        <p style={{fontSize:12.5,color:C.t2,marginTop:2}}>{row.sub} · {items.length} produk</p>
+                      </div>
+                    </div>
+                    {items.length > 2 && (
+                      <div style={{display:"flex",gap:8,flexShrink:0}}>
+                        <button onClick={() => scrollRail(row.id, -1)} aria-label={`Geser ${row.title} ke kiri`} className="press"
+                          style={{width:38,height:38,borderRadius:12,border:`1px solid ${C.bo1}`,background:C.bg2,color:C.t1,display:"grid",placeItems:"center"}}>
+                          <ChevronLeft size={18}/>
+                        </button>
+                        <button onClick={() => scrollRail(row.id, 1)} aria-label={`Geser ${row.title} ke kanan`} className="press"
+                          style={{width:38,height:38,borderRadius:12,border:`1px solid ${C.bo1}`,background:C.bg2,color:C.t1,display:"grid",placeItems:"center"}}>
+                          <ChevronRight size={18}/>
+                        </button>
                       </div>
                     )}
                   </div>
-                  <div style={{padding:"14px 15px 16px",display:"flex",flexDirection:"column",flex:1}}>
-                    <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:8}}>
-                      <span style={{fontSize:10.5,fontWeight:800,padding:"3px 9px",borderRadius:50,background:toneBg,color:tone,display:"inline-flex",alignItems:"center",gap:4}}>
-                        {isJ ? <Shirt size={11}/> : <Sparkles size={11}/>} {p.category || (isJ ? "Pakaian" : "Perawatan")}
-                      </span>
-                      <span style={{fontSize:11,fontWeight:700,color:out?C.r:(p.stock<10?C.a:C.g),marginLeft:"auto"}}>
-                        {stockLabel(p)}
-                      </span>
+                  {items.length === 0 ? (
+                    <div style={{padding:"22px 18px",borderRadius:18,border:`1px dashed ${C.bo2}`,color:C.t2,fontSize:13,lineHeight:1.6}}>
+                      Belum ada produk di kategori ini. Coba kata kunci lain atau ubah filter di atas.
                     </div>
+                  ) : (
+                    <div className="lp-rail" ref={el => { rails.current[row.id] = el; }}>
+                      {items.map(p => {
+                        const isJ = p.business === "JS_CLOTHING";
+                        const tone = isJ ? C.b : C.a;
+                        const toneBg = isJ ? C.b1 : C.a1;
+                        const out = p.stock <= 0;
+                        const orderText = `Halo, saya tertarik untuk memesan produk *${p.name}* (${rp(p.price)}). Apakah stok masih tersedia?`;
 
-                    <h3 style={{fontSize:14.5,fontWeight:700,lineHeight:1.35,marginBottom:"auto",color:C.t0}}>{p.name}</h3>
+                        return (
+                          <article key={p.id} className="lp-card-in lp-lift"
+                            style={{background:C.bg2,border:`1px solid ${C.bo1}`,borderRadius:20,overflow:"hidden",display:"flex",flexDirection:"column",boxShadow:C.sh,height:"100%"}}>
+                            <div className="lp-shot" style={{aspectRatio:"1 / 1",position:"relative"}}>
+                              <img src={productPhoto(p)} alt={p.name} className="lp-photo" loading="lazy" decoding="async"/>
+                              {out && (
+                                <div style={{position:"absolute",top:10,right:10,background:"rgba(220,38,38,0.92)",color:"#fff",fontSize:10.5,fontWeight:800,padding:"3px 8px",borderRadius:6,backdropFilter:"blur(4px)"}}>
+                                  Stok Habis
+                                </div>
+                              )}
+                            </div>
+                            <div style={{padding:"14px 15px 16px",display:"flex",flexDirection:"column",flex:1}}>
+                              <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:8}}>
+                                <span style={{fontSize:10.5,fontWeight:800,padding:"3px 9px",borderRadius:50,background:toneBg,color:tone,display:"inline-flex",alignItems:"center",gap:4}}>
+                                  {isJ ? <Shirt size={11}/> : <Sparkles size={11}/>} {p.category || (isJ ? "Pakaian" : "Perawatan")}
+                                </span>
+                                <span style={{fontSize:11,fontWeight:700,color:out?C.r:(p.stock<10?C.a:C.g),marginLeft:"auto"}}>
+                                  {stockLabel(p)}
+                                </span>
+                              </div>
 
-                    <div style={{marginTop:12,display:"flex",alignItems:"baseline",justifyContent:"space-between",gap:8}}>
-                      <div className="mn" style={{fontSize:18,fontWeight:850,color:C.pri}}>{rp(p.price)}</div>
+                              <h3 style={{fontSize:14.5,fontWeight:700,lineHeight:1.35,marginBottom:"auto",color:C.t0}}>{p.name}</h3>
+
+                              <div style={{marginTop:12,display:"flex",alignItems:"baseline",justifyContent:"space-between",gap:8}}>
+                                <div className="mn" style={{fontSize:18,fontWeight:850,color:C.pri}}>{rp(p.price)}</div>
+                              </div>
+
+                              {/* Tombol Pesan Sekarang Mengarah ke WA dengan Nama Produk */}
+                              <a
+                                href={waHref(orderText)}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="press"
+                                style={{
+                                  display:"inline-flex",
+                                  alignItems:"center",
+                                  justifyContent:"center",
+                                  gap:7,
+                                  width:"100%",
+                                  padding:"10px 14px",
+                                  borderRadius:12,
+                                  background: out ? C.bg3 : "#25D366",
+                                  color: out ? C.t2 : "#FFFFFF",
+                                  fontWeight: 800,
+                                  fontSize: 13,
+                                  textDecoration:"none",
+                                  marginTop: 14,
+                                  border: out ? `1px solid ${C.bo1}` : "none",
+                                  boxShadow: out ? "none" : "0 4px 14px rgba(37,211,102,0.30)",
+                                  transition:"all .15s ease",
+                                }}
+                              >
+                                <MessageCircle size={16}/>
+                                {out ? "Tanya Ketersediaan" : "Pesan Sekarang"}
+                              </a>
+                            </div>
+                          </article>
+                        );
+                      })}
                     </div>
-
-                    {/* Tombol Pesan Sekarang Mengarah ke WA dengan Nama Produk */}
-                    <a
-                      href={waHref(orderText)}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="press"
-                      style={{
-                        display:"inline-flex",
-                        alignItems:"center",
-                        justifyContent:"center",
-                        gap:7,
-                        width:"100%",
-                        padding:"10px 14px",
-                        borderRadius:12,
-                        background: out ? C.bg3 : "#25D366",
-                        color: out ? C.t2 : "#FFFFFF",
-                        fontWeight: 800,
-                        fontSize: 13,
-                        textDecoration:"none",
-                        marginTop: 14,
-                        border: out ? `1px solid ${C.bo1}` : "none",
-                        boxShadow: out ? "none" : "0 4px 14px rgba(37,211,102,0.30)",
-                        transition:"all .15s ease",
-                      }}
-                    >
-                      <MessageCircle size={16}/>
-                      {out ? "Tanya Ketersediaan" : "Pesan Sekarang"}
-                    </a>
-                  </div>
-                </article>
+                  )}
+                </div>
               );
             })}
           </div>
@@ -3278,7 +3335,7 @@ function ProductLandingPage({ prods, cfg, user, onLogin, onToggleTheme, isDark, 
         <div style={{position:"relative",overflow:"hidden",borderRadius:24,background:"var(--ik1)",
           padding:"clamp(30px,5vw,52px)",display:"flex",flexWrap:"wrap",alignItems:"center",justifyContent:"space-between",gap:24}}>
           <div style={{position:"absolute",top:0,left:0,right:0,height:6,
-            background:"repeating-linear-gradient(90deg,#25D366 0 4px,var(--ik2) 4px 8px)"}}/>
+            background:"repeating-linear-gradient(90deg,var(--ik2) 0 4px,var(--ik3) 4px 8px)"}}/>
           <div style={{position:"relative",maxWidth:520}}>
             <h2 style={{fontSize:"clamp(22px,3.4vw,32px)",fontWeight:800,letterSpacing:"-.03em",color:"#fff",lineHeight:1.15,marginBottom:10}}>
               Tertarik dengan Produk Kami?
@@ -4413,7 +4470,7 @@ function AppInner() {
   const totalDisc=filtTrx.reduce((s,t)=>s+(t.discount||0),0);
   const bizRevData=[
     {name:"JS Clothing",value:filtTrx.filter(t=>t.business==="JS_CLOTHING").reduce((s,t)=>s+t.total,0),color:"#38bdf8"},
-    {name:"JB Store",value:filtTrx.filter(t=>t.business==="JB_STORE").reduce((s,t)=>s+t.total,0),color:"#f472b6"},
+    {name:"JB Store",value:filtTrx.filter(t=>t.business==="JB_STORE").reduce((s,t)=>s+t.total,0),color:"#F5C518"},
   ].filter(d=>d.value>0);
   const kasirBreakdown=(()=>{
     const m={};
@@ -4647,11 +4704,11 @@ function AppInner() {
         </div>
         <div style={{display:"flex",flexDirection:"column",gap:12}}>
           {user?.access?.map(bizId=>{
-            const b=BIZ[bizId],isJ=bizId==="JS_CLOTHING",bcl=isJ?C.b:C.p;
+            const b=BIZ[bizId],isJ=bizId==="JS_CLOTHING",bcl=isJ?C.b:C.a;
             return <button key={bizId} className="press"
               onClick={async()=>{setBiz(bizId);await doCheckIn(user,bizId);setScreen(user.role==="kasir"?"kasir":"stok");}}
               style={{padding:"16px",background:C.bg2,border:`1.5px solid ${C.bo1}`,borderRadius:18,textAlign:"left",display:"flex",alignItems:"center",gap:14,boxShadow:C.sh,minHeight:84}}>
-              <span style={{width:52,height:52,borderRadius:15,flexShrink:0,background:isJ?C.b1:C.p1,color:bcl,display:"grid",placeItems:"center"}}><Ico e={b.icon} size={26} strokeWidth={1.8}/></span>
+              <span style={{width:52,height:52,borderRadius:15,flexShrink:0,background:isJ?C.b1:C.a1,color:bcl,display:"grid",placeItems:"center"}}><Ico e={b.icon} size={26} strokeWidth={1.8}/></span>
               <span style={{flex:1,minWidth:0}}>
                 <span style={{display:"block",fontSize:17,fontWeight:800,color:C.t0}}>{b.name}</span>
                 <span style={{display:"block",fontSize:13,color:C.t2,marginTop:2}}>{b.desc} · <span className="mn">{bizProds(bizId).length}</span> produk</span>
@@ -4703,7 +4760,7 @@ function AppInner() {
         <div style={{display:"flex",justifyContent:"space-between",gap:8,alignItems:"flex-start"}}>
           <div style={{minWidth:0}}>
             <div style={{fontWeight:700,fontSize:14,lineHeight:1.3}}>{item.name}</div>
-            <div className="mn" style={{fontSize:12,color:C.t2,marginTop:2}}><span style={{display:"inline-block",width:7,height:7,borderRadius:"50%",background:item.business==="JB_STORE"?C.p:C.b,marginRight:6}}/>{BIZ[item.business]?.name} · {item.barcode}</div>
+            <div className="mn" style={{fontSize:12,color:C.t2,marginTop:2}}><span style={{display:"inline-block",width:7,height:7,borderRadius:"50%",background:item.business==="JB_STORE"?C.a:C.b,marginRight:6}}/>{BIZ[item.business]?.name} · {item.barcode}</div>
           </div>
           <button onClick={()=>setCart(p=>p.filter(c=>c.barcode!==item.barcode))} aria-label={"Hapus "+item.name} className="press"
             style={{width:34,height:34,flexShrink:0,border:"none",background:"transparent",color:C.t2,display:"grid",placeItems:"center",borderRadius:10}}><X size={17}/></button>
@@ -4831,7 +4888,7 @@ function AppInner() {
               <div style={{flex:1,overflowY:"auto",padding:12,display:"flex",flexDirection:"column",gap:8,minHeight:0}}>{cartItems()}</div>
               <div style={{padding:"14px 16px calc(14px + var(--safe-b))",background:C.bg2,borderTop:`1px solid ${C.bo0}`}}>
                 {user.access.length>1&&qrisBiz.length>1&&<div style={{display:"flex",flexDirection:"column",gap:5,marginBottom:10}}>
-                  {user.access.map(bz=>{const sub=cart.filter(c=>c.business===bz).reduce((s,c)=>s+c.price*c.qty,0),cl=bz==="JS_CLOTHING"?C.b:C.p;
+                  {user.access.map(bz=>{const sub=cart.filter(c=>c.business===bz).reduce((s,c)=>s+c.price*c.qty,0),cl=bz==="JS_CLOTHING"?C.b:C.a;
                     return sub>0&&<div key={bz} style={{display:"flex",justifyContent:"space-between",fontSize:12.5,fontWeight:700,color:cl}}><span>{BIZ[bz].name}</span><span className="mn">{rp(sub)}</span></div>;})}
                 </div>}
                 {discAmt>0&&<div style={{display:"flex",justifyContent:"space-between",fontSize:13,color:C.r,marginBottom:4}}><span>Diskon</span><span className="mn">− {rp(discAmt)}</span></div>}
@@ -4919,7 +4976,7 @@ function AppInner() {
         return null;
       }
     }
-    const bc=biz==="JS_CLOTHING"?C.b:C.p;
+    const bc=biz==="JS_CLOTHING"?C.b:C.a;
     const filtered=bizProds().filter(p=>!stokSearch||p.name.toLowerCase().includes(stokSearch.toLowerCase())||p.barcode.includes(stokSearch));
     return <div style={{fontFamily:F.sans,background:C.bg1,color:C.t0,height:"100vh",display:"flex",flexDirection:"column",overflowX:"hidden",maxWidth:"100vw",width:"100%"}}>
       <style>{CSS}</style><Toast n={notif}/>
@@ -5281,11 +5338,11 @@ function AppInner() {
           <div className="full">
             <div style={{fontSize:12.5,fontWeight:600,color:C.t1,marginBottom:6}}>Akses bisnis *</div>
             <div style={{display:"flex",gap:10}}>
-              {Object.values(BIZ).map(b2=>{const chk=uForm.access?.includes(b2.id),isJ=b2.id==="JS_CLOTHING",cl=isJ?C.b:C.p;
+              {Object.values(BIZ).map(b2=>{const chk=uForm.access?.includes(b2.id),isJ=b2.id==="JS_CLOTHING",cl=isJ?C.b:C.a;
                 return <button key={b2.id} type="button" aria-pressed={!!chk} className="press"
                   onClick={()=>setUForm(x=>({...x,access:chk?x.access.filter(a=>a!==b2.id):[...(x.access||[]),b2.id]}))}
                   style={{flex:1,minHeight:48,borderRadius:12,fontWeight:700,fontSize:14,display:"flex",alignItems:"center",justifyContent:"center",gap:8,
-                    background:chk?(isJ?C.b1:C.p1):"transparent",border:`2px solid ${chk?cl:C.bo1}`,color:chk?cl:C.t2}}>
+                    background:chk?(isJ?C.b1:C.a1):"transparent",border:`2px solid ${chk?cl:C.bo1}`,color:chk?cl:C.t2}}>
                   <Ico e={b2.icon} size={17}/>{b2.name}</button>;})}
             </div>
           </div>
@@ -5360,7 +5417,7 @@ function AppInner() {
                   borderRadius: 14,
                   overflow: "hidden",
                   border: `1px solid ${C.bo1}`,
-                  background: "#182046",
+                  background: "#2A1B30",
                   boxShadow: C.sh1,
                 }}
               >
@@ -5497,9 +5554,9 @@ function AppInner() {
               return <div key={b2.id} style={{marginBottom:12}}>
                 <div style={{display:"flex",justifyContent:"space-between",fontSize:12,marginBottom:6}}>
                   <span style={{fontWeight:600}}><Ico e={b2.icon}/> {b2.name}</span>
-                  <span className="mn" style={{color:isJ?C.b:C.p}}>{rp(rev)} / {rp(tgt.amount)}</span>
+                  <span className="mn" style={{color:isJ?C.b:C.a}}>{rp(rev)} / {rp(tgt.amount)}</span>
                 </div>
-                <ProgressBar value={rev} max={tgt.amount} color={isJ?C.b:C.p}/>
+                <ProgressBar value={rev} max={tgt.amount} color={isJ?C.b:C.a}/>
               </div>;})}
           </Card>}
           {/* Stok menipis */}
@@ -6189,7 +6246,7 @@ function AppInner() {
           <div className="ptool" style={{display:"flex",gap:7,alignItems:"center",flexWrap:"wrap"}}>
             {Object.values(BIZ).map(b2=>{const isJ=b2.id==="JS_CLOTHING",active=adminBiz===b2.id;
               return <button key={b2.id} onClick={()=>{setAdminBiz(b2.id);setSearchQ("");setPModal(false);setEditPid(null);setInlineAddMode(false);}} className="press"
-                style={{padding:"7px 14px",borderRadius:9,cursor:"pointer",fontWeight:700,fontSize:12,background:active?(isJ?C.b1:C.p1):"transparent",border:`2px solid ${active?(isJ?C.b:C.p):C.bo0}`,color:active?(isJ?C.b:C.p):C.t2,fontFamily:F.sans}}>
+                style={{padding:"7px 14px",borderRadius:9,cursor:"pointer",fontWeight:700,fontSize:12,background:active?(isJ?C.b1:C.a1):"transparent",border:`2px solid ${active?(isJ?C.b:C.a):C.bo0}`,color:active?(isJ?C.b:C.a):C.t2,fontFamily:F.sans}}>
                 <Ico e={b2.icon}/> {b2.name}</button>;})}
             <input className="ptool-search" value={searchQ} onChange={e=>setSearchQ(e.target.value)} placeholder="Cari produk..."
               style={{padding:"7px 11px",background:C.bg2,border:`1px solid ${C.bo0}`,borderRadius:8,color:C.t0,fontSize:12,width:140,fontFamily:F.sans}}/>
@@ -6244,8 +6301,8 @@ function AppInner() {
                   {Object.values(BIZ).map(b2=>{const isJ=b2.id==="JS_CLOTHING",active=adminBiz===b2.id;
                     return <button key={b2.id} onClick={()=>setAdminBiz(b2.id)} className="press"
                       style={{flex:1,padding:"9px",borderRadius:9,fontWeight:700,fontSize:12,cursor:"pointer",
-                        background:active?(isJ?C.b1:C.p1):"transparent",border:`2px solid ${active?(isJ?C.b:C.p):C.bo0}`,
-                        color:active?(isJ?C.b:C.p):C.t2,fontFamily:F.sans}}><Ico e={b2.icon}/> {b2.name}</button>;})}
+                        background:active?(isJ?C.b1:C.a1):"transparent",border:`2px solid ${active?(isJ?C.b:C.a):C.bo0}`,
+                        color:active?(isJ?C.b:C.a):C.t2,fontFamily:F.sans}}><Ico e={b2.icon}/> {b2.name}</button>;})}
                 </div>
               </div>
               {/* File drop zone */}
@@ -6580,7 +6637,7 @@ function AppInner() {
                       {/* Left: Thumbnail & specs */}
                       <div style={{display:"flex",gap:14,flex:1,minWidth:260}}>
                         <div onClick={()=>setPreviewOrder(order)} className="press" title="Klik untuk melihat mockup ukuran besar"
-                          style={{width:95,height:80,borderRadius:12,background:"#182046",border:`1px solid ${C.bo1}`,overflow:"hidden",flexShrink:0,cursor:"pointer",position:"relative",display:"grid",placeItems:"center"}}>
+                          style={{width:95,height:80,borderRadius:12,background:"#2A1B30",border:`1px solid ${C.bo1}`,overflow:"hidden",flexShrink:0,cursor:"pointer",position:"relative",display:"grid",placeItems:"center"}}>
                           {order.mockupImage?(
                             <img src={order.mockupImage} alt="Mockup" style={{width:"100%",height:"100%",objectFit:"cover"}}/>
                           ):(
@@ -6746,7 +6803,7 @@ function AppInner() {
                       ? <>
                           <img src={src} alt="" style={{width:"100%",height:"100%",objectFit:"cover"}}/>
                           <span aria-hidden="true" style={{position:"absolute",right:5,bottom:5,width:22,height:22,borderRadius:"50%",
-                            background:"rgba(8,11,30,.62)",color:"#fff",display:"grid",placeItems:"center"}}><Eye size={12}/></span>
+                            background:"rgba(22,8,18,.62)",color:"#fff",display:"grid",placeItems:"center"}}><Eye size={12}/></span>
                         </>
                       : <span style={{fontSize:9.5,color:C.t3,textAlign:"center",lineHeight:1.2,padding:"0 4px"}}>contoh</span>}
                   </button>
@@ -6798,7 +6855,7 @@ function AppInner() {
                 <div style={{display:"flex",gap:7,alignItems:"flex-end",flexWrap:"wrap"}}>
                   {Object.values(BIZ).map(b2=>{const isJ=b2.id==="JS_CLOTHING",active=adminBiz===b2.id;
                     return <button key={b2.id} onClick={()=>{setAdminBiz(b2.id);setSearchQ("");}} className="press"
-                      style={{padding:"7px 14px",borderRadius:9,cursor:"pointer",fontWeight:700,fontSize:12,background:active?(isJ?C.b1:C.p1):"transparent",border:`2px solid ${active?(isJ?C.b:C.p):C.bo0}`,color:active?(isJ?C.b:C.p):C.t2,fontFamily:F.sans}}>
+                      style={{padding:"7px 14px",borderRadius:9,cursor:"pointer",fontWeight:700,fontSize:12,background:active?(isJ?C.b1:C.a1):"transparent",border:`2px solid ${active?(isJ?C.b:C.a):C.bo0}`,color:active?(isJ?C.b:C.a):C.t2,fontFamily:F.sans}}>
                       {b2.name}</button>;})}
                   <div>
                     <label style={{fontSize:11,fontWeight:700,color:C.t2,display:"block",marginBottom:4}}>Jumlah tampil (0 = semua)</label>
@@ -6877,7 +6934,7 @@ function AppInner() {
             {/* Bisnis chips */}
             {["ALL","JS_CLOTHING","JB_STORE"].map(b2=>{
               const isAct=reportBiz===b2;
-              const cl=b2==="JB_STORE"?C.p:b2==="JS_CLOTHING"?C.b:C.g;
+              const cl=b2==="JB_STORE"?C.a:b2==="JS_CLOTHING"?C.b:C.g;
               return <button key={b2} onClick={()=>setReportBiz(b2)}
                 className={`chip${isAct?" on":""}`}
                 style={{borderColor:isAct?cl:"transparent",color:isAct?cl:C.t2,
@@ -6920,7 +6977,7 @@ function AppInner() {
             <div style={{display:"flex",gap:6,flexWrap:"wrap",alignItems:"center"}}>
               <span style={{fontSize:10,color:C.t3,fontWeight:600}}>Filter aktif:</span>
               {reportBiz!=="ALL"&&<span style={{padding:"3px 10px",borderRadius:20,fontSize:11,fontWeight:700,
-                background:reportBiz==="JB_STORE"?C.p1:C.b1,color:reportBiz==="JB_STORE"?C.p:C.b}}>
+                background:reportBiz==="JB_STORE"?C.a1:C.b1,color:reportBiz==="JB_STORE"?C.a:C.b}}>
                 <Ico e={BIZ[reportBiz]?.icon}/> {BIZ[reportBiz]?.name}
                 <button onClick={()=>setReportBiz("ALL")} style={{background:"none",border:"none",color:"inherit",marginLeft:4,cursor:"pointer",fontSize:12,lineHeight:1}}>×</button>
               </span>}
@@ -7883,7 +7940,7 @@ function AppInner() {
             <Card style={{padding:"12px 14px"}}>
               <div style={{display:"flex",gap:7,flexWrap:"wrap",alignItems:"center"}}>
                 {["ALL","JS_CLOTHING","JB_STORE"].map(b2=><button key={b2} onClick={()=>setSlogBiz(b2)} className="press fbtn"
-                  style={{padding:"5px 11px",borderRadius:7,fontSize:11.5,fontWeight:600,cursor:"pointer",background:slogBiz===b2?(b2==="JB_STORE"?C.p1:b2==="JS_CLOTHING"?C.b1:C.g1):"transparent",border:`1.5px solid ${slogBiz===b2?(b2==="JB_STORE"?C.p:b2==="JS_CLOTHING"?C.b:C.g):C.bo0}`,color:slogBiz===b2?(b2==="JB_STORE"?C.p:b2==="JS_CLOTHING"?C.b:C.g):C.t2,fontFamily:F.sans}}>{b2==="ALL"?"Semua":BIZ[b2]?.name}</button>)}
+                  style={{padding:"5px 11px",borderRadius:7,fontSize:11.5,fontWeight:600,cursor:"pointer",background:slogBiz===b2?(b2==="JB_STORE"?C.a1:b2==="JS_CLOTHING"?C.b1:C.g1):"transparent",border:`1.5px solid ${slogBiz===b2?(b2==="JB_STORE"?C.a:b2==="JS_CLOTHING"?C.b:C.g):C.bo0}`,color:slogBiz===b2?(b2==="JB_STORE"?C.a:b2==="JS_CLOTHING"?C.b:C.g):C.t2,fontFamily:F.sans}}>{b2==="ALL"?"Semua":BIZ[b2]?.name}</button>)}
                 <div style={{width:1,height:20,background:C.bo0}}/>
                 {["ALL","masuk","keluar"].map(t=><button key={t} onClick={()=>setSlogType(t)} className="press fbtn"
                   style={{padding:"5px 11px",borderRadius:7,fontSize:11.5,fontWeight:600,cursor:"pointer",background:slogType===t?(t==="masuk"?C.g1:t==="keluar"?C.r1:C.a1):"transparent",border:`1.5px solid ${slogType===t?(t==="masuk"?C.g:t==="keluar"?C.r:C.a):C.bo0}`,color:slogType===t?(t==="masuk"?C.g:t==="keluar"?C.r:C.a):C.t2,fontFamily:F.sans}}>
