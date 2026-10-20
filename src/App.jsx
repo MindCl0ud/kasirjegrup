@@ -2984,6 +2984,38 @@ function ProductLandingPage({ prods, cfg, user, onLogin, onToggleTheme, isDark, 
       {/* Pita ikat (ciri merek) */}
       <div className="ikat-band" aria-hidden="true"/>
 
+      {/* ── Sekilas toko: dua foto + video profil (di atas banner Studio Desain) ── */}
+      <section id="galeri" style={{maxWidth:1180,width:"100%",margin:"0 auto",padding:"36px 20px 4px"}}>
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
+          {galPhotos.slice(0, 2).map((it, i) => (
+            <button key={i} type="button" className="press" onClick={() => setGalIdx(i)}
+              aria-label={`Perbesar foto: ${it.cap}`}
+              style={{position:"relative",aspectRatio:"4 / 3",padding:0,border:"none",borderRadius:18,overflow:"hidden",cursor:"pointer",background:C.bg3}}>
+              <img src={it.src} alt={it.cap} style={{position:"absolute",inset:0,width:"100%",height:"100%",objectFit:"cover"}} loading="lazy" decoding="async"/>
+              <span style={{position:"absolute",inset:0,background:"linear-gradient(180deg,rgba(22,8,18,0) 45%,rgba(22,8,18,.6))"}} aria-hidden="true"/>
+              <span style={{position:"absolute",left:12,right:12,bottom:10,textAlign:"left",color:"#fff",fontSize:13,fontWeight:700,textShadow:"0 1px 8px rgba(0,0,0,.5)"}}>{it.cap}</span>
+            </button>
+          ))}
+        </div>
+
+        {videoSrc && (
+          <div className="lp-video" style={{marginTop:12}}>
+            {playVid ? (
+              <iframe className="lp-video-frame" src={videoSrc} title="Video profil JE Grup"
+                allow="autoplay; encrypted-media; picture-in-picture" allowFullScreen loading="lazy"/>
+            ) : (
+              <button type="button" className="lp-video-poster press" onClick={() => setPlayVid(true)}
+                aria-label="Putar video profil toko">
+                <img src={photo("hero2", 1200, 675)} alt="" className="lp-photo" loading="lazy" decoding="async"/>
+                <span className="lp-video-scrim" aria-hidden="true"/>
+                <span className="lp-video-play" aria-hidden="true"><Play size={28} fill="currentColor" strokeWidth={1.4}/></span>
+                <span className="lp-video-label">Putar video</span>
+              </button>
+            )}
+          </div>
+        )}
+      </section>
+
       {/* ── Highlight Banner: Studio Desain Baju Custom ── */}
       {onOpenCustomizer && (
         <section style={{maxWidth:1180,width:"100%",margin:"0 auto",padding:"36px 20px 8px"}}>
@@ -3196,49 +3228,6 @@ function ProductLandingPage({ prods, cfg, user, onLogin, onToggleTheme, isDark, 
             })}
           </div>
         )}
-      </section>
-
-      {/* ── Galeri preview foto & video (poster video Google Drive + foto toko/produk) ── */}
-      <section id="galeri" style={{maxWidth:1180,width:"100%",margin:"0 auto",padding:"4px 20px 56px"}}>
-        <div style={{maxWidth:660,marginBottom:18}}>
-          <h2 style={{fontSize:"clamp(22px,3vw,30px)",fontWeight:800,letterSpacing:"-.025em"}}>Galeri Foto &amp; Video</h2>
-          <p style={{fontSize:14,color:C.t2,marginTop:6,lineHeight:1.6}}>
-            Preview video profil toko dan foto koleksi kami. Klik salah satu foto untuk memperbesar, geser pakai panah kiri/kanan.
-          </p>
-        </div>
-
-        {videoSrc ? (
-          <div className="lp-video">
-            {playVid ? (
-              <iframe className="lp-video-frame" src={videoSrc} title="Video profil JE Store"
-                allow="autoplay; encrypted-media; picture-in-picture" allowFullScreen loading="lazy"/>
-            ) : (
-              <button type="button" className="lp-video-poster press" onClick={() => setPlayVid(true)}
-                aria-label="Putar video profil toko">
-                <img src={photo("hero2", 1200, 675)} alt="" className="lp-photo" loading="lazy" decoding="async"/>
-                <span className="lp-video-scrim" aria-hidden="true"/>
-                <span className="lp-video-play" aria-hidden="true"><Play size={28} fill="currentColor" strokeWidth={1.4}/></span>
-                <span className="lp-video-label">Putar video</span>
-              </button>
-            )}
-          </div>
-        ) : (
-          <div style={{padding:"16px 18px",borderRadius:18,border:`1px dashed ${C.bo2}`,color:C.t2,fontSize:13.5,lineHeight:1.6}}>
-            Video promosi belum diisi. Admin bisa menambahkan link video Google Drive di menu <b>Landing Page</b>.
-          </div>
-        )}
-
-        <div className="lp-gal">
-          {galPhotos.map((it, i) => (
-            <button key={i} type="button" className="lp-gal-item press" onClick={() => setGalIdx(i)}
-              aria-label={`Perbesar foto: ${it.cap}`}>
-              <img src={it.src} alt={it.cap} className="lp-photo" loading="lazy" decoding="async"/>
-              <span className="lp-gal-scrim" aria-hidden="true"/>
-              <span className="lp-gal-cap"><b>{it.cap}</b>{it.sub ? <i>{it.sub}</i> : null}</span>
-              <span className="lp-gal-zoom"><Eye size={13}/> Perbesar</span>
-            </button>
-          ))}
-        </div>
       </section>
 
       {/* ── Keunggulan Belanja di Sini: Benefit Pembeli ── */}
