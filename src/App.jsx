@@ -2283,46 +2283,29 @@ function TemplateOpnameTab({ items, scopeProds, physInput, setPhysInput, notesIn
     </div>
     {locked && <div style={{padding:"10px 14px",background:C.a1,borderRadius:12,fontSize:13,color:C.a,fontWeight:600,marginBottom:12}}>Sesi sudah ditutup, data tidak bisa diubah.</div>}
     {list.length === 0 && <Card><EmptyState title="Produk tidak ditemukan" hint="Coba ubah kata kunci atau filter bisnis."/></Card>}
-    {/* Mobile: kartu */}
-    <div className="hide-desktop" style={{display:"flex",flexDirection:"column",gap:8}}>
+    {/* Responsive Opname Cards */}
+    <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill, minmax(310px, 1fr))",gap:10}}>
       {list.map(p => { const ph = physOf(p), diff = ph === undefined ? null : ph - p.stock, st = statusOf(p);
-        return <div key={p.id} style={{background:C.bg2,border:`1px solid ${st==="Kurang"?C.r+"55":st==="Surplus"?C.a+"55":C.bo0}`,borderRadius:14,padding:"12px 14px"}}>
-          <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:8,marginBottom:8}}>
-            <div style={{minWidth:0}}>
-              <div style={{fontWeight:700,fontSize:14}}>{p.name}</div>
-              <div style={{display:"flex",gap:6,alignItems:"center",marginTop:3,flexWrap:"wrap"}}><span className="mn" style={{fontSize:12,color:C.t2}}>{p.barcode}</span><BizChip biz={p.business} sm/></div>
+        return <div key={p.id} className="card-in" style={{background:C.bg2,border:`1.5px solid ${st==="Kurang"?C.r+"55":st==="Surplus"?C.a+"55":C.bo0}`,borderRadius:14,padding:"13px 15px",display:"flex",flexDirection:"column",justifyContent:"space-between",gap:8}}>
+          <div>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:8,marginBottom:8}}>
+              <div style={{minWidth:0}}>
+                <div style={{fontWeight:750,fontSize:14,color:C.t0}}>{p.name}</div>
+                <div style={{display:"flex",gap:6,alignItems:"center",marginTop:3,flexWrap:"wrap"}}>
+                  <span className="mn" style={{fontSize:11,color:C.t2}}>{p.barcode}</span>
+                  <BizChip biz={p.business} sm/>
+                </div>
+              </div>
+              {pill(st)}
             </div>
-            {pill(st)}
+            <div style={{display:"grid",gridTemplateColumns:"1fr auto 1fr",gap:10,alignItems:"center",background:C.bg3,borderRadius:10,padding:"9px 12px"}}>
+              <div><div style={{fontSize:11,color:C.t2}}>Sistem</div><div className="mn" style={{fontSize:18,fontWeight:800}}>{p.stock}</div></div>
+              <div style={{textAlign:"center"}}><div style={{fontSize:11,color:C.t2,marginBottom:2}}>Fisik</div>{numInput(p)}</div>
+              <div style={{textAlign:"right"}}><div style={{fontSize:11,color:C.t2}}>Selisih</div><div className="mn" style={{fontSize:18,fontWeight:800,color:diff===null?C.t3:diff<0?C.r:diff>0?C.a:C.g}}>{diff===null?"–":(diff>0?"+":"")+diff}</div></div>
+            </div>
           </div>
-          <div style={{display:"grid",gridTemplateColumns:"1fr auto 1fr",gap:10,alignItems:"center"}}>
-            <div><div style={{fontSize:12,color:C.t2}}>Sistem</div><div className="mn" style={{fontSize:20,fontWeight:800}}>{p.stock}</div></div>
-            <div style={{textAlign:"center"}}><div style={{fontSize:12,color:C.t2,marginBottom:2}}>Fisik</div>{numInput(p)}</div>
-            <div style={{textAlign:"right"}}><div style={{fontSize:12,color:C.t2}}>Selisih</div><div className="mn" style={{fontSize:20,fontWeight:800,color:diff===null?C.t3:diff<0?C.r:diff>0?C.a:C.g}}>{diff===null?"–":(diff>0?"+":"")+diff}</div></div>
-          </div>
-          <div style={{marginTop:8}}>{noteInput(p, "100%")}</div>
+          <div style={{marginTop:4}}>{noteInput(p, "100%")}</div>
         </div>; })}
-    </div>
-    {/* Desktop: tabel */}
-    <div className="hide-mobile">
-      <Card noPad style={{overflow:"hidden"}}>
-        <div style={{overflowX:"auto"}}>
-          <table style={{width:"100%",borderCollapse:"collapse",minWidth:820}}>
-            <THead cols={["No","Bisnis","Barcode","Nama","Sistem","Fisik","Selisih","Status","Keterangan"]}/>
-            <tbody>{list.map((p, i) => { const ph = physOf(p), diff = ph === undefined ? null : ph - p.stock, st = statusOf(p);
-              return <tr key={p.id} className="hrow" style={{borderTop:`1px solid ${C.bo0}`,background:st==="Kurang"?C.r1:st==="Surplus"?C.a1:"transparent"}}>
-                <td style={{padding:"10px 14px",color:C.t2}}>{i + 1}</td>
-                <td style={{padding:"10px 14px"}}><BizChip biz={p.business} sm/></td>
-                <td className="mn" style={{padding:"10px 14px",color:C.t2}}>{p.barcode}</td>
-                <td style={{padding:"10px 14px",fontWeight:600}}>{p.name}</td>
-                <td className="mn" style={{padding:"10px 14px"}}>{p.stock}</td>
-                <td style={{padding:"6px 14px"}}>{numInput(p)}</td>
-                <td className="mn" style={{padding:"10px 14px",fontWeight:800,color:diff===null?C.t3:diff<0?C.r:diff>0?C.a:C.g}}>{diff===null?"–":(diff>0?"+":"")+diff}</td>
-                <td style={{padding:"10px 14px"}}>{pill(st)}</td>
-                <td style={{padding:"6px 14px"}}>{noteInput(p, 150)}</td>
-              </tr>; })}</tbody>
-          </table>
-        </div>
-      </Card>
     </div>
   </div>;
 }
@@ -2405,24 +2388,43 @@ function KartuStockTab({ slogs, prods, scopeBiz, toast, onExport }) {
       <Btn size="sm" outline onClick={onExport}>Export Excel</Btn>
     </div>
     {Object.keys(perProduct).length === 0 ? <Card><EmptyState title="Belum ada pergerakan stok" hint="Riwayat masuk dan keluar produk tampil di sini."/></Card> :
-    <Card noPad style={{overflow:"hidden"}}><div style={{overflowX:"auto"}}>
-      <table style={{width:"100%",borderCollapse:"collapse",minWidth:720}}>
-        <THead cols={["Tanggal","Bisnis","Produk","Masuk","Keluar","Saldo"]}/>
-        <tbody>{Object.values(perProduct).map(pp => { let running = 0;
-          return pp.logs.map((l, li) => {
-            const inQty = l.type === "masuk" ? l.qty : 0, outQty = (l.type === "keluar" || l.type === "opname") ? l.qty : 0;
-            running = running + inQty - outQty;
-            return <tr key={pp.business + pp.barcode + li} style={{borderTop:`1px solid ${C.bo0}`}}>
-              <td style={{padding:"9px 14px",color:C.t2,whiteSpace:"nowrap"}}>{l.date}</td>
-              <td style={{padding:"9px 14px"}}>{li === 0 ? <BizChip biz={pp.business} sm/> : ""}</td>
-              <td style={{padding:"9px 14px",fontWeight:600}}>{li === 0 ? <>{pp.name}<div className="mn" style={{fontSize:12,color:C.t2,fontWeight:400}}>{pp.barcode}</div></> : ""}</td>
-              <td className="mn" style={{padding:"9px 14px",color:C.g}}>{inQty > 0 ? inQty : ""}</td>
-              <td className="mn" style={{padding:"9px 14px",color:C.r}}>{outQty > 0 ? outQty : ""}</td>
-              <td className="mn" style={{padding:"9px 14px",fontWeight:700}}>{running}</td>
-            </tr>;
-          }); })}</tbody>
-      </table>
-    </div></Card>}
+    <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill, minmax(320px, 1fr))",gap:12}}>
+      {Object.values(perProduct).map(pp => {
+        let running = 0;
+        return (
+          <div key={pp.business + pp.barcode} className="card-in" style={{background:C.bg2,borderRadius:14,border:`1px solid ${C.bo0}`,padding:"14px 16px",display:"flex",flexDirection:"column",gap:10}}>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:8}}>
+              <div>
+                <div style={{fontWeight:750,fontSize:14,color:C.t0}}>{pp.name}</div>
+                <div className="mn" style={{fontSize:11,color:C.t2,marginTop:2}}>{pp.barcode}</div>
+              </div>
+              <BizChip biz={pp.business} sm/>
+            </div>
+            <div style={{display:"flex",flexDirection:"column",gap:6,maxHeight:240,overflowY:"auto",paddingRight:4}}>
+              {pp.logs.map((l, li) => {
+                const inQty = l.type === "masuk" ? l.qty : 0;
+                const outQty = (l.type === "keluar" || l.type === "opname") ? l.qty : 0;
+                running = running + inQty - outQty;
+                return (
+                  <div key={li} style={{background:C.bg3,borderRadius:9,padding:"8px 10px",display:"flex",justifyContent:"space-between",alignItems:"center",gap:8,fontSize:11.5}}>
+                    <div>
+                      <div style={{color:C.t2,fontSize:10}}>{l.date}</div>
+                      <div style={{fontWeight:650,color:inQty>0?C.g:C.r,marginTop:1}}>
+                        {inQty > 0 ? `+${inQty} Masuk` : `-${outQty} Keluar`}
+                      </div>
+                    </div>
+                    <div style={{textAlign:"right"}}>
+                      <div style={{fontSize:9.5,color:C.t3}}>Saldo</div>
+                      <div className="mn" style={{fontWeight:800,fontSize:13,color:C.t0}}>{running}</div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        );
+      })}
+    </div>}
   </div>;
 }
 
@@ -2524,31 +2526,27 @@ function ImportOpnameModal({ show, onClose, onImport, C, F, loadSheetJS, prods, 
         {err && <div style={{padding:"10px 14px",background:`${C.r}15`,borderRadius:8,border:`1px solid ${C.r}33`,fontSize:11,color:C.r,marginBottom:10}}>{err}</div>}
 
         {rows.length > 0 && <>
-          <div style={{fontSize:11,fontWeight:700,color:C.t2,marginBottom:8}}>Pratinjau ({rows.filter(r=>r.product).length} dari {rows.length} produk cocok)</div>
-          <div style={{overflowX:"auto"}}>
-            <table style={{width:"100%",borderCollapse:"collapse",fontSize:10,whiteSpace:"nowrap"}}>
-              <thead>
-                <tr style={{background:C.bg0}}>
-                  {["#","SKU","Nama","Stok Fisik","Status"].map(h=>
-                    <th key={h} style={{padding:"6px 8px",textAlign:"left",color:C.t3,fontWeight:700,borderBottom:`1px solid ${C.bo0}`}}>{h}</th>)}
-                </tr>
-              </thead>
-              <tbody>
-                {rows.map((r,i)=>(
-                  <tr key={i} style={{background:r.product?"transparent":`${C.a}10`}}>
-                    <td style={{padding:"6px 8px",color:C.t2}}>{i+1}</td>
-                    <td style={{padding:"6px 8px",fontFamily:F.mono,color:C.t2}}>{r.sku}</td>
-                    <td style={{padding:"6px 8px",fontWeight:600}}>{r.name}</td>
-                    <td style={{padding:"6px 8px"}}><span className="mn">{r.phys}</span></td>
-                    <td style={{padding:"6px 8px"}}>
-                      {r.product
-                        ? <span style={{color:C.g,fontWeight:700}}><Ico e="✅"/> Ditemukan</span>
-                        : <span style={{color:C.a,fontWeight:700}}><Ico e="⚠️"/> Tidak ditemukan</span>}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+          <div style={{fontSize:11.5,fontWeight:750,color:C.t2,marginBottom:8}}>Pratinjau ({rows.filter(r=>r.product).length} dari {rows.length} produk cocok)</div>
+          <div style={{display:"flex",flexDirection:"column",gap:6,maxHeight:"40vh",overflowY:"auto",paddingRight:4}}>
+            {rows.map((r,i)=>(
+              <div key={i} style={{background:r.product?C.bg3:`${C.a}12`,borderRadius:9,padding:"8px 11px",border:`1px solid ${r.product?C.bo0:C.a+"44"}`,display:"flex",justifyContent:"space-between",alignItems:"center",gap:8}}>
+                <div style={{minWidth:0}}>
+                  <div style={{fontWeight:700,fontSize:12.5,color:C.t0}}>{r.name||"–"}</div>
+                  <div className="mn" style={{fontSize:10,color:C.t3,marginTop:1}}>SKU: {r.sku}</div>
+                </div>
+                <div style={{display:"flex",alignItems:"center",gap:10,flexShrink:0}}>
+                  <div style={{textAlign:"right"}}>
+                    <div style={{fontSize:9.5,color:C.t3}}>Fisik</div>
+                    <div className="mn" style={{fontWeight:800,fontSize:13,color:C.t0}}>{r.phys}</div>
+                  </div>
+                  <div>
+                    {r.product
+                      ? <span style={{color:C.g,fontWeight:750,fontSize:11,background:C.g1,padding:"2px 7px",borderRadius:12,display:"inline-flex",alignItems:"center",gap:4}}><Ico e="✅"/> Cocok</span>
+                      : <span style={{color:C.a,fontWeight:750,fontSize:11,background:C.a1,padding:"2px 7px",borderRadius:12,display:"inline-flex",alignItems:"center",gap:4}}><Ico e="⚠️"/> Tidak Ada</span>}
+                  </div>
+                </div>
+              </div>
+            ))}
           </div>
         </>}
     </div>
@@ -3883,7 +3881,6 @@ function AppInner() {
   const [userSearch, setUserSearch] = useState("");
   const [userRoleFilter, setUserRoleFilter] = useState("ALL");
   const [userStatusFilter, setUserStatusFilter] = useState("ALL");
-  const [userViewMode, setUserViewMode] = useState("cards"); // "cards" | "table"
   const [prodPage, setProdPage] = useState(1);
   const [prodPerPage, setProdPerPage] = useState(20);
   const [lapPage, setLapPage] = useState(1);
@@ -5085,91 +5082,56 @@ function AppInner() {
             <input value={stokSearch} onChange={e=>setStokSearch(e.target.value)} placeholder="Cari nama / barcode..."
               style={{padding:"7px 11px",background:C.bg3,border:`1px solid ${C.bo0}`,borderRadius:8,color:C.t0,fontSize:12,width:160,fontFamily:F.sans}}/>
           </div>
-          {/* Card view for mobile — easier tap targets */}
-          <div className="hide-desktop" style={{padding:"8px 10px",display:"flex",flexDirection:"column",gap:7}}>
-            {filtered.length===0&&<EmptyState pad={24} title="Tidak ada produk"/>}
+          {/* Responsive Card Grid */}
+          <div style={{padding:"12px 14px",display:"grid",gridTemplateColumns:"repeat(auto-fill, minmax(290px, 1fr))",gap:10}}>
+            {filtered.length===0&&<div style={{gridColumn:"1 / -1"}}><EmptyState pad={24} title="Tidak ada produk"/></div>}
             {filtered.map(p=>{
               const adj=quickAdj[p.id]||0;
-              const preview=p.stock+adj;
-              return <div key={p.id} style={{background:C.bg3,borderRadius:11,border:`1px solid ${p.stock<10?C.r+"44":C.bo0}`,padding:"10px 12px",display:"flex",alignItems:"center",gap:10}}>
-                <div style={{flex:1,minWidth:0}}>
-                  <div style={{fontWeight:700,fontSize:13,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{p.name}</div>
-                  <div style={{display:"flex",gap:6,marginTop:2,flexWrap:"wrap"}}>
-                    <span className="mn" style={{fontSize:10,color:C.t2}}>{p.barcode}</span>
-                    <span className="mn" style={{fontSize:10,color:C.g}}>{rp(p.price)}</span>
+              return <div key={p.id} className="card-in" style={{background:C.bg3,borderRadius:12,border:`1.5px solid ${p.stock===0?C.r+"44":p.stock<10?C.a+"44":C.bo0}`,padding:"12px 14px",display:"flex",flexDirection:"column",justifyContent:"space-between",gap:10}}>
+                <div>
+                  <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:8,marginBottom:4}}>
+                    <div style={{minWidth:0}}>
+                      <div style={{fontWeight:750,fontSize:14,color:C.t0}}>{p.name}</div>
+                      <div style={{display:"flex",gap:6,marginTop:2,flexWrap:"wrap",alignItems:"center"}}>
+                        <span className="mn" style={{fontSize:10,color:C.t3}}>{p.barcode}</span>
+                        {p.category&&<span style={{fontSize:10,color:C.t2,background:C.bg2,padding:"1px 6px",borderRadius:12}}>{p.category}</span>}
+                      </div>
+                    </div>
+                    <div className="mn" style={{fontSize:13,fontWeight:750,color:C.g,whiteSpace:"nowrap"}}>{rp(p.price)}</div>
                   </div>
                 </div>
-                {/* Quick +/- controls */}
-                <div style={{display:"flex",alignItems:"center",gap:6,flexShrink:0}}>
-                  <button onClick={async()=>doQuickAdj(p,-1)} className="press"
-                    style={{width:34,height:34,borderRadius:9,background:p.stock===0?C.bg4:C.r1,
-                      border:`1.5px solid ${p.stock===0?C.bo0:C.r+"44"}`,color:p.stock===0?C.t3:C.r,
-                      fontSize:18,fontWeight:700,display:"flex",alignItems:"center",justifyContent:"center",
-                      cursor:p.stock===0?"not-allowed":"pointer"}}>−</button>
-                  <div style={{textAlign:"center",minWidth:36}}>
-                    <div className="mn" style={{fontSize:20,fontWeight:800,
-                      color:p.stock===0?C.r:p.stock<10?C.a:C.t0,lineHeight:1}}>{p.stock}</div>
-                    {adj!==0&&<div className="mn" style={{fontSize:10,color:adj>0?C.g:C.r,marginTop:1}}>
-                      {adj>0?"↑":"↓"}{Math.abs(adj)}
-                    </div>}
+
+                <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",gap:8,background:C.bg2,borderRadius:10,padding:"8px 12px"}}>
+                  <div>
+                    <div style={{fontSize:10,color:C.t3,fontWeight:700}}>STOK SAAT INI</div>
+                    <div style={{display:"flex",alignItems:"baseline",gap:4}}>
+                      <span className="mn" style={{fontSize:18,fontWeight:800,color:p.stock===0?C.r:p.stock<10?C.a:C.t0}}>{p.stock}</span>
+                      {p.stock<10&&<span style={{fontSize:9.5,fontWeight:750,color:p.stock===0?C.r:C.a}}>{p.stock===0?"Habis":"Menipis"}</span>}
+                      {adj!==0&&<span className="mn" style={{fontSize:11,fontWeight:750,color:adj>0?C.g:C.r}}>({adj>0?"+":""}{adj})</span>}
+                    </div>
                   </div>
-                  <button onClick={async()=>doQuickAdj(p,1)} className="press"
-                    style={{width:34,height:34,borderRadius:9,background:C.g1,
-                      border:`1.5px solid ${C.g}44`,color:C.g,
-                      fontSize:18,fontWeight:700,display:"flex",alignItems:"center",justifyContent:"center"}}>+</button>
+
+                  {/* Quick controls */}
+                  <div style={{display:"flex",alignItems:"center",gap:5}}>
+                    <button onClick={async()=>doQuickAdj(p,-1)} disabled={p.stock===0} className="press"
+                      style={{width:30,height:30,borderRadius:8,background:p.stock===0?C.bg4:C.r1,border:`1.5px solid ${p.stock===0?C.bo0:C.r+"44"}`,color:p.stock===0?C.t3:C.r,fontSize:16,fontWeight:700,display:"flex",alignItems:"center",justifyContent:"center",cursor:p.stock===0?"not-allowed":"pointer"}}>−</button>
+                    <button onClick={async()=>doQuickAdj(p,1)} className="press"
+                      style={{width:30,height:30,borderRadius:8,background:C.g1,border:`1.5px solid ${C.g}44`,color:C.g,fontSize:16,fontWeight:700,display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer"}}>+</button>
+                    <button onClick={async()=>doQuickAdj(p,5)} className="press"
+                      style={{padding:"4px 8px",borderRadius:8,background:C.cy1,border:`1px solid ${C.cy}44`,color:C.cy,fontSize:11,fontWeight:750,cursor:"pointer"}}>+5</button>
+                    <button onClick={async()=>doQuickAdj(p,10)} className="press"
+                      style={{padding:"4px 8px",borderRadius:8,background:C.b1,border:`1px solid ${C.b}44`,color:C.b,fontSize:11,fontWeight:750,cursor:"pointer"}}>+10</button>
+                  </div>
                 </div>
-                <button onClick={()=>{setStokTarget(p);setIsNewProduct(false);setStokQ("");setStokPrice("");}}
-                  className="press" style={{padding:"6px 10px",background:C.b1,border:`1px solid ${C.b}33`,
-                    borderRadius:8,color:C.b,fontSize:11,fontWeight:700,flexShrink:0}}>Atur</button>
+
+                <div style={{display:"flex",justifyContent:"flex-end"}}>
+                  <button onClick={()=>{setStokTarget(p);setIsNewProduct(false);setStokQ("");setStokPrice("");}} className="press"
+                    style={{width:"100%",padding:"7px 12px",background:C.b1,border:`1px solid ${C.b}33`,borderRadius:8,color:C.b,fontSize:11.5,fontWeight:750,cursor:"pointer",textAlign:"center"}}>
+                    Atur Detail Stok
+                  </button>
+                </div>
               </div>;
             })}
-          </div>
-          {/* Table view for desktop */}
-          <div className="hide-mobile">
-            <TableWrap compact maxH="50vh">
-              <table style={{width:"100%",borderCollapse:"collapse",fontSize:12,minWidth:520}}>
-                <THead cols={["Barcode","Nama","Kategori","Harga","Stok","+/-",""]}/>
-                <tbody>{filtered.map((p,i)=><tr key={p.id} className="hrow" style={{borderTop:`1px solid ${C.bo0}`,background:i%2===0?"transparent":C.bg0}}>
-                  <td style={{padding:"11px 13px",fontFamily:F.mono,fontSize:10,color:C.t2}}>{p.barcode}</td>
-                  <td style={{padding:"11px 13px",fontWeight:600,fontSize:12}}>{p.name}</td>
-                  <td style={{padding:"11px 13px",color:C.t2,fontSize:11}}>{p.category}</td>
-                  <td style={{padding:"11px 13px",fontFamily:F.mono,color:C.g,fontSize:11}}>{rp(p.price)}</td>
-                  <td style={{padding:"11px 13px"}}>
-                    <div style={{display:"flex",alignItems:"center",gap:2}}>
-                      <span className="mn" style={{fontSize:15,fontWeight:800,
-                        color:p.stock===0?C.r:p.stock<10?C.a:C.t0}}>{p.stock}</span>
-                      {p.stock<10&&<span style={{fontSize:10,color:p.stock===0?C.r:C.a,marginLeft:4}}>
-                        {p.stock===0?"Habis":"Menipis"}</span>}
-                    </div>
-                  </td>
-                  <td style={{padding:"11px 13px"}}>
-                    <div style={{display:"flex",alignItems:"center",gap:5}}>
-                      <button onClick={()=>doQuickAdj(p,-1)} className="press" disabled={p.stock===0}
-                        style={{width:28,height:28,borderRadius:7,background:p.stock===0?C.bg4:C.r1,
-                          border:`1.5px solid ${p.stock===0?C.bo0:C.r+"44"}`,color:p.stock===0?C.t3:C.r,
-                          fontSize:16,fontWeight:700,display:"flex",alignItems:"center",justifyContent:"center",
-                          cursor:p.stock===0?"not-allowed":"pointer"}}>−</button>
-                      <button onClick={()=>doQuickAdj(p,1)} className="press"
-                        style={{width:28,height:28,borderRadius:7,background:C.g1,
-                          border:`1.5px solid ${C.g}44`,color:C.g,
-                          fontSize:16,fontWeight:700,display:"flex",alignItems:"center",justifyContent:"center"}}>+</button>
-                      <button onClick={()=>doQuickAdj(p,5)} className="press"
-                        style={{padding:"3px 8px",borderRadius:7,background:C.cy1,
-                          border:`1.5px solid ${C.cy}44`,color:C.cy,
-                          fontSize:11,fontWeight:700}}>+5</button>
-                      <button onClick={()=>doQuickAdj(p,10)} className="press"
-                        style={{padding:"3px 8px",borderRadius:7,background:C.b1,
-                          border:`1.5px solid ${C.b}44`,color:C.b,
-                          fontSize:11,fontWeight:700}}>+10</button>
-                    </div>
-                  </td>
-                  <td style={{padding:"11px 13px",whiteSpace:"nowrap"}}>
-                    <button onClick={()=>{setStokTarget(p);setIsNewProduct(false);setStokQ("");setStokPrice("");}} className="press"
-                      style={{padding:"4px 11px",background:C.g1,border:`1px solid ${C.g}33`,borderRadius:7,color:C.g,fontSize:11,fontWeight:700}}>Atur</button>
-                  </td>
-                </tr>)}</tbody>
-              </table>
-            </TableWrap>
           </div>
         </Card>
 
@@ -5180,19 +5142,21 @@ function AppInner() {
           </div>
           {slogs.filter(l=>l.business===biz&&l.type==="masuk").length===0
             ?<EmptyState pad={24} title="Belum ada log penerimaan"/>
-            :<TableWrap compact maxH="40vh">
-              <table style={{width:"100%",borderCollapse:"collapse",fontSize:13,minWidth:400}}>
-                <THead cols={["Waktu","Produk","Qty","Sblm→Ssdh","Oleh"]}/>
-                <tbody>{slogs.filter(l=>l.business===biz&&l.type==="masuk").slice(0,30).map((l,i)=>(
-                  <tr key={l.id} className="hrow" style={{borderTop:`1px solid ${C.bo0}`,background:i%2===0?"transparent":C.bg0}}>
-                    <td style={{padding:"12px 13px",color:C.t2,fontSize:10,whiteSpace:"nowrap"}}>{l.date}</td>
-                    <td style={{padding:"12px 13px",fontWeight:500}}>{l.name}</td>
-                    <td style={{padding:"12px 13px",fontFamily:F.mono,fontWeight:700,color:C.g}}>+{l.qty}</td>
-                    <td style={{padding:"12px 13px",fontFamily:F.mono,fontSize:10}}>{l.before}→<b>{l.after}</b></td>
-                    <td style={{padding:"12px 13px",color:C.t2}}>{l.by}</td>
-                  </tr>))}</tbody>
-              </table>
-            </TableWrap>}
+            :<div style={{padding:"12px 14px",display:"grid",gridTemplateColumns:"repeat(auto-fill, minmax(280px, 1fr))",gap:10,maxHeight:"45vh",overflowY:"auto"}}>
+              {slogs.filter(l=>l.business===biz&&l.type==="masuk").slice(0,30).map((l,i)=>(
+                <div key={l.id||i} className="card-in" style={{background:C.bg3,borderRadius:12,border:`1px solid ${C.bo0}`,padding:"11px 13px",display:"flex",flexDirection:"column",gap:6}}>
+                  <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:8}}>
+                    <div style={{fontWeight:750,fontSize:13,color:C.t0}}>{l.name}</div>
+                    <span className="mn" style={{fontSize:13,fontWeight:800,color:C.g,background:C.g1,padding:"1px 7px",borderRadius:12,flexShrink:0}}>+{l.qty}</span>
+                  </div>
+                  <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",fontSize:11,color:C.t2}}>
+                    <span>{l.before} → <b style={{color:C.t0}}>{l.after}</b></span>
+                    <span>Oleh: <b style={{color:C.t1}}>{l.by}</b></span>
+                  </div>
+                  <div style={{fontSize:10,color:C.t3,textAlign:"right"}}>{l.date}</div>
+                </div>
+              ))}
+            </div>}
         </Card>
       </div>
     </div>;
@@ -5648,54 +5612,6 @@ function AppInner() {
                 </div>
 
                 <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                  {/* View Mode Toggle */}
-                  <div style={{ display: "inline-flex", background: C.bg3, padding: 3, borderRadius: 10, border: `1px solid ${C.bo0}` }}>
-                    <button
-                      type="button"
-                      onClick={() => setUserViewMode("cards")}
-                      className="press"
-                      title="Tampilan Kartu"
-                      style={{
-                        padding: "5px 10px",
-                        borderRadius: 7,
-                        border: "none",
-                        background: userViewMode === "cards" ? C.bg2 : "transparent",
-                        color: userViewMode === "cards" ? C.pri : C.t2,
-                        boxShadow: userViewMode === "cards" ? "0 1px 3px rgba(0,0,0,0.08)" : "none",
-                        fontSize: 11.5,
-                        fontWeight: 750,
-                        display: "flex",
-                        alignItems: "center",
-                        gap: 5,
-                        cursor: "pointer",
-                      }}
-                    >
-                      <LayoutGrid size={14} /> <span className="hide-mobile">Kartu</span>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setUserViewMode("table")}
-                      className="press"
-                      title="Tampilan Tabel"
-                      style={{
-                        padding: "5px 10px",
-                        borderRadius: 7,
-                        border: "none",
-                        background: userViewMode === "table" ? C.bg2 : "transparent",
-                        color: userViewMode === "table" ? C.pri : C.t2,
-                        boxShadow: userViewMode === "table" ? "0 1px 3px rgba(0,0,0,0.08)" : "none",
-                        fontSize: 11.5,
-                        fontWeight: 750,
-                        display: "flex",
-                        alignItems: "center",
-                        gap: 5,
-                        cursor: "pointer",
-                      }}
-                    >
-                      <List size={14} /> <span className="hide-mobile">Tabel</span>
-                    </button>
-                  </div>
-
                   <Btn onClick={openAddU} size="sm">+ Tambah Pengguna</Btn>
                 </div>
               </div>
@@ -5817,104 +5733,6 @@ function AppInner() {
                     title="Pengguna tidak ditemukan"
                     hint={q || userRoleFilter !== "ALL" || userStatusFilter !== "ALL" ? "Coba ganti filter peran, status, atau kata kunci pencarian Anda." : "Belum ada data pengguna yang terdaftar."}
                   />
-                </Card>
-              ) : userViewMode === "table" ? (
-                <Card noPad style={{ overflow: "hidden", borderRadius: 14 }}>
-                  <TableWrap>
-                    <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12, minWidth: 650 }}>
-                      <THead cols={["Pengguna", "Peran", "Akses Cabang", "Presensi Wajah", "Status", "Aksi"]} />
-                      <tbody>
-                        {paginatedUsers.map((u, i) => (
-                          <tr key={u.id} className="hrow" style={{ borderTop: `1px solid ${C.bo0}`, background: i % 2 === 0 ? "transparent" : C.bg0 }}>
-                            <td style={{ padding: "12px 14px" }}>
-                              <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                                <Avatar
-                                  name={u.name}
-                                  size={34}
-                                  style={{
-                                    borderRadius: "50%",
-                                    background: (u.role === "admin" ? C.vi : u.role === "kasir" ? C.cy : C.a) + "1F",
-                                    color: u.role === "admin" ? C.vi : u.role === "kasir" ? C.cy : C.a,
-                                  }}
-                                />
-                                <div>
-                                  <div style={{ fontWeight: 700, color: C.t0 }}>{u.name}</div>
-                                  <div className="mn" style={{ fontSize: 11, color: C.t2 }}>@{u.username}</div>
-                                </div>
-                              </div>
-                            </td>
-                            <td style={{ padding: "12px 14px" }}><RoleTag role={u.role} /></td>
-                            <td style={{ padding: "12px 14px" }}>
-                              <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
-                                {u.access && u.access.length > 0 ? (
-                                  u.access.map(a => <BizChip key={a} biz={a} sm />)
-                                ) : (
-                                  <span style={{ fontSize: 11, color: C.t3, fontStyle: "italic" }}>-</span>
-                                )}
-                              </div>
-                            </td>
-                            <td style={{ padding: "12px 14px" }}>
-                              {u.role === "admin" ? (
-                                <span style={{ fontSize: 11, color: C.t3, fontWeight: 600 }}>Bebas Absen</span>
-                              ) : u.faceDescriptor ? (
-                                <span style={{ fontSize: 10.5, color: C.g, fontWeight: 750, display: "inline-flex", alignItems: "center", gap: 4 }}>
-                                  <CheckCircle2 size={12} /> Terdaftar
-                                </span>
-                              ) : (
-                                <button
-                                  type="button"
-                                  onClick={() => setFaceReg(u.id)}
-                                  className="press"
-                                  style={{ padding: "3px 9px", background: C.pri1, border: `1px solid ${C.pri}33`, borderRadius: 6, color: C.pri, fontSize: 10.5, fontWeight: 750, cursor: "pointer" }}
-                                >
-                                  + Daftarkan
-                                </button>
-                              )}
-                            </td>
-                            <td style={{ padding: "12px 14px" }}>
-                              <span style={{ padding: "2px 8px", borderRadius: 20, fontSize: 10, fontWeight: 700, background: u.active ? C.g1 : C.r1, color: u.active ? C.g : C.r }}>
-                                {u.active ? "Aktif" : "Off"}
-                              </span>
-                            </td>
-                            <td style={{ padding: "12px 14px", whiteSpace: "nowrap" }}>
-                              <div style={{ display: "flex", alignItems: "center", gap: 5 }}>
-                                <button
-                                  type="button"
-                                  onClick={() => openEditU(u)}
-                                  className="press"
-                                  style={{ padding: "4px 9px", background: "transparent", border: `1px solid ${C.bo1}`, borderRadius: 6, color: C.t0, fontSize: 11, fontWeight: 650, cursor: "pointer" }}
-                                >
-                                  Edit
-                                </button>
-                                <button
-                                  type="button"
-                                  onClick={() => { setCpwdModal(u.id); setCpwdForm({ old: "", n1: "", n2: "" }); }}
-                                  className="press"
-                                  title="Ganti Password"
-                                  style={{ padding: "4px 8px", background: C.bg3, border: `1px solid ${C.bo1}`, borderRadius: 6, color: C.t1, fontSize: 11, cursor: "pointer" }}
-                                >
-                                  <KeyRound size={12} />
-                                </button>
-                                <button
-                                  type="button"
-                                  onClick={() => {
-                                    if (window.confirm(`Hapus pengguna "${u.name}" (@${u.username})?`)) {
-                                      delUser(u);
-                                    }
-                                  }}
-                                  className="press"
-                                  title="Hapus"
-                                  style={{ padding: "4px 8px", background: "transparent", border: `1px solid transparent`, borderRadius: 6, color: C.r, fontSize: 11, cursor: "pointer" }}
-                                >
-                                  <Trash2 size={12} />
-                                </button>
-                              </div>
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </TableWrap>
                 </Card>
               ) : (
                 <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(310px, 1fr))", gap: 14 }}>
@@ -6368,175 +6186,107 @@ function AppInner() {
             <button onClick={()=>{const bc=adminScanQ.trim();const found=prods.find(p=>p.barcode===bc&&p.business===adminBiz)||prods.find(p=>p.name.toLowerCase().includes(bc.toLowerCase())&&p.business===adminBiz);if(found){openEditP(found);setAdminScanQ("");}else toast("Tidak ditemukan","warn");}} className="press"
               style={{padding:"10px 14px",background:C.b,border:"none",borderRadius:9,color:C.on,fontWeight:700,fontSize:12,flexShrink:0}}>Cari</button>
           </div>
-          {/* Desktop table */}
-          <div className="hide-mobile">
-            <Card noPad style={{overflow:"hidden"}}>
-              <TableWrap>
-                <table style={{width:"100%",borderCollapse:"collapse",fontSize:12,minWidth:580}}>
-                  <THead cols={["Barcode","Nama","Kategori","HPP","Harga Jual","Margin","Stok","Expire","Add-on","Iklan","Aksi"]}/>
-                  <tbody>{paginatedAdminPs.map((p,i)=>{const mg=p.price>0?((p.price-(p.hpp||0))/p.price*100).toFixed(0)+"%":"-";
-                    return <tr key={p.id} className="hrow" style={{borderTop:`1px solid ${C.bo0}`,background:i%2===0?"transparent":C.bg0}}>
-                      <td style={{padding:"14px 13px",fontFamily:F.mono,fontSize:10,color:C.t2}}>{p.barcode}</td>
-                      <td style={{padding:"14px 13px",fontWeight:600}}>{p.name}</td>
-                      <td style={{padding:"14px 13px",color:C.t2,fontSize:11}}>{p.category}</td>
-                      <td style={{padding:"14px 13px",fontFamily:F.mono,color:C.a,fontSize:11}}>{rp(p.hpp||0)}</td>
-                      <td style={{padding:"14px 13px",fontFamily:F.mono,color:C.g,fontSize:11}}>{rp(p.price)}</td>
-                      <td style={{padding:"14px 13px",fontFamily:F.mono,fontSize:11,color:C.cy}}>{mg}</td>
-                      <td style={{padding:"10px 13px"}}>
-                        <div style={{display:"flex",alignItems:"center",gap:5}}>
-                          <button onClick={e=>{e.stopPropagation();doQuickAdj(p,-1);}} disabled={p.stock===0}
-                            className="press"
-                            style={{width:26,height:26,borderRadius:7,display:"flex",alignItems:"center",justifyContent:"center",
-                              fontSize:16,fontWeight:700,flexShrink:0,
-                              background:p.stock===0?C.bg4:C.r1,
-                              border:`1.5px solid ${p.stock===0?C.bo0:C.r+"44"}`,
-                              color:p.stock===0?C.t3:C.r,
-                              cursor:p.stock===0?"not-allowed":"pointer"}}>−</button>
-                          <span className="mn" style={{minWidth:28,textAlign:"center",fontSize:14,fontWeight:800,
-                            color:p.stock===0?C.r:p.stock<10?C.a:C.t0}}>{p.stock}</span>
-                          <button onClick={e=>{e.stopPropagation();doQuickAdj(p,1);}}
-                            className="press"
-                            style={{width:26,height:26,borderRadius:7,display:"flex",alignItems:"center",justifyContent:"center",
-                              fontSize:16,fontWeight:700,flexShrink:0,
-                              background:C.g1,border:`1.5px solid ${C.g}44`,color:C.g,cursor:"pointer"}}>+</button>
+          {/* Responsive Product Cards Grid */}
+          <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill, minmax(300px, 1fr))",gap:12}}>
+            {paginatedAdminPs.map((p,_pi)=>{
+              const mg=p.price>0?((p.price-(p.hpp||0))/p.price*100).toFixed(0)+"%":"-";
+              const expInfo = p.expireDate ? (()=>{
+                const days=Math.ceil((new Date(p.expireDate)-new Date())/86400000);
+                const expired=days<0;
+                const color=expired?C.r:days<=30?C.r:days<=90?C.a:C.t2;
+                const text=expired?`${Math.abs(days)}h lalu`:days===0?"Hari ini":`${days}h`;
+                return {expired, color, text};
+              })() : null;
+
+              return (
+                <div key={p.id} className="card-in" style={{background:C.bg2,borderRadius:16,border:`1px solid ${C.bo0}`,padding:"14px 15px",display:"flex",flexDirection:"column",justifyContent:"space-between",gap:10,animationDelay:_pi*0.02+"s"}}>
+                  <div>
+                    <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:8,marginBottom:8}}>
+                      <div style={{flex:1,minWidth:0}}>
+                        <div style={{fontSize:14,fontWeight:750,lineHeight:1.3,marginBottom:4,color:C.t0}}>{p.name}</div>
+                        <div style={{display:"flex",gap:5,flexWrap:"wrap",alignItems:"center"}}>
+                          <span className="mn" style={{fontSize:10,color:C.t3}}>{p.barcode}</span>
+                          {p.category&&<span style={{fontSize:10,color:C.t2,background:C.bg3,padding:"1px 7px",borderRadius:20}}>{p.category}</span>}
+                          {(p.addons||[]).length>0&&<span style={{fontSize:10,background:C.vi1,color:C.vi,padding:"1px 7px",borderRadius:20,fontWeight:700}}>+{(p.addons||[]).length} add-on</span>}
+                          {expInfo&&(
+                            <span className="mn" style={{fontSize:10,fontWeight:700,color:expInfo.color,background:expInfo.color+"18",padding:"1px 7px",borderRadius:20}}>
+                              ⏳ {expInfo.text}
+                            </span>
+                          )}
                         </div>
-                      </td>
-                      <td style={{padding:"12px 13px"}}>
-                        {p.expireDate?(()=>{
-                          const days=Math.ceil((new Date(p.expireDate)-new Date())/86400000);
-                          const expired=days<0;
-                          const color=expired?C.r:days<=30?C.r:days<=90?C.a:C.t2;
-                          return <span className="mn" style={{fontSize:10,fontWeight:700,color}}>
-                            {expired?`${Math.abs(days)}h lalu`:days===0?"Hari ini":
-                             days<=30?`${days}h`:days<=90?`${days}h`:`${days}h`}
-                          </span>;
-                        })():<span style={{fontSize:10,color:C.t3}}>—</span>}
-                      </td>
-                      <td style={{padding:"14px 13px"}}>
-                        {(p.addons||[]).length>0
-                          ?<span style={{padding:"2px 8px",borderRadius:20,fontSize:9.5,fontWeight:700,background:C.vi1,color:C.vi,border:`1px solid ${C.vi}22`,cursor:"pointer"}}
-                             title={(p.addons||[]).map(id=>(prods||[]).find(x=>x&&x.id===id)?.name||id).join(", ")}>
-                             +{(p.addons||[]).length} item</span>
-                          :<span style={{fontSize:10,color:C.t3}}>—</span>}
-                      </td>
-                      <td style={{padding:"12px 13px"}}>
-                        <button onClick={async()=>{
-                          try{
-                            const next=!p.advertised;
-                            await fbUpdateProduct(p.id,{advertised:next},user.name);
-                            toast(next?`📢 ${p.name} diiklankan di etalase`:`${p.name} dicabut dari iklan`);
-                          }catch(err){toast("Gagal: "+err.message,"err");}
-                        }} className="press" title={p.advertised?"Klik untuk cabut dari iklan":"Klik untuk iklankan di etalase"}
-                          style={{padding:"4px 9px",borderRadius:20,fontSize:10.5,fontWeight:700,
-                            background:p.advertised?C.pri1:C.bg3,
-                            border:`1.5px solid ${p.advertised?C.pri:C.bo0}`,
-                            color:p.advertised?C.pri:C.t3,display:"inline-flex",alignItems:"center",gap:5,cursor:"pointer"}}>
-                          <Megaphone size={12}/> {p.advertised?"Aktif":"Off"}
-                        </button>
-                      </td>
-                      <td style={{padding:"14px 13px",whiteSpace:"nowrap"}}>
-                        <button onClick={()=>openEditP(p)} className="press"
-                          style={{marginRight:4,padding:"3px 9px",
-                            background:editPid===p.id&&pModal?"transparent":"transparent",
-                            border:`1px solid ${editPid===p.id&&pModal?C.g:C.bo1}`,
-                            borderRadius:6,color:editPid===p.id&&pModal?C.g:C.t0,fontSize:10,fontWeight:editPid===p.id&&pModal?700:400}}>
-                          {editPid===p.id&&pModal?"Sedang diedit":"Edit"}</button>
-                        <button onClick={()=>fbDeleteProduct(p.id,p.name,p.business,user.name).then(()=>toast("Produk dihapus")).catch(e=>toast(e.message,"err"))} className="press" style={{padding:"3px 9px",background:C.r1,border:`1px solid ${C.r}22`,borderRadius:6,color:C.r,fontSize:10}}>Hapus</button>
-                      </td>
-                    </tr>
-                    ;})}
-                  </tbody>
-                </table>
-              </TableWrap>
-              <TablePagination
-                page={prodPage}
-                perPage={prodPerPage}
-                totalItems={adminPs.length}
-                onPageChange={setProdPage}
-                onPerPageChange={setProdPerPage}
-                perPageOptions={[20, 50, 100, 200]}
-              />
-            </Card>
-          </div>
-          {/* Mobile card list */}
-          <div className="hide-desktop mobile-card-list">
-            {paginatedAdminPs.map((p,_pi)=>{const mg=p.price>0?((p.price-(p.hpp||0))/p.price*100).toFixed(0)+"%":"-";
-              return <div key={p.id} className="card-in" style={{background:C.bg2,borderRadius:16,border:`1px solid ${C.bo0}`,padding:"14px 15px",animationDelay:_pi*0.04+"s"}}>
-                <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:8,marginBottom:8}}>
-                  <div style={{flex:1,minWidth:0}}>
-                    <div style={{fontSize:14,fontWeight:700,lineHeight:1.3,marginBottom:3}}>{p.name}</div>
-                    <div style={{display:"flex",gap:6,flexWrap:"wrap",alignItems:"center"}}>
-                      <span className="mn" style={{fontSize:10,color:C.t3}}>{p.barcode}</span>
-                      {p.category&&<span style={{fontSize:10,color:C.t2,background:C.bg3,padding:"1px 7px",borderRadius:20}}>{p.category}</span>}
-                      {(p.addons||[]).length>0&&<span style={{fontSize:10,background:C.vi1,color:C.vi,padding:"1px 7px",borderRadius:20,fontWeight:700}}>+{(p.addons||[]).length} add-on</span>}
+                      </div>
+                      {/* Stock +/- controls */}
+                      <div style={{display:"flex",alignItems:"center",gap:6,flexShrink:0}}>
+                        <button onClick={e=>{e.stopPropagation();doQuickAdj(p,-1);}} disabled={p.stock===0}
+                          className="press"
+                          style={{width:30,height:30,borderRadius:8,display:"flex",alignItems:"center",justifyContent:"center",
+                            fontSize:18,fontWeight:700,
+                            background:p.stock===0?C.bg4:C.r1,
+                            border:`1.5px solid ${p.stock===0?C.bo0:C.r+"44"}`,
+                            color:p.stock===0?C.t3:C.r,
+                            cursor:p.stock===0?"not-allowed":"pointer"}}>−</button>
+                        <div style={{textAlign:"center",minWidth:32}}>
+                          <div className="mn" style={{fontSize:18,fontWeight:800,lineHeight:1,
+                            color:p.stock===0?C.r:p.stock<10?C.a:C.t0}}>{p.stock}</div>
+                          <div style={{fontSize:9,color:C.t3,marginTop:1}}>stok</div>
+                        </div>
+                        <button onClick={e=>{e.stopPropagation();doQuickAdj(p,1);}}
+                          className="press"
+                          style={{width:30,height:30,borderRadius:8,display:"flex",alignItems:"center",justifyContent:"center",
+                            fontSize:18,fontWeight:700,
+                            background:C.g1,border:`1.5px solid ${C.g}44`,color:C.g,cursor:"pointer"}}>+</button>
+                      </div>
+                    </div>
+
+                    <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:8,background:C.bg3,borderRadius:10,padding:"9px 12px"}}>
+                      <div>
+                        <div style={{fontSize:11,color:C.t3,fontWeight:700,textTransform:"none",letterSpacing:0,marginBottom:2}}>HPP</div>
+                        <div className="mn" style={{fontSize:12,color:C.a,fontWeight:700}}>{rp(p.hpp||0)}</div>
+                      </div>
+                      <div>
+                        <div style={{fontSize:11,color:C.t3,fontWeight:700,textTransform:"none",letterSpacing:0,marginBottom:2}}>Harga Jual</div>
+                        <div className="mn" style={{fontSize:12,color:C.g,fontWeight:700}}>{rp(p.price)}</div>
+                      </div>
+                      <div>
+                        <div style={{fontSize:11,color:C.t3,fontWeight:700,textTransform:"none",letterSpacing:0,marginBottom:2}}>Margin</div>
+                        <div className="mn" style={{fontSize:12,color:C.cy,fontWeight:700}}>{mg}</div>
+                      </div>
                     </div>
                   </div>
-                  {/* Stock +/- controls */}
-                  <div style={{display:"flex",alignItems:"center",gap:6,flexShrink:0}}>
-                    <button onClick={e=>{e.stopPropagation();doQuickAdj(p,-1);}} disabled={p.stock===0}
-                      className="press"
-                      style={{width:30,height:30,borderRadius:8,display:"flex",alignItems:"center",justifyContent:"center",
-                        fontSize:18,fontWeight:700,
-                        background:p.stock===0?C.bg4:C.r1,
-                        border:`1.5px solid ${p.stock===0?C.bo0:C.r+"44"}`,
-                        color:p.stock===0?C.t3:C.r,
-                        cursor:p.stock===0?"not-allowed":"pointer"}}>−</button>
-                    <div style={{textAlign:"center",minWidth:32}}>
-                      <div className="mn" style={{fontSize:20,fontWeight:800,lineHeight:1,
-                        color:p.stock===0?C.r:p.stock<10?C.a:C.t0}}>{p.stock}</div>
-                      <div style={{fontSize:9,color:C.t3,marginTop:1}}>stok</div>
-                    </div>
-                    <button onClick={e=>{e.stopPropagation();doQuickAdj(p,1);}}
-                      className="press"
-                      style={{width:30,height:30,borderRadius:8,display:"flex",alignItems:"center",justifyContent:"center",
-                        fontSize:18,fontWeight:700,
-                        background:C.g1,border:`1.5px solid ${C.g}44`,color:C.g,cursor:"pointer"}}>+</button>
+
+                  <div style={{display:"flex",gap:7,paddingTop:4,borderTop:`1px solid ${C.bo0}`}}>
+                    <button onClick={async()=>{
+                      try{
+                        const next=!p.advertised;
+                        await fbUpdateProduct(p.id,{advertised:next},user.name);
+                        toast(next?`📢 ${p.name} diiklankan`:`${p.name} dicabut dari iklan`);
+                      }catch(err){toast("Gagal: "+err.message,"err");}
+                    }} className="press" title={p.advertised?"Klik untuk cabut dari iklan":"Klik untuk iklankan di etalase"}
+                      style={{padding:"8px 11px",background:p.advertised?C.pri1:C.bg3,border:`1.5px solid ${p.advertised?C.pri:C.bo0}`,borderRadius:9,color:p.advertised?C.pri:C.t2,fontSize:11.5,fontWeight:700,display:"flex",alignItems:"center",gap:5,cursor:"pointer"}}>
+                        <Megaphone size={14}/> {p.advertised?"Aktif":"Iklan"}
+                    </button>
+                    <button onClick={()=>openEditP(p)} className="press"
+                      style={{flex:1,padding:"8px 12px",
+                        background:editPid===p.id&&pModal?C.g1:"transparent",
+                        border:`1.5px solid ${editPid===p.id&&pModal?C.g:C.bo1}`,
+                        borderRadius:9,color:editPid===p.id&&pModal?C.g:C.t0,fontSize:12,fontWeight:650,fontFamily:F.sans,cursor:"pointer",textAlign:"center"}}>
+                      {editPid===p.id&&pModal?"Sedang diedit":"Edit"}
+                    </button>
+                    <button onClick={()=>fbDeleteProduct(p.id,p.name,p.business,user.name).then(()=>toast("Produk dihapus")).catch(e=>toast(e.message,"err"))} className="press" title="Hapus produk" style={{padding:"8px 12px",background:C.r1,border:`1.5px solid ${C.r}33`,borderRadius:9,color:C.r,fontSize:12,fontFamily:F.sans,display:"grid",placeItems:"center",cursor:"pointer"}}><Trash2 size={14}/></button>
                   </div>
                 </div>
-                <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:8,marginBottom:10,background:C.bg3,borderRadius:10,padding:"10px 12px"}}>
-                  <div>
-                    <div style={{fontSize:12,color:C.t3,fontWeight:700,textTransform:"none",letterSpacing:0,marginBottom:2}}>HPP</div>
-                    <div className="mn" style={{fontSize:12,color:C.a,fontWeight:700}}>{rp(p.hpp||0)}</div>
-                  </div>
-                  <div>
-                    <div style={{fontSize:12,color:C.t3,fontWeight:700,textTransform:"none",letterSpacing:0,marginBottom:2}}>Harga Jual</div>
-                    <div className="mn" style={{fontSize:12,color:C.g,fontWeight:700}}>{rp(p.price)}</div>
-                  </div>
-                  <div>
-                    <div style={{fontSize:12,color:C.t3,fontWeight:700,textTransform:"none",letterSpacing:0,marginBottom:2}}>Margin</div>
-                    <div className="mn" style={{fontSize:12,color:C.cy,fontWeight:700}}>{mg}</div>
-                  </div>
-                </div>
-                <div style={{display:"flex",gap:8}}>
-                  <button onClick={async()=>{
-                    try{
-                      const next=!p.advertised;
-                      await fbUpdateProduct(p.id,{advertised:next},user.name);
-                      toast(next?`📢 ${p.name} diiklankan`:`${p.name} dicabut dari iklan`);
-                    }catch(err){toast("Gagal: "+err.message,"err");}
-                  }} className="press"
-                    style={{padding:"11px 14px",background:p.advertised?C.pri1:C.bg3,border:`1.5px solid ${p.advertised?C.pri:C.bo0}`,borderRadius:10,color:p.advertised?C.pri:C.t2,fontSize:13,fontWeight:700,display:"flex",alignItems:"center",gap:6}}>
-                      <Megaphone size={16}/> {p.advertised?"Iklan ON":"Iklankan"}
-                  </button>
-                  <button onClick={()=>openEditP(p)} className="press"
-                    style={{flex:1,padding:"11px",
-                      background:editPid===p.id&&pModal?C.g1:"transparent",
-                      border:`1.5px solid ${editPid===p.id&&pModal?C.g:C.bo1}`,
-                      borderRadius:10,color:editPid===p.id&&pModal?C.g:C.t0,fontSize:13,fontWeight:600,fontFamily:F.sans}}>
-                    {editPid===p.id&&pModal?"Sedang diedit":"Edit"}</button>
-                  <button onClick={()=>fbDeleteProduct(p.id,p.name,p.business,user.name).then(()=>toast("Produk dihapus")).catch(e=>toast(e.message,"err"))} className="press" style={{padding:"11px 16px",background:C.r1,border:`1.5px solid ${C.r}33`,borderRadius:10,color:C.r,fontSize:13,fontFamily:F.sans}}><Ico e="🗑"/></button>
-                </div>
-              </div>;})}
-            <TablePagination
-              page={prodPage}
-              perPage={prodPerPage}
-              totalItems={adminPs.length}
-              onPageChange={setProdPage}
-              onPerPageChange={setProdPerPage}
-              perPageOptions={[20, 50, 100, 200]}
-              style={{ borderRadius: 14, border: `1px solid ${C.bo0}`, marginTop: 10 }}
-            />
+              );
+            })}
           </div>
+          <TablePagination
+            page={prodPage}
+            perPage={prodPerPage}
+            totalItems={adminPs.length}
+            onPageChange={setProdPage}
+            onPerPageChange={setProdPerPage}
+            perPageOptions={[20, 50, 100, 200]}
+            style={{ borderRadius: 14, border: `1px solid ${C.bo0}`, marginTop: 14 }}
+          />
         </div>}
 
 
@@ -7014,23 +6764,39 @@ function AppInner() {
             <SimpleBarChart data={dailyData} keys={["rev","profit"]} colors={[C.g,C.cy]} height={200} labelKey="date"/>
           </Card>}
           {/* Per kasir */}
-          {kasirBreakdown.length>0&&<Card noPad style={{overflow:"hidden"}}>
-            <div style={{padding:"12px 14px",borderBottom:`1px solid ${C.bo0}`}}>
-              <span style={{fontSize:12,fontWeight:700,color:C.t2,textTransform:"none",letterSpacing:0}}>Performa per Kasir</span>
+          {kasirBreakdown.length>0&&<Card style={{padding:"14px 16px"}}>
+            <div style={{fontSize:12,fontWeight:700,color:C.t2,textTransform:"none",letterSpacing:0,marginBottom:12}}>Performa per Kasir</div>
+            <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill, minmax(250px, 1fr))",gap:10}}>
+              {kasirBreakdown.map(k=>(
+                <div key={k.name} className="card-in" style={{background:C.bg3,borderRadius:12,padding:"12px 14px",border:`1px solid ${C.bo0}`,display:"flex",flexDirection:"column",gap:8}}>
+                  <div style={{display:"flex",alignItems:"center",gap:8}}>
+                    <Avatar name={k.name} size={32}/>
+                    <div>
+                      <div style={{fontWeight:750,fontSize:13.5,color:C.t0}}>{k.name}</div>
+                      <div style={{fontSize:11,color:C.t2}}><b className="mn">{k.trx}</b> transaksi</div>
+                    </div>
+                  </div>
+                  <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:6,background:C.bg2,borderRadius:8,padding:"8px 10px",fontSize:11}}>
+                    <div>
+                      <div style={{color:C.t3,fontSize:10}}>Pendapatan</div>
+                      <div className="mn" style={{color:C.g,fontWeight:750,fontSize:12}}>{rp(k.rev)}</div>
+                    </div>
+                    <div>
+                      <div style={{color:C.t3,fontSize:10}}>Laba</div>
+                      <div className="mn" style={{color:C.cy,fontWeight:750,fontSize:12}}>{rp(k.profit)}</div>
+                    </div>
+                    <div>
+                      <div style={{color:C.t3,fontSize:10}}>Diskon</div>
+                      <div className="mn" style={{color:C.r,fontWeight:700,fontSize:11}}>{rp(k.discount)}</div>
+                    </div>
+                    <div>
+                      <div style={{color:C.t3,fontSize:10}}>Rata-rata/Trx</div>
+                      <div className="mn" style={{color:C.t1,fontWeight:700,fontSize:11}}>{k.trx>0?rp(Math.floor(k.rev/k.trx)):"-"}</div>
+                    </div>
+                  </div>
+                </div>
+              ))}
             </div>
-            <TableWrap>
-              <table style={{width:"100%",borderCollapse:"collapse",fontSize:12,minWidth:500}}>
-                <THead cols={["Kasir","Transaksi","Pendapatan","Laba","Diskon","Rata-rata/Trx"]}/>
-                <tbody>{kasirBreakdown.map((k,i)=><tr key={k.name} className="hrow" style={{borderTop:`1px solid ${C.bo0}`,background:i%2===0?"transparent":C.bg0}}>
-                  <td style={{padding:"14px 13px",fontWeight:700}}>{k.name}</td>
-                  <td style={{padding:"14px 13px",fontFamily:F.mono}}>{k.trx}</td>
-                  <td style={{padding:"14px 13px",fontFamily:F.mono,color:C.g,fontSize:11}}>{rp(k.rev)}</td>
-                  <td style={{padding:"14px 13px",fontFamily:F.mono,color:C.cy,fontSize:11}}>{rp(k.profit)}</td>
-                  <td style={{padding:"14px 13px",fontFamily:F.mono,color:C.r,fontSize:11}}>{rp(k.discount)}</td>
-                  <td style={{padding:"14px 13px",fontFamily:F.mono,fontSize:11}}>{k.trx>0?rp(Math.floor(k.rev/k.trx)):"-"}</td>
-                </tr>)}</tbody>
-              </table>
-            </TableWrap>
           </Card>}
           {/* Detail Penjualan Per Produk — collapsible, di bawah invoice */}
           <div style={{background:C.bg2,borderRadius:14,border:`1px solid ${C.bo0}`,overflow:"hidden"}}>
@@ -7089,34 +6855,31 @@ function AppInner() {
                 ],"Detail Penjualan","detail_penjualan")} className="press"
                   style={{padding:"5px 12px",background:C.g1,border:`1px solid ${C.g}33`,borderRadius:8,color:C.g,fontSize:11,fontWeight:700,fontFamily:F.sans}}>⬇ Excel</button>
               </div>
-              {/* Desktop table */}
-              <div className="hide-mobile"><TableWrap>
-                <table style={{width:"100%",borderCollapse:"collapse",fontSize:12,minWidth:620}}>
-                  <THead cols={["Tanggal","Nama Pembeli","Kasir","Produk","Qty","Harga","Subtotal","Bayar"]}/>
-                  <tbody>{paginatedRows.map((r,i)=>(
-                    <tr key={i} className="hrow" style={{borderTop:`1px solid ${C.bo0}`,background:i%2===0?"transparent":C.bg0}}>
-                      <td style={{padding:"11px 13px",fontSize:10,color:C.t2,whiteSpace:"nowrap"}}>{r.date}</td>
-                      <td style={{padding:"11px 13px",fontWeight:600,fontSize:12}}>
-                        <div style={{display:"flex",alignItems:"center",gap:5}}>
-                          {r.namaPembeli!=="Umum"&&<span style={{fontSize:13}}><Ico e="🧑"/></span>}
-                          <span style={{color:r.namaPembeli==="Umum"?C.t2:C.t0}}>{r.namaPembeli}</span>
+              <div style={{padding:"12px 14px",display:"grid",gridTemplateColumns:"repeat(auto-fill, minmax(290px, 1fr))",gap:10}}>
+                {paginatedRows.map((r,i)=>(
+                  <div key={i} className="card-in" style={{background:C.bg3,borderRadius:12,padding:"12px 14px",border:`1px solid ${C.bo0}`,display:"flex",flexDirection:"column",justifyContent:"space-between",gap:8}}>
+                    <div>
+                      <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:8,marginBottom:4}}>
+                        <div style={{minWidth:0}}>
+                          <div style={{fontWeight:750,fontSize:13.5,color:C.t0}}>{r.produk}</div>
+                          <div className="mn" style={{fontSize:10,color:C.t3,marginTop:1}}>{r.barcode}</div>
                         </div>
-                      </td>
-                      <td style={{padding:"11px 13px",fontSize:11,color:C.t2}}>{r.kasir}</td>
-                      <td style={{padding:"11px 13px",fontWeight:500}}>
-                        {r.produk}
-                        <div className="mn" style={{fontSize:9.5,color:C.t3,marginTop:1}}>{r.barcode}</div>
-                      </td>
-                      <td style={{padding:"11px 13px",fontFamily:F.mono,fontWeight:700,textAlign:"center"}}>{r.qty}</td>
-                      <td style={{padding:"11px 13px",fontFamily:F.mono,color:C.t1,fontSize:11}}>{rp(r.harga)}</td>
-                      <td style={{padding:"11px 13px",fontFamily:F.mono,color:C.g,fontSize:11,fontWeight:700}}>{rp(r.subtotalItem)}</td>
-                      <td style={{padding:"11px 13px",fontSize:10}}>
-                        <span style={{padding:"2px 7px",borderRadius:20,background:C.cy1,color:C.cy,fontSize:9.5,fontWeight:700}}>{r.payment}</span>
-                      </td>
-                    </tr>
-                  ))}</tbody>
-                </table>
-              </TableWrap>
+                        <div className="mn" style={{fontSize:15,fontWeight:800,color:C.g,whiteSpace:"nowrap"}}>{rp(r.subtotalItem)}</div>
+                      </div>
+                    </div>
+                    <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:6,background:C.bg2,borderRadius:8,padding:"8px 10px",fontSize:11}}>
+                      <div><span style={{color:C.t3,fontSize:10}}>Pembeli: </span><b style={{color:r.namaPembeli==="Umum"?C.t2:C.t0}}>{r.namaPembeli}</b></div>
+                      <div><span style={{color:C.t3,fontSize:10}}>Qty: </span><b>{r.qty} × {rp(r.harga)}</b></div>
+                      <div><span style={{color:C.t3,fontSize:10}}>Kasir: </span><span>{r.kasir}</span></div>
+                      <div><span style={{color:C.t3,fontSize:10}}>Bayar: </span><span style={{padding:"1px 6px",borderRadius:12,background:C.cy1,color:C.cy,fontSize:9.5,fontWeight:750}}>{r.payment}</span></div>
+                    </div>
+                    <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",fontSize:10.5,color:C.t2,paddingTop:2}}>
+                      <BizChip biz={r.bisnis} sm/>
+                      <span>{r.date}</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
               <TablePagination
                 page={lapProdPage}
                 perPage={lapProdPerPage}
@@ -7124,37 +6887,8 @@ function AppInner() {
                 onPageChange={setLapProdPage}
                 onPerPageChange={setLapProdPerPage}
                 perPageOptions={[10, 20, 50, 100]}
+                style={{ borderRadius: 14, border: `1px solid ${C.bo0}`, margin: "0 14px 14px" }}
               />
-              </div>
-              {/* Mobile cards */}
-              <div className="hide-desktop" style={{padding:"8px 10px",display:"flex",flexDirection:"column",gap:8}}>
-                {paginatedRows.map((r,i)=>(
-                  <div key={i} style={{background:C.bg3,borderRadius:10,padding:"10px 12px",border:`1px solid ${C.bo0}`}}>
-                    <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:6}}>
-                      <div>
-                        <div style={{fontWeight:700,fontSize:13}}>{r.produk}</div>
-                        <div className="mn" style={{fontSize:10,color:C.t2,marginTop:1}}>{r.barcode}</div>
-                      </div>
-                      <div className="mn" style={{fontSize:14,fontWeight:800,color:C.g}}>{rp(r.subtotalItem)}</div>
-                    </div>
-                    <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:4,marginTop:6}}>
-                      <div style={{fontSize:10,color:C.t2}}><span style={{color:C.t3}}>Pembeli: </span><b>{r.namaPembeli}</b></div>
-                      <div style={{fontSize:10,color:C.t2}}><span style={{color:C.t3}}>Qty: </span><b>{r.qty} × {rp(r.harga)}</b></div>
-                      <div style={{fontSize:10,color:C.t2}}><span style={{color:C.t3}}>Tanggal: </span>{r.date}</div>
-                      <div style={{fontSize:10,color:C.t2}}><span style={{color:C.t3}}>Bayar: </span>{r.payment}</div>
-                    </div>
-                  </div>
-                ))}
-                <TablePagination
-                  page={lapProdPage}
-                  perPage={lapProdPerPage}
-                  totalItems={rows.length}
-                  onPageChange={setLapProdPage}
-                  onPerPageChange={setLapProdPerPage}
-                  perPageOptions={[10, 20, 50, 100]}
-                  style={{ borderRadius: 14, border: `1px solid ${C.bo0}`, marginTop: 8 }}
-                />
-              </div>
             </Card>;
             })()}
             </div>}
@@ -7380,32 +7114,44 @@ function AppInner() {
             </div>
             {list.length===0
               ? <Card><EmptyState icon={<FileText size={24} strokeWidth={1.6}/>} title="Belum ada jurnal pada periode ini" hint="Ubah periode atau filter bisnis. Penjualan dan biaya otomatis dicatat di sini."/></Card>
-              : <Card noPad style={{overflow:"hidden"}}>
-                  <TableWrap compact maxH="58vh">
-                    <table style={{width:"100%",borderCollapse:"collapse",minWidth:880}}>
-                      <THead cols={["Tanggal","Ref","Keterangan","Akun","Debit","Kredit","Saldo"]}/>
-                      <tbody>{pageRows.map((r,i)=>{
-                        const baru=i===0||pageRows[i-1].ref!==r.ref;
-                        const prev=i>0?pageRows[i-1].saldo:r.saldo;
-                        const ganti=r.saldo!==prev;
-                        const kas=r.akun==="Kas & Bank";
-                        return <tr key={i} className="hrow" style={{borderTop:baru?`1px solid ${C.bo1}`:`1px solid ${C.bo0}`}}>
-                          <td style={{padding:"10px 14px",whiteSpace:"nowrap",color:C.t2,fontSize:12.5,verticalAlign:"top"}}>{baru?shortDate(r.date):""}</td>
-                          <td style={{padding:"10px 14px",verticalAlign:"top"}}>
-                            <span style={{fontSize:11.5,fontWeight:800,color:C.pri,whiteSpace:"nowrap"}}>{r.ref}</span>
-                            <div style={{marginTop:5}}><BizChip biz={r.biz} sm/></div>
-                          </td>
-                          <td style={{padding:"10px 14px",color:C.t1,fontSize:13,verticalAlign:"top"}}>{r.desc}</td>
-                          <td style={{padding:"10px 14px",fontWeight:650,fontSize:13,verticalAlign:"top",whiteSpace:"nowrap"}}>{r.akun}</td>
-                          <td className="mn" style={{padding:"10px 14px",textAlign:"right",whiteSpace:"nowrap",fontWeight:700,color:r.d?C.t0:C.t3}}>{r.d?rp(r.d):"–"}</td>
-                          <td className="mn" style={{padding:"10px 14px",textAlign:"right",whiteSpace:"nowrap",fontWeight:700,color:r.k?C.t0:C.t3}}>{r.k?rp(r.k):"–"}</td>
-                          <td className="mn" style={{padding:"10px 14px",textAlign:"right",whiteSpace:"nowrap",
-                            fontWeight:ganti&&kas?800:600,color:(r.saldo??0)<0?C.r:(kas?C.g:(ganti?C.t1:C.t3)),
-                            opacity:ganti?1:.75}}>{rp(r.saldo??0)}</td>
-                        </tr>;})}</tbody>
-                    </table>
-                  </TableWrap>
-                </Card>}
+              : <div>
+                  <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill, minmax(310px, 1fr))",gap:10}}>
+                    {pageRows.map((r,i)=>{
+                      const kas=r.akun==="Kas & Bank";
+                      return (
+                        <div key={i} className="card-in" style={{background:C.bg2,borderRadius:14,border:`1px solid ${C.bo0}`,padding:"13px 15px",display:"flex",flexDirection:"column",justifyContent:"space-between",gap:8}}>
+                          <div>
+                            <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:8,marginBottom:4}}>
+                              <div style={{display:"flex",alignItems:"center",gap:6,flexWrap:"wrap"}}>
+                                <span style={{fontSize:11.5,fontWeight:800,color:C.pri}}>{r.ref}</span>
+                                <BizChip biz={r.biz} sm/>
+                              </div>
+                              <span style={{fontSize:11,color:C.t2}}>{shortDate(r.date)}</span>
+                            </div>
+                            <div style={{fontSize:13,fontWeight:750,color:C.t0,marginTop:2}}>{r.akun}</div>
+                            <div style={{fontSize:12,color:C.t2,marginTop:2,lineHeight:1.35}}>{r.desc}</div>
+                          </div>
+
+                          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:6,background:C.bg3,borderRadius:8,padding:"7px 10px",fontSize:11}}>
+                            <div>
+                              <span style={{color:C.t3,fontSize:10}}>DEBIT: </span>
+                              <b className="mn" style={{color:r.d?C.b:C.t3}}>{r.d?rp(r.d):"–"}</b>
+                            </div>
+                            <div>
+                              <span style={{color:C.t3,fontSize:10}}>KREDIT: </span>
+                              <b className="mn" style={{color:r.k?C.p:C.t3}}>{r.k?rp(r.k):"–"}</b>
+                            </div>
+                          </div>
+
+                          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",fontSize:11,paddingTop:4,borderTop:`1px solid ${C.bo0}`}}>
+                            <span style={{color:C.t3,fontSize:10.5}}>Saldo Kas Berjalan</span>
+                            <span className="mn" style={{fontWeight:750,fontSize:12,color:(r.saldo??0)<0?C.r:(kas?C.g:C.t1)}}>{rp(r.saldo??0)}</span>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>}
             <TablePagination page={jrnlPage} perPage={jrnlPerPage} totalItems={list.length}
               onPageChange={setJrnlPage} onPerPageChange={setJrnlPerPage} perPageOptions={[20,50,100]}/>
             <div style={{fontSize:12,color:C.t2,lineHeight:1.65}}>
@@ -7604,21 +7350,27 @@ function AppInner() {
             {list.length===0?<Card><EmptyState icon={<ShoppingBasket size={24} strokeWidth={1.6}/>} title="Belum ada catatan biaya" hint="Catat pengeluaran seperti listrik, sewa, kemasan, atau transport, lalu hasilnya masuk ke Jurnal dan Laporan Keuangan."/></Card>:(()=>{
               const paginatedExpenses = list.slice((expPage - 1) * expPerPage, expPage * expPerPage);
               return <>
-              <div className="hide-mobile"><Card noPad style={{overflow:"hidden"}}><TableWrap>
-                <table style={{width:"100%",borderCollapse:"collapse",minWidth:720}}>
-                  <THead cols={["Tanggal","Bisnis","Akun","Keterangan","Dibayar","Dicatat oleh","Jumlah",""]}/>
-                  <tbody>{paginatedExpenses.map((e,i)=><tr key={e.id} className="hrow" style={{borderTop:`1px solid ${C.bo0}`,background:i%2===0?"transparent":C.bg0}}>
-                    <td style={{padding:"12px 14px",whiteSpace:"nowrap",color:C.t2}}>{e.date}</td>
-                    <td style={{padding:"12px 14px"}}><BizChip biz={e.business} sm/></td>
-                    <td style={{padding:"12px 14px",fontWeight:600}}>{e.category}</td>
-                    <td style={{padding:"12px 14px",color:C.t1}}>{e.description||"–"}</td>
-                    <td style={{padding:"12px 14px",color:C.t2}}>{e.payment}</td>
-                    <td style={{padding:"12px 14px",color:C.t2}}>{e.by}</td>
-                    <td className="mn" style={{padding:"12px 14px",fontWeight:800,color:C.r,textAlign:"right",whiteSpace:"nowrap"}}>{rp(e.amount)}</td>
-                    <td style={{padding:"8px 14px"}}><button aria-label="Hapus" onClick={()=>del(e)} className="press" style={{width:36,height:36,border:"none",background:C.r1,color:C.r,borderRadius:10,display:"grid",placeItems:"center"}}><Trash2 size={16}/></button></td>
-                  </tr>)}</tbody>
-                </table>
-              </TableWrap>
+              <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill, minmax(310px, 1fr))",gap:12}}>
+                {paginatedExpenses.map(e => (
+                  <div key={e.id} className="card-in" style={{background:C.bg2,borderRadius:16,border:`1px solid ${C.bo0}`,padding:"14px 16px",display:"flex",flexDirection:"column",justifyContent:"space-between",gap:10}}>
+                    <div>
+                      <div style={{display:"flex",justifyContent:"space-between",gap:10,alignItems:"flex-start"}}>
+                        <div style={{minWidth:0}}>
+                          <div style={{fontWeight:750,fontSize:14.5,color:C.t0}}>{e.category}</div>
+                          <div style={{fontSize:13,color:C.t1,marginTop:3,wordBreak:"break-word"}}>{e.description||"–"}</div>
+                        </div>
+                        <div className="mn" style={{fontWeight:800,fontSize:16,color:C.r,whiteSpace:"nowrap"}}>{rp(e.amount)}</div>
+                      </div>
+                    </div>
+                    <div style={{display:"flex",gap:8,alignItems:"center",flexWrap:"wrap",paddingTop:8,borderTop:`1px solid ${C.bo0}`}}>
+                      <BizChip biz={e.business} sm/>
+                      <span style={{fontSize:11.5,color:C.t2}}>{e.date} · {e.payment} · Oleh: <b style={{color:C.t1}}>{e.by}</b></span>
+                      <span style={{flex:1}}/>
+                      <button aria-label="Hapus" onClick={()=>del(e)} className="press" title="Hapus pengeluaran" style={{width:32,height:32,border:"none",background:C.r1,color:C.r,borderRadius:8,display:"grid",placeItems:"center",cursor:"pointer"}}><Trash2 size={15}/></button>
+                    </div>
+                  </div>
+                ))}
+              </div>
               <TablePagination
                 page={expPage}
                 perPage={expPerPage}
@@ -7626,33 +7378,8 @@ function AppInner() {
                 onPageChange={setExpPage}
                 onPerPageChange={setExpPerPage}
                 perPageOptions={[10, 20, 50]}
+                style={{ borderRadius: 14, border: `1px solid ${C.bo0}`, marginTop: 12 }}
               />
-              </Card></div>
-              <div className="hide-desktop mobile-card-list">
-                {paginatedExpenses.map(e=><div key={e.id} className="card-in" style={{background:C.bg2,borderRadius:16,border:`1px solid ${C.bo0}`,padding:"13px 15px"}}>
-                  <div style={{display:"flex",justifyContent:"space-between",gap:10,alignItems:"flex-start"}}>
-                    <div style={{minWidth:0}}>
-                      <div style={{fontWeight:700,fontSize:14.5}}>{e.category}</div>
-                      <div style={{fontSize:13,color:C.t1,marginTop:2}}>{e.description||"–"}</div>
-                    </div>
-                    <div className="mn" style={{fontWeight:800,fontSize:16,color:C.r,whiteSpace:"nowrap"}}>{rp(e.amount)}</div>
-                  </div>
-                  <div style={{display:"flex",gap:8,alignItems:"center",flexWrap:"wrap",marginTop:8}}>
-                    <BizChip biz={e.business} sm/><span style={{fontSize:12,color:C.t2}}>{e.date} · {e.payment} · {e.by}</span>
-                    <span style={{flex:1}}/>
-                    <button aria-label="Hapus" onClick={()=>del(e)} className="press" style={{width:38,height:38,border:"none",background:C.r1,color:C.r,borderRadius:10,display:"grid",placeItems:"center"}}><Trash2 size={17}/></button>
-                  </div>
-                </div>)}
-                <TablePagination
-                  page={expPage}
-                  perPage={expPerPage}
-                  totalItems={list.length}
-                  onPageChange={setExpPage}
-                  onPerPageChange={setExpPerPage}
-                  perPageOptions={[10, 20, 50]}
-                  style={{ borderRadius: 14, border: `1px solid ${C.bo0}`, marginTop: 10 }}
-                />
-              </div>
             </>;
             })()}
           </div>;
@@ -7715,22 +7442,56 @@ function AppInner() {
               <Stat icon="📋" label="Biaya operasional" value={rp(main.opex)} color={C.a}/>
               <Stat icon="🎯" label={main.np>=0?"Laba bersih":"Rugi bersih"} value={rpS(main.np)} color={main.np>=0?C.g:C.r} sub={`Margin ${main.nm.toFixed(1)}%`}/>
             </div>
-            <Card noPad style={{overflow:"hidden"}}>
+            <Card style={{padding:0,overflow:"hidden",borderRadius:14}}>
               <div style={{overflowX:"auto"}}>
-                <table style={{width:"100%",borderCollapse:"collapse",minWidth:plBiz==="ALL"?560:340}}>
-                  <thead><tr>
-                    <th style={{padding:"12px 16px",textAlign:"left",fontSize:12,fontWeight:700,color:C.t2,background:C.bg3,borderBottom:`1px solid ${C.bo1}`}}>Keterangan</th>
-                    {colIds.map(id=><th key={id} style={{padding:"12px 16px",textAlign:"right",fontSize:12,fontWeight:700,color:C.t2,background:C.bg3,borderBottom:`1px solid ${C.bo1}`}}>{colName(id)}</th>)}
-                  </tr></thead>
-                  <tbody>{rows.map((r,i)=>r.head
-                    ?<tr key={i}><td colSpan={colIds.length+1} style={{padding:"14px 16px 6px",fontSize:12.5,fontWeight:800,color:C.t1,borderTop:`1px solid ${C.bo0}`}}>{r.head}</td></tr>
-                    :<tr key={i} style={{borderTop:`1px solid ${C.bo0}`,background:r.total?C.pri1:r.strong?C.bg3:undefined}}>
-                      <td style={{padding:r.total?"15px 16px":"11px 16px",paddingLeft:r.indent?34:16,fontWeight:r.strong||r.total?800:500,fontSize:r.total?15:14}}>{r.l}</td>
-                      {colIds.map(id=>{const v=r.f(D[id]);const col=r.total?(v>=0?C.g:C.r):r.col?r.col(D[id]):C.t0;
-                        return <td key={id} className="mn" style={{padding:r.total?"15px 16px":"11px 16px",textAlign:"right",fontWeight:r.strong||r.total?800:600,color:col,fontSize:r.total?16:14,whiteSpace:"nowrap"}}>
-                          {rpS(v)}{r.note&&<div style={{fontSize:11.5,fontWeight:500,color:C.t2}}>{r.note(D[id])}</div>}</td>;})}
-                    </tr>)}</tbody>
-                </table>
+                <div style={{minWidth:plBiz==="ALL"?560:340}}>
+                  {/* Financial Statement Header */}
+                  <div style={{display:"grid",gridTemplateColumns:`1fr ${colIds.map(()=>"140px").join(" ")}`,padding:"12px 16px",background:C.bg3,borderBottom:`1px solid ${C.bo1}`,fontSize:12,fontWeight:750,color:C.t2}}>
+                    <div>Keterangan</div>
+                    {colIds.map(id=><div key={id} style={{textAlign:"right"}}>{colName(id)}</div>)}
+                  </div>
+                  {/* Financial Statement Rows */}
+                  <div>
+                    {rows.map((r,i)=>r.head ? (
+                      <div key={i} style={{padding:"14px 16px 6px",fontSize:12.5,fontWeight:800,color:C.t1,borderTop:`1px solid ${C.bo0}`,background:C.bg1}}>
+                        {r.head}
+                      </div>
+                    ) : (
+                      <div key={i} style={{
+                        display:"grid",
+                        gridTemplateColumns:`1fr ${colIds.map(()=>"140px").join(" ")}`,
+                        padding:r.total?"14px 16px":"10px 16px",
+                        borderTop:`1px solid ${C.bo0}`,
+                        background:r.total?C.pri1:r.strong?C.bg3:"transparent",
+                        alignItems:"center"
+                      }}>
+                        <div style={{
+                          paddingLeft:r.indent?24:0,
+                          fontWeight:r.strong||r.total?800:500,
+                          fontSize:r.total?14.5:13.5,
+                          color:r.total?C.pri:C.t0
+                        }}>
+                          {r.l}
+                        </div>
+                        {colIds.map(id=>{
+                          const v=r.f(D[id]);
+                          const col=r.total?(v>=0?C.g:C.r):r.col?r.col(D[id]):C.t0;
+                          return (
+                            <div key={id} className="mn" style={{
+                              textAlign:"right",
+                              fontWeight:r.strong||r.total?800:600,
+                              color:col,
+                              fontSize:r.total?15:13.5
+                            }}>
+                              {rpS(v)}
+                              {r.note&&<div style={{fontSize:11,fontWeight:500,color:C.t2}}>{r.note(D[id])}</div>}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    ))}
+                  </div>
+                </div>
               </div>
             </Card>
             {main.opex>0&&<Card>
@@ -7799,25 +7560,43 @@ function AppInner() {
             </div>
             {Object.keys(attByUser).length===0
               ?<EmptyState pad={24} title="Belum ada data untuk periode ini"/>
-              :<TableWrap>
-                <table style={{width:"100%",borderCollapse:"collapse",fontSize:12}}>
-                  <THead cols={["Pegawai","Role","Hadir (Hari)","Total Jam Kerja","Rata-rata/Hari","Terakhir Masuk"]}/>
-                  <tbody>{Object.values(attByUser).map((au,i)=>{
-                    const avgMin=au.days>0?Math.floor(au.totalMinutes/au.days):0;
-                    const totalJam=`${Math.floor(au.totalMinutes/60)}j ${au.totalMinutes%60}m`;
-                    const avgJam=`${Math.floor(avgMin/60)}j ${avgMin%60}m`;
-                    return <tr key={au.userId} className="hrow" style={{borderTop:`1px solid ${C.bo0}`,background:i%2===0?"transparent":C.bg0}}>
-                      <td style={{padding:"14px 13px",fontWeight:700,display:"flex",alignItems:"center",gap:6}}>
-                        <Avatar name={au.name} size={24} style={{marginRight:8}}/>{au.name}</td>
-                      <td style={{padding:"14px 13px"}}><RoleTag role={au.role}/></td>
-                      <td style={{padding:"14px 13px",fontFamily:F.mono,fontWeight:700,color:C.g,fontSize:14}}>{au.days}</td>
-                      <td style={{padding:"14px 13px",fontFamily:F.mono,color:C.cy}}>{au.totalMinutes>0?totalJam:"-"}</td>
-                      <td style={{padding:"14px 13px",fontFamily:F.mono,color:C.t1}}>{au.totalMinutes>0?avgJam:"-"}</td>
-                      <td style={{padding:"14px 13px",fontSize:10.5,color:C.t2}}>{au.records[au.records.length-1]?.checkIn||"-"}</td>
-                    </tr>;})}
-                  </tbody>
-                </table>
-              </TableWrap>}
+              :<div style={{padding:"12px 14px",display:"grid",gridTemplateColumns:"repeat(auto-fill, minmax(260px, 1fr))",gap:10}}>
+                {Object.values(attByUser).map(au=>{
+                  const avgMin=au.days>0?Math.floor(au.totalMinutes/au.days):0;
+                  const totalJam=`${Math.floor(au.totalMinutes/60)}j ${au.totalMinutes%60}m`;
+                  const avgJam=`${Math.floor(avgMin/60)}j ${avgMin%60}m`;
+                  return (
+                    <div key={au.userId} className="card-in" style={{background:C.bg3,borderRadius:12,padding:"12px 14px",border:`1px solid ${C.bo0}`,display:"flex",flexDirection:"column",gap:8}}>
+                      <div style={{display:"flex",alignItems:"center",gap:8,justifyContent:"space-between"}}>
+                        <div style={{display:"flex",alignItems:"center",gap:8}}>
+                          <Avatar name={au.name} size={30}/>
+                          <div>
+                            <div style={{fontWeight:750,fontSize:13.5,color:C.t0}}>{au.name}</div>
+                            <RoleTag role={au.role}/>
+                          </div>
+                        </div>
+                        <div style={{textAlign:"right"}}>
+                          <div style={{fontSize:10,color:C.t3}}>Hadir</div>
+                          <div className="mn" style={{fontSize:16,fontWeight:800,color:C.g}}>{au.days} <span style={{fontSize:10}}>hari</span></div>
+                        </div>
+                      </div>
+                      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:6,background:C.bg2,borderRadius:8,padding:"8px 10px",fontSize:11}}>
+                        <div>
+                          <div style={{color:C.t3,fontSize:10}}>Total Jam</div>
+                          <div className="mn" style={{color:C.cy,fontWeight:700}}>{au.totalMinutes>0?totalJam:"-"}</div>
+                        </div>
+                        <div>
+                          <div style={{color:C.t3,fontSize:10}}>Rata-rata/Hari</div>
+                          <div className="mn" style={{color:C.t1,fontWeight:700}}>{au.totalMinutes>0?avgJam:"-"}</div>
+                        </div>
+                      </div>
+                      <div style={{fontSize:10.5,color:C.t2,textAlign:"right"}}>
+                        Terakhir masuk: <b style={{color:C.t1}}>{au.records[au.records.length-1]?.checkIn||"-"}</b>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>}
           </Card>
           {/* Detail */}
           <Card noPad style={{overflow:"hidden"}}>
@@ -7829,40 +7608,13 @@ function AppInner() {
               const sortedAtt=[...attFiltered].sort((a,b)=>{try{return new Date(b.checkInISO||b.checkIn)-new Date(a.checkInISO||a.checkIn);}catch{return 0;}});
               const paginatedAtt=sortedAtt.slice((attPage - 1) * attPerPage, attPage * attPerPage);
               return <>
-              <div className="hide-mobile"><TableWrap>
-                <table style={{width:"100%",borderCollapse:"collapse",fontSize:12,minWidth:540}}>
-                  <THead cols={["Tanggal","Pegawai","Role","Bisnis","Jam Masuk","Jam Pulang","Durasi"]}/>
-                  <tbody>{paginatedAtt.map((a,i)=>(
-                    <tr key={a.id} className="hrow" style={{borderTop:`1px solid ${C.bo0}`,background:i%2===0?"transparent":C.bg0}}>
-                      <td style={{padding:"14px 13px",fontFamily:F.mono,fontSize:10,color:C.t2,whiteSpace:"nowrap"}}>{a.date}</td>
-                      <td style={{padding:"14px 13px",fontWeight:600,display:"flex",alignItems:"center",gap:5}}>
-                        <Avatar name={a.name} size={26}/>{a.name}</td>
-                      <td style={{padding:"14px 13px"}}><RoleTag role={a.role}/></td>
-                      <td style={{padding:"14px 13px"}}><BizChip biz={a.business} sm/></td>
-                      <td style={{padding:"14px 13px",fontFamily:F.mono,fontSize:11,color:C.g}}>{a.checkIn}</td>
-                      <td style={{padding:"14px 13px",fontFamily:F.mono,fontSize:11,color:a.checkOut?C.t1:C.a}}>
-                        {a.checkOut||<span style={{fontSize:10,color:C.a,fontWeight:700}}>● Masih hadir</span>}</td>
-                      <td style={{padding:"14px 13px",fontFamily:F.mono,fontSize:11,color:C.cy}}>{calcDur(a)}</td>
-                    </tr>))}
-                  </tbody>
-                </table>
-              </TableWrap>
-              <TablePagination
-                page={attPage}
-                perPage={attPerPage}
-                totalItems={sortedAtt.length}
-                onPageChange={setAttPage}
-                onPerPageChange={setAttPerPage}
-                perPageOptions={[10, 15, 30, 50]}
-              />
-              </div>
-              <div className="hide-desktop mobile-card-list">
+              <div style={{padding:"12px 14px",display:"grid",gridTemplateColumns:"repeat(auto-fill, minmax(290px, 1fr))",gap:10}}>
                 {paginatedAtt.map(a=>(
-                  <div key={a.id} style={{background:C.bg2,borderRadius:14,border:`1px solid ${a.checkOut?C.bo0:C.a+"44"}`,padding:"13px 14px"}}>
-                    <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:8}}>
-                      <Avatar name={a.name} size={40}/>
+                  <div key={a.id} className="card-in" style={{background:C.bg2,borderRadius:14,border:`1px solid ${a.checkOut?C.bo0:C.a+"55"}`,padding:"13px 14px",display:"flex",flexDirection:"column",justifyContent:"space-between",gap:8}}>
+                    <div style={{display:"flex",alignItems:"center",gap:10}}>
+                      <Avatar name={a.name} size={36}/>
                       <div style={{flex:1,minWidth:0}}>
-                        <div style={{fontSize:14,fontWeight:700}}>{a.name}</div>
+                        <div style={{fontSize:14,fontWeight:750,color:C.t0}}>{a.name}</div>
                         <div style={{display:"flex",gap:5,alignItems:"center",marginTop:2,flexWrap:"wrap"}}>
                           <RoleTag role={a.role}/>
                           <BizChip biz={a.business} sm/>
@@ -7871,24 +7623,25 @@ function AppInner() {
                       </div>
                       <div style={{textAlign:"right",flexShrink:0}}>
                         <div style={{fontSize:10,color:C.t2,marginBottom:2}}>{a.date}</div>
-                        <div className="mn" style={{fontSize:11,color:C.cy,fontWeight:600}}>{calcDur(a)}</div>
+                        <div className="mn" style={{fontSize:11.5,color:C.cy,fontWeight:700}}>{calcDur(a)}</div>
                       </div>
                     </div>
                     <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,background:C.bg3,borderRadius:9,padding:"8px 10px"}}>
-                      <div><div style={{fontSize:9,color:C.t3,marginBottom:1}}>MASUK</div><div className="mn" style={{fontSize:12,color:C.g,fontWeight:700}}>{a.checkIn}</div></div>
-                      <div><div style={{fontSize:9,color:C.t3,marginBottom:1}}>PULANG</div><div className="mn" style={{fontSize:12,color:a.checkOut?C.t1:C.a,fontWeight:600}}>{a.checkOut||"Belum pulang"}</div></div>
+                      <div><div style={{fontSize:9.5,color:C.t3,marginBottom:1,fontWeight:700}}>MASUK</div><div className="mn" style={{fontSize:12,color:C.g,fontWeight:750}}>{a.checkIn}</div></div>
+                      <div><div style={{fontSize:9.5,color:C.t3,marginBottom:1,fontWeight:700}}>PULANG</div><div className="mn" style={{fontSize:12,color:a.checkOut?C.t1:C.a,fontWeight:650}}>{a.checkOut||"Belum pulang"}</div></div>
                     </div>
-                  </div>))}
-                <TablePagination
-                  page={attPage}
-                  perPage={attPerPage}
-                  totalItems={sortedAtt.length}
-                  onPageChange={setAttPage}
-                  onPerPageChange={setAttPerPage}
-                  perPageOptions={[10, 15, 30, 50]}
-                  style={{ borderRadius: 14, border: `1px solid ${C.bo0}`, marginTop: 10 }}
-                />
+                  </div>
+                ))}
               </div>
+              <TablePagination
+                page={attPage}
+                perPage={attPerPage}
+                totalItems={sortedAtt.length}
+                onPageChange={setAttPage}
+                onPerPageChange={setAttPerPage}
+                perPageOptions={[10, 15, 30, 50]}
+                style={{ borderRadius: 14, border: `1px solid ${C.bo0}`, margin: "0 14px 14px" }}
+              />
             </>;
             })()}
           </Card>
@@ -7944,33 +7697,48 @@ function AppInner() {
             </Card>
             {slogsFiltered.length===0?<Card><EmptyState title="Tidak ada data" hint="Coba ubah filter atau rentang waktu."/></Card>:(()=>{
               const paginatedSlogs = slogsFiltered.slice((slogPage - 1) * slogPerPage, slogPage * slogPerPage);
-              return <Card noPad style={{overflow:"hidden"}}>
-              <TableWrap>
-                <table style={{width:"100%",borderCollapse:"collapse",fontSize:11.5,minWidth:540}}>
-                  <THead cols={["Waktu","Produk","Bisnis","Tipe","Qty","Sblm","Ssdh","Oleh"]}/>
-                  <tbody>{paginatedSlogs.map((l,i)=><tr key={l.id||i} className="hrow" style={{borderTop:`1px solid ${C.bo0}`,background:i%2===0?"transparent":C.bg0}}>
-                    <td style={{padding:"14px 13px",color:C.t2,fontSize:10,whiteSpace:"nowrap"}}>{l.date}</td>
-                    <td style={{padding:"14px 13px",fontWeight:500,fontSize:12}}>{l.name}<div className="mn" style={{fontSize:9,color:C.t3}}>{l.barcode}</div></td>
-                    <td style={{padding:"14px 13px"}}><BizChip biz={l.business} sm/></td>
-                    <td style={{padding:"14px 13px"}}><span style={{padding:"2px 8px",borderRadius:20,fontSize:9.5,fontWeight:700,textTransform:"uppercase",
-                      background:l.type==="masuk"?C.g1:l.type==="opname"?C.vi1:C.r1,
-                      color:l.type==="masuk"?C.g:l.type==="opname"?C.vi:C.r}}>{l.type==="opname"?"OPNAME":l.type}</span></td>
-                    <td style={{padding:"14px 13px",fontFamily:F.mono,fontWeight:700,color:l.type==="masuk"?C.g:l.type==="opname"?C.vi:C.r}}>{l.type==="masuk"?"+":l.type==="opname"?"±":"-"}{l.qty}</td>
-                    <td style={{padding:"14px 13px",fontFamily:F.mono,fontSize:11}}>{l.before}</td>
-                    <td style={{padding:"14px 13px",fontFamily:F.mono,fontWeight:700}}>{l.after}</td>
-                    <td style={{padding:"14px 13px",color:C.t2,fontSize:11}}>{l.by}</td>
-                  </tr>)}</tbody>
-                </table>
-              </TableWrap>
-              <TablePagination
-                page={slogPage}
-                perPage={slogPerPage}
-                totalItems={slogsFiltered.length}
-                onPageChange={setSlogPage}
-                onPerPageChange={setSlogPerPage}
-                perPageOptions={[15, 30, 50, 100]}
-              />
-            </Card>;
+              return <div>
+                <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill, minmax(290px, 1fr))",gap:10}}>
+                  {paginatedSlogs.map((l,i)=>{
+                    const isMasuk = l.type === "masuk";
+                    const isOpname = l.type === "opname";
+                    const clr = isMasuk ? C.g : isOpname ? C.vi : C.r;
+                    const bgClr = isMasuk ? C.g1 : isOpname ? C.vi1 : C.r1;
+                    return (
+                      <div key={l.id||i} className="card-in" style={{background:C.bg2,borderRadius:14,border:`1px solid ${C.bo0}`,padding:"12px 14px",display:"flex",flexDirection:"column",justifyContent:"space-between",gap:8}}>
+                        <div>
+                          <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:8,marginBottom:4}}>
+                            <div style={{minWidth:0}}>
+                              <div style={{fontWeight:750,fontSize:13.5,color:C.t0}}>{l.name}</div>
+                              <div className="mn" style={{fontSize:10,color:C.t3,marginTop:1}}>{l.barcode}</div>
+                            </div>
+                            <span style={{padding:"2px 8px",borderRadius:20,fontSize:9.5,fontWeight:750,textTransform:"uppercase",background:bgClr,color:clr,flexShrink:0}}>
+                              {isOpname ? "OPNAME" : l.type} ({isMasuk?"+":isOpname?"±":"-"}{l.qty})
+                            </span>
+                          </div>
+                        </div>
+                        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:6,background:C.bg3,borderRadius:8,padding:"7px 10px",fontSize:11}}>
+                          <div><span style={{color:C.t3,fontSize:10}}>Sebelum: </span><b className="mn">{l.before}</b></div>
+                          <div><span style={{color:C.t3,fontSize:10}}>Sesudah: </span><b className="mn" style={{color:C.t0}}>{l.after}</b></div>
+                        </div>
+                        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",fontSize:11,color:C.t2,paddingTop:4,borderTop:`1px solid ${C.bo0}`}}>
+                          <BizChip biz={l.business} sm/>
+                          <div style={{fontSize:10.5}}>{l.date} · Oleh: <b style={{color:C.t1}}>{l.by}</b></div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+                <TablePagination
+                  page={slogPage}
+                  perPage={slogPerPage}
+                  totalItems={slogsFiltered.length}
+                  onPageChange={setSlogPage}
+                  onPerPageChange={setSlogPerPage}
+                  perPageOptions={[15, 30, 50, 100]}
+                  style={{ borderRadius: 14, border: `1px solid ${C.bo0}`, marginTop: 12 }}
+                />
+              </div>;
             })()}
           </div>;
         })()}
@@ -7991,34 +7759,41 @@ function AppInner() {
             ?<Card><EmptyState icon={<Undo2 size={24} strokeWidth={1.6}/>} title="Belum ada retur" hint="Transaksi yang dibatalkan akan tercatat di sini."/></Card>
             :(()=>{
               const paginatedReturns = returns.slice((retPage - 1) * retPerPage, retPage * retPerPage);
-              return <Card noPad style={{overflow:"hidden"}}>
-              <TableWrap>
-                <table style={{width:"100%",borderCollapse:"collapse",fontSize:12,minWidth:520}}>
-                  <THead cols={["ID Retur","Tanggal","Kasir","Bisnis","TRX Asal","Nilai","Detail"]}/>
-                  <tbody>{paginatedReturns.map((r,i)=><tr key={r.id} className="hrow" style={{borderTop:`1px solid ${C.bo0}`,background:i%2===0?"transparent":C.bg0}}>
-                    <td style={{padding:"12px 13px",fontFamily:F.mono,fontSize:10,color:C.a}}>{r.id?.slice(-12)}</td>
-                    <td style={{padding:"12px 13px",fontSize:10,color:C.t2}}>{r.date}</td>
-                    <td style={{padding:"12px 13px",fontWeight:500}}>{r.kasir}</td>
-                    <td style={{padding:"12px 13px"}}><BizChip biz={r.business} sm/></td>
-                    <td style={{padding:"12px 13px",fontFamily:F.mono,fontSize:10}}>{r.originalTrxId?.slice(-12)}</td>
-                    <td style={{padding:"12px 13px",fontFamily:F.mono,color:C.r,fontWeight:700}}>{rp(r.total)}</td>
-                    <td style={{padding:"12px 13px"}}>
-                      <details><summary style={{fontSize:10,color:C.b,cursor:"pointer"}}>Lihat Barang</summary>
-                        <div style={{marginTop:5,fontSize:10,color:C.t1}}>{r.items?.map(it=>`${it.name} x${it.qty}`).join(", ")}</div>
-                      </details>
-                    </td>
-                  </tr>)}</tbody>
-                </table>
-              </TableWrap>
-              <TablePagination
-                page={retPage}
-                perPage={retPerPage}
-                totalItems={returns.length}
-                onPageChange={setRetPage}
-                onPerPageChange={setRetPerPage}
-                perPageOptions={[10, 20, 50]}
-              />
-            </Card>;
+              return <div>
+                <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill, minmax(300px, 1fr))",gap:10}}>
+                  {paginatedReturns.map((r,i)=>(
+                    <div key={r.id||i} className="card-in" style={{background:C.bg2,borderRadius:14,border:`1px solid ${C.bo0}`,padding:"13px 15px",display:"flex",flexDirection:"column",justifyContent:"space-between",gap:8}}>
+                      <div>
+                        <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:8}}>
+                          <div>
+                            <div className="mn" style={{fontSize:11.5,fontWeight:750,color:C.a}}>ID: #{r.id?.slice(-12)}</div>
+                            <div style={{fontSize:11,color:C.t2,marginTop:2}}>{r.date}</div>
+                          </div>
+                          <div className="mn" style={{fontSize:16,fontWeight:800,color:C.r}}>{rp(r.total)}</div>
+                        </div>
+                      </div>
+                      <div style={{display:"flex",gap:6,alignItems:"center",flexWrap:"wrap",fontSize:11.5}}>
+                        <BizChip biz={r.business} sm/>
+                        <span style={{color:C.t2}}>Kasir: <b style={{color:C.t0}}>{r.kasir}</b></span>
+                        {r.originalTrxId&&<span className="mn" style={{color:C.t3,fontSize:10.5}}>Trx Asal: #{r.originalTrxId?.slice(-8)}</span>}
+                      </div>
+                      <div style={{background:C.bg3,borderRadius:8,padding:"8px 10px",fontSize:11,color:C.t1}}>
+                        <div style={{fontSize:10,fontWeight:750,color:C.t3,marginBottom:3}}>BARANG DIRETUR:</div>
+                        <div>{r.items?.map(it=>`${it.name} (${it.qty}x)`).join(", ")||"–"}</div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                <TablePagination
+                  page={retPage}
+                  perPage={retPerPage}
+                  totalItems={returns.length}
+                  onPageChange={setRetPage}
+                  onPerPageChange={setRetPerPage}
+                  perPageOptions={[10, 20, 50]}
+                  style={{ borderRadius: 14, border: `1px solid ${C.bo0}`, marginTop: 12 }}
+                />
+              </div>;
             })()}
         </div>}
 
@@ -8027,28 +7802,34 @@ function AppInner() {
           <h2 style={{fontSize:15,fontWeight:800}}>Log Aktivitas</h2>
           {actLogs.length===0?<Card><EmptyState icon={<Activity size={24} strokeWidth={1.6}/>} title="Belum ada aktivitas" hint="Login, perubahan data, dan transaksi akan dicatat di sini."/></Card>:(()=>{
             const paginatedActLogs = actLogs.slice((actPage - 1) * actPerPage, actPage * actPerPage);
-            return <Card noPad style={{overflow:"hidden"}}>
-            <TableWrap>
-              <table style={{width:"100%",borderCollapse:"collapse",fontSize:12,minWidth:520}}>
-                <THead cols={["Waktu","Aktor","Aksi","Detail","Bisnis"]}/>
-                <tbody>{paginatedActLogs.map((l,i)=><tr key={i} className="hrow" style={{borderTop:`1px solid ${C.bo0}`,background:i%2===0?"transparent":C.bg0}}>
-                  <td style={{padding:"12px 13px",fontSize:10,color:C.t2,whiteSpace:"nowrap"}}>{l.date}</td>
-                  <td style={{padding:"12px 13px",fontWeight:600}}>{l.actor}</td>
-                  <td style={{padding:"12px 13px"}}><span style={{padding:"2px 8px",borderRadius:20,fontSize:10,fontWeight:700,background:C.b1,color:C.b}}>{l.action}</span></td>
-                  <td style={{padding:"12px 13px",fontSize:11,color:C.t1}}>{l.detail}</td>
-                  <td style={{padding:"12px 13px"}}>{l.business?<BizChip biz={l.business} sm/>:"-"}</td>
-                </tr>)}</tbody>
-              </table>
-            </TableWrap>
-            <TablePagination
-              page={actPage}
-              perPage={actPerPage}
-              totalItems={actLogs.length}
-              onPageChange={setActPage}
-              onPerPageChange={setActPerPage}
-              perPageOptions={[15, 30, 50, 100]}
-            />
-          </Card>;
+            return <div>
+              <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill, minmax(290px, 1fr))",gap:10}}>
+                {paginatedActLogs.map((l,i)=>(
+                  <div key={i} className="card-in" style={{background:C.bg2,borderRadius:14,border:`1px solid ${C.bo0}`,padding:"12px 14px",display:"flex",flexDirection:"column",justifyContent:"space-between",gap:6}}>
+                    <div>
+                      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:8,marginBottom:4}}>
+                        <div style={{display:"flex",alignItems:"center",gap:6}}>
+                          <span style={{fontWeight:750,fontSize:13.5,color:C.t0}}>{l.actor}</span>
+                          {l.business&&<BizChip biz={l.business} sm/>}
+                        </div>
+                        <span style={{padding:"2px 8px",borderRadius:20,fontSize:9.5,fontWeight:750,background:C.b1,color:C.b}}>{l.action}</span>
+                      </div>
+                      <div style={{fontSize:12.5,color:C.t1,lineHeight:1.35}}>{l.detail}</div>
+                    </div>
+                    <div style={{fontSize:10.5,color:C.t3,textAlign:"right",paddingTop:4,borderTop:`1px solid ${C.bo0}`}}>{l.date}</div>
+                  </div>
+                ))}
+              </div>
+              <TablePagination
+                page={actPage}
+                perPage={actPerPage}
+                totalItems={actLogs.length}
+                onPageChange={setActPage}
+                onPerPageChange={setActPerPage}
+                perPageOptions={[15, 30, 50, 100]}
+                style={{ borderRadius: 14, border: `1px solid ${C.bo0}`, marginTop: 12 }}
+              />
+            </div>;
           })()}
         </div>}
 
