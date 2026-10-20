@@ -25,8 +25,8 @@ import {
   Briefcase, Factory, Sun, Moon, Flame, Lightbulb, ShoppingCart, Lock, BarChart3, TrendingUp, Link2, Tag,
   Shirt, Sparkles, Home, Printer, RefreshCw, Folder, FileText, Eye, EyeOff, Building2, LayoutDashboard,
   Undo2, Activity, Upload, PanelLeftClose, PanelLeftOpen, ChevronRight, LogOut, Bell, ArrowLeftRight, ArrowLeft, MoreHorizontal, WifiOff, Info,
-  QrCode, ChevronLeft, ShoppingBasket, Megaphone, ExternalLink, ShoppingBag,
-  ArrowRight, MessageCircle, ShieldCheck, BadgeCheck, Download, LayoutGrid, List, Play,
+  QrCode, ChevronLeft, ChevronDown, ShoppingBasket, Megaphone, ExternalLink, ShoppingBag,
+  ArrowRight, MessageCircle, ShieldCheck, BadgeCheck, Download, LayoutGrid, List, Play, Star,
 } from "lucide-react";
 import CustomShirtStudio from "./CustomShirtStudio.jsx";
 
@@ -383,6 +383,40 @@ const makeCSS = () => `
   .lp-video-poster:active .lp-video-play{transform:translate(-50%,-50%) scale(.96);}
   .lp-video-label{position:absolute;left:0;right:0;bottom:16px;z-index:2;text-align:center;
     color:#fff;font-size:13px;font-weight:700;text-shadow:0 1px 10px rgba(0,0,0,.55);}
+  /* ── Galeri preview foto ── */
+  .lp-gal{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(200px,45vw),1fr));gap:14px;margin-top:18px;}
+  @media(max-width:560px){.lp-gal{grid-template-columns:repeat(2,1fr);gap:10px;}}
+  .lp-gal-item{position:relative;display:block;aspect-ratio:4 / 5;padding:0;margin:0;border-radius:18px;overflow:hidden;
+    background:${C.bg3};border:1px solid ${C.bo1};cursor:pointer;box-shadow:${C.sh};}
+  .lp-gal-item>.lp-photo{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;transition:transform .4s cubic-bezier(.16,1,.3,1);}
+  .lp-gal-item:hover>.lp-photo{transform:scale(1.06);}
+  .lp-gal-scrim{position:absolute;inset:0;background:linear-gradient(180deg,rgba(8,11,30,0) 44%,rgba(8,11,30,.74));pointer-events:none;}
+  .lp-gal-cap{position:absolute;left:13px;right:13px;bottom:12px;text-align:left;color:#fff;pointer-events:none;}
+  .lp-gal-cap b{display:block;font-size:13.5px;font-weight:800;line-height:1.25;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .lp-gal-cap i{display:block;font-style:normal;font-size:11.5px;font-weight:600;opacity:.78;margin-top:2px;
+    white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .lp-gal-zoom{position:absolute;top:10px;right:10px;display:inline-flex;align-items:center;gap:5px;padding:5px 10px;
+    border-radius:20px;background:rgba(8,11,30,.55);backdrop-filter:blur(6px);color:#fff;font-size:11px;font-weight:700;
+    opacity:0;transform:translateY(-5px);transition:all .18s ease;pointer-events:none;}
+  .lp-gal-item:hover .lp-gal-zoom,.lp-gal-item:focus-visible .lp-gal-zoom{opacity:1;transform:none;}
+  @media(hover:none){.lp-gal-zoom{opacity:1;transform:none;}}
+  /* ── Lightbox preview foto ── */
+  .lb-ov{position:fixed;inset:0;z-index:9990;background:rgba(6,8,20,.9);backdrop-filter:blur(8px);
+    display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;padding:56px 16px 20px;}
+  .lb-fig{position:relative;max-width:min(96vw,940px);width:100%;}
+  .lb-fig img{display:block;width:100%;max-height:74vh;object-fit:contain;border-radius:18px;background:#0b0e24;
+    box-shadow:0 30px 90px rgba(0,0,0,.55);}
+  .lb-cap{display:flex;justify-content:space-between;align-items:baseline;gap:12px;margin-top:10px;color:#fff;}
+  .lb-cap b{font-size:14.5px;font-weight:800;}
+  .lb-cap span{font-size:12.5px;opacity:.7;}
+  .lb-x,.lb-p,.lb-n{position:absolute;display:grid;place-items:center;border:none;cursor:pointer;
+    background:rgba(255,255,255,.12);color:#fff;backdrop-filter:blur(6px);transition:all .15s ease;}
+  .lb-x:hover,.lb-p:hover,.lb-n:hover{background:rgba(255,255,255,.24);}
+  .lb-x{top:16px;right:16px;width:42px;height:42px;border-radius:50%;}
+  .lb-p,.lb-n{top:50%;transform:translateY(-50%);width:46px;height:46px;border-radius:50%;}
+  .lb-p{left:10px;}
+  .lb-n{right:10px;}
+  @media(max-width:640px){.lb-p,.lb-n{width:40px;height:40px;}.lb-p{left:4px;}.lb-n{right:4px;}}
   /* Alat katalog: filter chip + pencarian (wajib min-width:0 agar bisa menyusut) */
   .lp-tools{min-width:0;max-width:100%;}
   .lp-chips{min-width:0;max-width:100%;}
@@ -925,6 +959,79 @@ function Modal({open=true,title,subtitle,icon,size="md",onClose,footer,footClass
     </div>
   </div>;
 }
+// ── Dropdown pencarian (custom select) — untuk pilihan akun, dsb ──
+function SearchSelect({ label, value, onChange, options, renderLabel, placeholder = "Cari…", hint }) {
+  const [open, setOpen] = useState(false);
+  const [q, setQ] = useState("");
+  const box = useRef(null);
+  const inp = useRef(null);
+  const key = String(q).trim().toLowerCase();
+  const list = options.filter(o => String(renderLabel ? renderLabel(o) : o).toLowerCase().includes(key));
+  const lbl = (v) => (renderLabel ? renderLabel(v) : v);
+  useEffect(() => {
+    if (!open) return;
+    const down = (e) => { if (box.current && !box.current.contains(e.target)) setOpen(false); };
+    const esc = (e) => { if (e.key === "Escape") setOpen(false); };
+    document.addEventListener("mousedown", down);
+    document.addEventListener("keydown", esc);
+    return () => { document.removeEventListener("mousedown", down); document.removeEventListener("keydown", esc); };
+  }, [open]);
+  useEffect(() => {
+    if (!open) return;
+    setQ("");
+    const t = setTimeout(() => inp.current && inp.current.focus(), 40);
+    return () => clearTimeout(t);
+  }, [open]);
+  const pick = (v) => { onChange(v); setOpen(false); };
+  const active = open ? C.pri : C.bo1;
+  return (
+    <div ref={box} style={{ position: "relative" }}>
+      {label && <div style={{ fontSize: 12.5, fontWeight: 600, color: C.t1, marginBottom: 6 }}>{label}</div>}
+      <button type="button" aria-haspopup="listbox" aria-expanded={open} onClick={() => setOpen(o => !o)} className="press"
+        style={{ width: "100%", minHeight: 46, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8,
+          padding: "11px 13px", background: C.bg3, border: `1.5px solid ${active}`, borderRadius: 12,
+          color: value ? C.t0 : C.t3, fontSize: 15, fontFamily: F.sans, fontWeight: 600, textAlign: "left", cursor: "pointer",
+          transition: "border-color .15s ease" }}>
+        <span style={{ minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+          {value ? lbl(value) : "Pilih akun…"}
+        </span>
+        <ChevronDown size={17} style={{ flexShrink: 0, opacity: .65, transform: open ? "rotate(180deg)" : "none", transition: "transform .15s ease" }} />
+      </button>
+      {open && (
+        <div style={{ position: "absolute", zIndex: 70, top: "calc(100% + 6px)", left: 0, right: 0, background: C.bg2,
+          border: `1px solid ${C.bo1}`, borderRadius: 14, boxShadow: C.sh, overflow: "hidden" }}>
+          <div style={{ position: "relative", padding: "9px 10px", borderBottom: `1px solid ${C.bo0}` }}>
+            <span style={{ position: "absolute", left: 21, top: "50%", transform: "translateY(-50%)", color: C.t3, display: "grid", placeItems: "center", pointerEvents: "none" }}>
+              <Search size={15} />
+            </span>
+            <input ref={inp} value={q} onChange={e => setQ(e.target.value)} placeholder={placeholder}
+              onKeyDown={e => { if (e.key === "Enter") { if (list.length) pick(list[0]); e.preventDefault(); } }}
+              style={{ width: "100%", height: 40, padding: "0 10px 0 34px", background: C.bg3, border: `1.5px solid ${C.bo1}`,
+                borderRadius: 10, color: C.t0, fontSize: 14, fontFamily: F.sans, outline: "none" }} />
+          </div>
+          <div style={{ maxHeight: 262, overflowY: "auto", padding: 6 }}>
+            {list.length === 0 && <div style={{ padding: "12px 10px", fontSize: 13, color: C.t3 }}>Tidak ada akun yang cocok</div>}
+            {list.map(o => {
+              const on = o === value;
+              return (
+                <button key={String(o)} type="button" onClick={() => pick(o)} className="press"
+                  style={{ width: "100%", display: "flex", alignItems: "center", gap: 9, padding: "9px 10px", border: "none",
+                    borderRadius: 9, background: on ? C.pri1 : "transparent", color: on ? C.pri : C.t1, fontSize: 14,
+                    fontWeight: on ? 800 : 600, fontFamily: F.sans, textAlign: "left", cursor: "pointer" }}>
+                  <span style={{ width: 8, height: 8, borderRadius: 8, flexShrink: 0,
+                    background: on ? C.pri : "transparent", border: on ? "none" : `1.5px solid ${C.bo1}` }} />
+                  <span style={{ minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{lbl(o)}</span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
+      {hint && <div style={{ fontSize: 11.5, color: C.t3, marginTop: 5, lineHeight: 1.45 }}>{hint}</div>}
+    </div>
+  );
+}
+
 function Sel({label,value,onChange,children,disabled}) {
   return <div>
     {label&&<div style={{fontSize:12.5,fontWeight:600,color:C.t1,marginBottom:6}}>{label}</div>}
@@ -2559,13 +2666,16 @@ function OpnamePanel({
 // ─────────────────────────────────────────────────────────────
 //  BELANJA OPERASIONAL
 // ─────────────────────────────────────────────────────────────
-const EXPENSE_CATS = ["Sewa","Listrik & Air","Gaji & Upah","Transport & Pengiriman","Kemasan & Perlengkapan","Pemasaran & Iklan","Perawatan & Perbaikan","Internet & Pulsa","Lain-lain"];
+// Daftar akun laporan keuangan (sheet "AKUN LP KEUANGAN") — jadi pilihan akun saat catat biaya.
+const AKUN_CATS = ["Belanja Produk","Biaya Pengiriman","Biaya Gaji","Listrik","Peralatan Listrik","BBM","Pulsa","Wi-Fi","Peralatan Kebersihan","Beban Penyusutan","Pendapatan Penjualan"];
+// Nama akun untuk jurnal: akun daftar atas dipakai apa adanya, kategori lama diberi imbuhan "Beban".
+const akunOf = (c) => (AKUN_CATS.includes(c) ? c : `Beban ${c}`);
 const rpS = n => (n < 0 ? "− " : "") + rp(Math.abs(n));
 
 function ExpenseFormModal({ open, onClose, onSave, access, user }) {
   const today = new Date().toISOString().slice(0, 10);
-  const [f, setF] = useState({ date: today, business: access[0] || "JS_CLOTHING", category: EXPENSE_CATS[0], description: "", amount: "", payment: "Tunai" });
-  useEffect(() => { if (open) setF({ date: today, business: access[0] || "JS_CLOTHING", category: EXPENSE_CATS[0], description: "", amount: "", payment: "Tunai" }); }, [open]);
+  const [f, setF] = useState({ date: today, business: access[0] || "JS_CLOTHING", category: AKUN_CATS[0], description: "", amount: "", payment: "Tunai" });
+  useEffect(() => { if (open) setF({ date: today, business: access[0] || "JS_CLOTHING", category: AKUN_CATS[0], description: "", amount: "", payment: "Tunai" }); }, [open]);
   if (!open) return null;
   const amt = Math.round(Number(f.amount) || 0);
   const split = f.business === "BOTH";
@@ -2592,7 +2702,8 @@ function ExpenseFormModal({ open, onClose, onSave, access, user }) {
         </div>
         {split && amt > 0 && <div style={{fontSize:12.5,color:C.t2,marginTop:8}}>{BIZ[access[0]].name}: {rp(Math.ceil(amt / 2))} · {BIZ[access[1]].name}: {rp(amt - Math.ceil(amt / 2))}</div>}
       </div>
-      <Sel label="Kategori *" value={f.category} onChange={e => setF(x => ({ ...x, category: e.target.value }))}>{EXPENSE_CATS.map(c => <option key={c} value={c}>{c}</option>)}</Sel>
+      <SearchSelect label="Akun *" value={f.category} onChange={v => setF(x => ({ ...x, category: v }))}
+        options={AKUN_CATS} placeholder="Cari akun…" hint="Sesuai daftar akun laporan keuangan; pilihan ini juga menjadi nama akun di Jurnal." />
       <div>
         <div style={{fontSize:12.5,fontWeight:600,color:C.t1,marginBottom:6}}>Dibayar dengan</div>
         <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>{["Tunai", "Transfer", "QRIS"].map(m => <button key={m} type="button" onClick={() => setF(x => ({ ...x, payment: m }))} className={`chip${f.payment === m ? " on" : ""}`}>{m}</button>)}</div>
@@ -2666,6 +2777,24 @@ const LANDING = {}; // diisi subscribeLanding dari settings/landing
 const photo = (slot, w, h) => driveImg(LANDING[slot], w) || picPhoto(slot, w, h);
 // ponytail: selama slot kosong, tampil placeholder picsum.
 
+// ── Review pelanggan yang tampil di halaman promosi ──
+// Ganti teks di sini (atau nanti kita sambungkan ke koleksi Firestore kalau mau dikelola dari admin).
+const DEFAULT_REVIEWS = [
+  { name:"Rani Putri",      biz:"JS_CLOTHING", stars:5, date:"12 Okt 2026", text:"Kaos custom buat komunitas kami hasilnya rapi, sablonnya awet, dan dikirim tepat waktu. Admin fast response banget." },
+  { name:"Dewi Lestari",    biz:"JB_STORE",    stars:5, date:"8 Okt 2026",  text:"Skincare original dan harganya bersahabat. Packing aman, saya sudah repeat order tiga kali." },
+  { name:"Andi Saputra",    biz:"JS_CLOTHING", stars:4, date:"28 Sep 2026", text:"Bahan katunnya adem dan jahitannya bagus. Pesan hari itu, sehari kemudian barang sudah sampai. Worth it." },
+  { name:"Siti Aulia",      biz:"JB_STORE",    stars:5, date:"21 Sep 2026", text:"Pelayanannya ramah, dibantu pilih ukuran dan warna. Produk sesuai foto, tidak mengecewakan." },
+  { name:"Bagas Pratama",   biz:"JS_CLOTHING", stars:5, date:"14 Sep 2026", text:"Seragam kantor 40 pcs dikerjakan cepat dan hasilnya seragam semua. Recommended buat yang butuh partai besar." },
+  { name:"Nadia Rahma",     biz:"JB_STORE",    stars:5, date:"2 Sep 2026",  text:"Paket hematnya cocok buat mahasiswa, pengemasan rapi dan pengirimannya cepat." },
+];
+const Stars = ({ n = 5, size = 14 }) => (
+  <span style={{ display:"inline-flex", gap:2, color:"#F5A524", flexShrink:0 }} aria-label={`${n} dari 5 bintang`}>
+    {[1,2,3,4,5].map(i => (
+      <Star key={i} size={size} fill={i<=n?"currentColor":"none"} strokeWidth={i<=n?0:1.7} />
+    ))}
+  </span>
+);
+
 // Nomor WhatsApp toko, format internasional tanpa tanda plus (contoh: "6281234567890").
 // Default di bawah bisa ditimpa admin dari tab Landing Page.
 const LANDING_WA = "6285191435249";
@@ -2683,6 +2812,8 @@ function ProductLandingPage({ prods, cfg, user, onLogin, onToggleTheme, isDark, 
   // Video promosi: link Google Drive diisi admin (tab Landing Page).
   const [playVid, setPlayVid] = React.useState(false);
   const videoSrc = driveVideo(LANDING.video);
+  // Preview galeri foto: indeks -1 = lightbox tertutup.
+  const [galIdx, setGalIdx] = React.useState(-1);
 
   // Produk yang diiklankan admin (p.advertised), dipotong sesuai "jumlah tampil" per bisnis
   // yang diatur di Admin Panel > Landing Page. Fallback: produk berstok, maksimal 8.
@@ -2705,6 +2836,26 @@ function ProductLandingPage({ prods, cfg, user, onLogin, onToggleTheme, isDark, 
   }), [advertisedList, selectedBiz, searchWord]);
 
   const stockLabel = p => p.stock <= 0 ? "Stok habis" : (p.stock < 10 ? "Stok terbatas" : "Tersedia");
+
+  // Foto yang bisa di-preview di lightbox galeri (foto toko + foto produk unggulan).
+  const galPhotos = React.useMemo(() => ([
+    { src: photo("hero", 900, 1125), cap: "Koleksi unggulan", sub: "Foto utama toko" },
+    { src: photo("atelier", 1200, 800), cap: "Kenapa belanja di sini", sub: "Suasana toko" },
+    ...advertisedList.slice(0, 6).map(p => ({ src: productPhoto(p), cap: p.name, sub: (BIZ[p.business] || {}).name || "" })),
+  ]), [advertisedList]);
+
+  React.useEffect(() => {
+    if (galIdx < 0) return;
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    const onKey = (e) => {
+      if (e.key === "Escape") setGalIdx(-1);
+      else if (e.key === "ArrowRight") setGalIdx(i => (i + 1) % galPhotos.length);
+      else if (e.key === "ArrowLeft") setGalIdx(i => (i - 1 + galPhotos.length) % galPhotos.length);
+    };
+    document.addEventListener("keydown", onKey);
+    return () => { document.body.style.overflow = prev; document.removeEventListener("keydown", onKey); };
+  }, [galIdx, galPhotos.length]);
 
   const pickBiz = biz => {
     setSelectedBiz(biz);
@@ -2755,6 +2906,7 @@ function ProductLandingPage({ prods, cfg, user, onLogin, onToggleTheme, isDark, 
                   <Shirt size={14} /> Desain Baju
                 </button>
               )}
+              <a href="#galeri" className="nav-link">Galeri</a>
               <a href="#keunggulan" className="nav-link">Keunggulan</a>
               <a href={waHref("Halo, saya mau tanya produk katalog.")} target="_blank" rel="noreferrer" className="nav-link">
                 Hubungi WA
@@ -2801,9 +2953,12 @@ function ProductLandingPage({ prods, cfg, user, onLogin, onToggleTheme, isDark, 
           </div>
 
           <div>
-            <div className="lp-shot lp-hero-shot">
+            <div className="lp-shot lp-hero-shot press" role="button" tabIndex={0} style={{cursor:"pointer"}}
+              onClick={() => setGalIdx(0)} aria-label="Perbesar foto utama toko"
+              onKeyDown={e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); setGalIdx(0); } }}>
               <img src={photo("hero",1200,1500)} alt="Koleksi pakaian dan produk perawatan JE Store" className="lp-photo" loading="eager" decoding="async"/>
               <span className="lp-shot-scrim" aria-hidden="true"/>
+              <span className="lp-gal-zoom" style={{opacity:1,transform:"none"}}><Eye size={13}/> Perbesar</span>
               <span className="lp-shot-cap">
                 <span className="lp-shot-cap-k">JE Store</span>
                 Pakaian, skincare &amp; kaos custom dalam satu tempat
@@ -2986,14 +3141,16 @@ function ProductLandingPage({ prods, cfg, user, onLogin, onToggleTheme, isDark, 
         )}
       </section>
 
-      {/* ── Video Promosi (link Google Drive diisi dari Admin > Landing Page) ── */}
-      {videoSrc && (
-        <section id="video" style={{maxWidth:1180,width:"100%",margin:"0 auto",padding:"4px 20px 56px"}}>
-          <div style={{maxWidth:660,marginBottom:18}}>
-            <h2 style={{fontSize:"clamp(22px,3vw,30px)",fontWeight:800,letterSpacing:"-.025em"}}>Sekilas Tentang Toko Kami</h2>
-            <p style={{fontSize:14,color:C.t2,marginTop:6,lineHeight:1.6}}>Lihat langsung koleksi pakaian, produk perawatan, dan proses pesanan custom sebelum membeli.</p>
-          </div>
+      {/* ── Galeri preview foto & video (poster video Google Drive + foto toko/produk) ── */}
+      <section id="galeri" style={{maxWidth:1180,width:"100%",margin:"0 auto",padding:"4px 20px 56px"}}>
+        <div style={{maxWidth:660,marginBottom:18}}>
+          <h2 style={{fontSize:"clamp(22px,3vw,30px)",fontWeight:800,letterSpacing:"-.025em"}}>Galeri Foto &amp; Video</h2>
+          <p style={{fontSize:14,color:C.t2,marginTop:6,lineHeight:1.6}}>
+            Preview video profil toko dan foto koleksi kami. Klik salah satu foto untuk memperbesar, geser pakai panah kiri/kanan.
+          </p>
+        </div>
 
+        {videoSrc ? (
           <div className="lp-video">
             {playVid ? (
               <iframe className="lp-video-frame" src={videoSrc} title="Video profil JE Store"
@@ -3008,8 +3165,24 @@ function ProductLandingPage({ prods, cfg, user, onLogin, onToggleTheme, isDark, 
               </button>
             )}
           </div>
-        </section>
-      )}
+        ) : (
+          <div style={{padding:"16px 18px",borderRadius:18,border:`1px dashed ${C.bo2}`,color:C.t2,fontSize:13.5,lineHeight:1.6}}>
+            Video promosi belum diisi. Admin bisa menambahkan link video Google Drive di menu <b>Landing Page</b>.
+          </div>
+        )}
+
+        <div className="lp-gal">
+          {galPhotos.map((it, i) => (
+            <button key={i} type="button" className="lp-gal-item press" onClick={() => setGalIdx(i)}
+              aria-label={`Perbesar foto: ${it.cap}`}>
+              <img src={it.src} alt={it.cap} className="lp-photo" loading="lazy" decoding="async"/>
+              <span className="lp-gal-scrim" aria-hidden="true"/>
+              <span className="lp-gal-cap"><b>{it.cap}</b>{it.sub ? <i>{it.sub}</i> : null}</span>
+              <span className="lp-gal-zoom"><Eye size={13}/> Perbesar</span>
+            </button>
+          ))}
+        </div>
+      </section>
 
       {/* ── Keunggulan Belanja di Sini: Benefit Pembeli ── */}
       <section id="keunggulan" style={{maxWidth:1180,width:"100%",margin:"0 auto",padding:"8px 20px 56px"}}>
@@ -3050,6 +3223,54 @@ function ProductLandingPage({ prods, cfg, user, onLogin, onToggleTheme, isDark, 
             </div>
           ))}
         </div>
+      </section>
+
+      {/* ── Review Pelanggan ── */}
+      <section id="review" style={{maxWidth:1180,width:"100%",margin:"0 auto",padding:"0 20px 56px"}}>
+        {(() => {
+          const avg = DEFAULT_REVIEWS.reduce((s, r) => s + r.stars, 0) / DEFAULT_REVIEWS.length;
+          return <>
+            <div style={{display:"flex",flexWrap:"wrap",alignItems:"flex-end",justifyContent:"space-between",gap:16,marginBottom:20}}>
+              <div style={{maxWidth:560}}>
+                <h2 style={{fontSize:"clamp(22px,3vw,28px)",fontWeight:800,letterSpacing:"-.025em",marginBottom:6}}>Apa Kata Pelanggan</h2>
+                <p style={{fontSize:14,color:C.t2,lineHeight:1.6}}>Ulasan pelanggan JS Clothing dan JB Store yang sudah berbelanja langsung maupun pesan custom di toko kami.</p>
+              </div>
+              <div style={{display:"flex",alignItems:"center",gap:14,padding:"14px 18px",borderRadius:18,background:C.bg2,
+                border:`1px solid ${C.bo1}`,boxShadow:C.sh,flexShrink:0}}>
+                <div style={{fontSize:34,fontWeight:800,letterSpacing:"-.03em",lineHeight:1}}>{avg.toFixed(1)}</div>
+                <div>
+                  <Stars n={Math.round(avg)} size={16}/>
+                  <div style={{fontSize:12,color:C.t2,marginTop:4}}>{DEFAULT_REVIEWS.length} ulasan pelanggan</div>
+                </div>
+              </div>
+            </div>
+            <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(min(290px,100%),1fr))",gap:16}}>
+              {DEFAULT_REVIEWS.map(r => {
+                const initials = r.name.split(" ").map(w => w[0]).slice(0, 2).join("").toUpperCase();
+                return (
+                  <article key={r.name} className="lp-lift" style={{background:C.bg2,border:`1px solid ${C.bo1}`,borderRadius:20,
+                    padding:"20px",display:"flex",flexDirection:"column",gap:11,boxShadow:C.sh}}>
+                    <div style={{display:"flex",alignItems:"center",gap:11}}>
+                      <span style={{width:42,height:42,borderRadius:"50%",background:C.pri1,color:C.pri,display:"grid",
+                        placeItems:"center",fontWeight:800,fontSize:15,flexShrink:0}}>{initials}</span>
+                      <div style={{minWidth:0}}>
+                        <div style={{fontSize:14,fontWeight:800,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{r.name}</div>
+                        <div style={{fontSize:11.5,color:C.t2,marginTop:2,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>
+                          {(BIZ[r.biz] || {}).name || "Pelanggan JE Store"}
+                        </div>
+                      </div>
+                      <span style={{marginLeft:"auto"}}><Stars n={r.stars}/></span>
+                    </div>
+                    <p style={{fontSize:13.5,color:C.t1,lineHeight:1.65,margin:0}}>&ldquo;{r.text}&rdquo;</p>
+                    <div style={{fontSize:11.5,color:C.t3,marginTop:"auto",display:"flex",alignItems:"center",gap:6,lineHeight:1.4}}>
+                      <BadgeCheck size={13} color={C.g} style={{flexShrink:0}}/> Pembelian terverifikasi &middot; {r.date}
+                    </div>
+                  </article>
+                );
+              })}
+            </div>
+          </>;
+        })()}
       </section>
 
       {/* ── Ajakan Penutup ── */}
@@ -3110,6 +3331,34 @@ function ProductLandingPage({ prods, cfg, user, onLogin, onToggleTheme, isDark, 
           &copy; {new Date().getFullYear()} JE Store. Semua harga dalam Rupiah resmi.
         </div>
       </footer>
+
+      {/* ── Lightbox preview foto ── */}
+      {galIdx >= 0 && galPhotos[galIdx] && (
+        <div className="lb-ov" role="dialog" aria-modal="true" aria-label="Preview foto" onClick={() => setGalIdx(-1)}>
+          <button type="button" className="lb-x" onClick={() => setGalIdx(-1)} aria-label="Tutup preview" title="Tutup (Esc)">
+            <X size={19}/>
+          </button>
+          {galPhotos.length > 1 && (
+            <button type="button" className="lb-p" aria-label="Foto sebelumnya" title="Sebelumnya (←)"
+              onClick={e => { e.stopPropagation(); setGalIdx(i => (i - 1 + galPhotos.length) % galPhotos.length); }}>
+              <ChevronLeft size={22}/>
+            </button>
+          )}
+          <figure className="lb-fig" onClick={e => e.stopPropagation()}>
+            <img src={galPhotos[galIdx].src} alt={galPhotos[galIdx].cap}/>
+            <figcaption className="lb-cap">
+              <b>{galPhotos[galIdx].cap}</b>
+              <span>{galIdx + 1} / {galPhotos.length}{galPhotos[galIdx].sub ? ` · ${galPhotos[galIdx].sub}` : ""}</span>
+            </figcaption>
+          </figure>
+          {galPhotos.length > 1 && (
+            <button type="button" className="lb-n" aria-label="Foto berikutnya" title="Berikutnya (→)"
+              onClick={e => { e.stopPropagation(); setGalIdx(i => (i + 1) % galPhotos.length); }}>
+              <ChevronRight size={22}/>
+            </button>
+          )}
+        </div>
+      )}
     </div>
   );
 }
@@ -3245,6 +3494,7 @@ function AppInner() {
   const [selectedOpname, setSelectedOpname] = useState(null);
   const [landingCfg, setLandingCfg] = useState({});
   const [landingDraft, setLandingDraft] = useState(null);
+  const [landPrev, setLandPrev] = useState(null); // preview foto besar di tab Landing Page
   const [customOrders, setCustomOrders] = useState(() => {
     try {
       const raw = localStorage.getItem("je_custom_orders_backup");
@@ -6485,19 +6735,30 @@ function AppInner() {
             <Card>
               {PHOTO_FIELDS.map(([k,label],i)=>{
                 const src=driveImg(lf[k],200);
-                return <div key={k} style={{display:"flex",gap:12,alignItems:"center",padding:"10px 0",borderTop:i===0?"none":`1px solid ${C.bo0}`}}>
-                  <div style={{width:56,height:56,borderRadius:10,overflow:"hidden",flexShrink:0,background:C.bg3,border:`1px solid ${C.bo0}`,display:"grid",placeItems:"center"}}>
-                    {src?<img src={src} alt="" style={{width:"100%",height:"100%",objectFit:"cover"}}/>
-                        :<span style={{fontSize:9.5,color:C.t3,textAlign:"center",lineHeight:1.2,padding:"0 4px"}}>contoh</span>}
-                  </div>
+                const full=driveImg(lf[k],1200);
+                return <div key={k} style={{display:"flex",gap:12,alignItems:"flex-start",padding:"10px 0",borderTop:i===0?"none":`1px solid ${C.bo0}`}}>
+                  <button type="button" onClick={()=>full&&setLandPrev({src:full,cap:label})} disabled={!full}
+                    className={full?"press":""} title={full?"Klik untuk memperbesar preview":"Isi link fotonya dulu"}
+                    style={{width:76,height:76,borderRadius:12,overflow:"hidden",flexShrink:0,background:C.bg3,
+                      border:`1px solid ${C.bo1}`,display:"grid",placeItems:"center",padding:0,
+                      cursor:full?"pointer":"default",position:"relative",outline:"none"}}>
+                    {src
+                      ? <>
+                          <img src={src} alt="" style={{width:"100%",height:"100%",objectFit:"cover"}}/>
+                          <span aria-hidden="true" style={{position:"absolute",right:5,bottom:5,width:22,height:22,borderRadius:"50%",
+                            background:"rgba(8,11,30,.62)",color:"#fff",display:"grid",placeItems:"center"}}><Eye size={12}/></span>
+                        </>
+                      : <span style={{fontSize:9.5,color:C.t3,textAlign:"center",lineHeight:1.2,padding:"0 4px"}}>contoh</span>}
+                  </button>
                   <div style={{flex:1,minWidth:0}}>
                     <label style={{fontSize:11,fontWeight:700,color:C.t2,display:"block",marginBottom:4}}>{label}</label>
                     <input value={lf[k]||""} onChange={e=>setLf(k,e.target.value)} placeholder="https://drive.google.com/file/d/..." style={IS}/>
+                    <div style={{fontSize:10.5,color:C.t3,marginTop:4,lineHeight:1.4}}>{full?"Klik thumbnail untuk memperbesar.":"Belum ada foto — pakai foto contoh."}</div>
                   </div>
                 </div>;
               })}
-              <div style={{display:"flex",gap:12,alignItems:"center",padding:"10px 0",borderTop:`1px solid ${C.bo0}`}}>
-                <div style={{width:56,height:56,borderRadius:10,overflow:"hidden",flexShrink:0,background:C.bg3,border:`1px solid ${C.bo0}`,display:"grid",placeItems:"center"}}>
+              <div style={{display:"flex",gap:12,alignItems:"flex-start",padding:"10px 0",borderTop:`1px solid ${C.bo0}`}}>
+                <div style={{width:76,height:76,borderRadius:12,overflow:"hidden",flexShrink:0,background:C.bg3,border:`1px solid ${C.bo1}`,display:"grid",placeItems:"center"}}>
                   {driveImg(lf.video,200)
                     ? <img src={driveImg(lf.video,200)} alt="" style={{width:"100%",height:"100%",objectFit:"cover"}}/>
                     : <Play size={18} color={C.t3}/>}
@@ -6508,6 +6769,17 @@ function AppInner() {
                   <div style={{fontSize:10.5,color:C.t3,marginTop:4,lineHeight:1.4}}>
                     Atur izin file &ldquo;Siapa saja yang memiliki link&rdquo;. Kosongkan untuk menyembunyikan bagian video di halaman promosi.
                   </div>
+                  {driveVideo(lf.video) && (
+                    <div style={{marginTop:12}}>
+                      <div style={{fontSize:11,fontWeight:700,color:C.t2,marginBottom:6,display:"flex",alignItems:"center",gap:6}}>
+                        <Play size={12}/> Preview video yang tampil di halaman
+                      </div>
+                      <div className="lp-video" style={{borderRadius:16,boxShadow:"none"}}>
+                        <iframe className="lp-video-frame" src={driveVideo(lf.video)} title="Preview video promosi"
+                          allow="autoplay; encrypted-media; picture-in-picture" allowFullScreen loading="lazy"/>
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
               <div style={{padding:"12px 0 2px",borderTop:`1px solid ${C.bo0}`}}>
@@ -6565,6 +6837,14 @@ function AppInner() {
               </div>
             </Card>
             <p style={{fontSize:11.5,color:C.t3,lineHeight:1.5}}>Tekan <b>Simpan</b> untuk menyimpan foto besar, video, dan jumlah tampil. Centang produk dan isi foto produk langsung tersimpan per produk.</p>
+
+            {/* Preview foto besar */}
+            <Modal open={!!landPrev} size="md" onClose={()=>setLandPrev(null)} title="Preview foto"
+              subtitle={landPrev?landPrev.cap:""}
+              footer={landPrev&&<Btn outline onClick={()=>window.open(landPrev.src,"_blank")}><ExternalLink size={15}/> Buka ukuran penuh</Btn>}>
+              {landPrev&&<img src={landPrev.src} alt={landPrev.cap||"Preview foto"} loading="lazy"
+                style={{width:"100%",maxHeight:"64vh",objectFit:"contain",borderRadius:14,background:C.bg3}}/>}
+            </Modal>
           </div>;
         })()}
 
@@ -7003,13 +7283,21 @@ function AppInner() {
           expenses.filter(e=>inJ(expDate(e))&&passBiz(e.business)).forEach(e=>{
             const ref=refOf("EXP",e.id), dsc=`${e.description||e.category} · ${e.date}`;
             const amt=num(e.amount);
-            entries.push({date:e.date||e.dateISO,ref,desc:dsc,akun:`Beban ${e.category}`,d:amt,k:0,biz:e.business});
+            entries.push({date:e.date||e.dateISO,ref,desc:dsc,akun:akunOf(e.category),d:amt,k:0,biz:e.business});
             entries.push({date:e.date||e.dateISO,ref,desc:dsc,akun:"Kas & Bank",d:0,k:amt,biz:e.business});
           });
           const q=jrnlQ.trim().toLowerCase();
           const list=entries.filter(r=>!q||((r.akun+" "+r.desc+" "+r.ref).toLowerCase().includes(q)))
             .sort((a,b)=>dtOf(b.date)-dtOf(a.date)||String(b.ref).localeCompare(String(a.ref)));
           const totalD=list.reduce((s,r)=>s+r.d,0), totalK=list.reduce((s,r)=>s+r.k,0);
+          // Saldo kas berjalan per baris — dihitung dari yang paling lama ke terbaru,
+          // lalu ditampilkan sesuai urutan tabel (terbaru di atas).
+          [...list].sort((a,b)=>dtOf(a.date)-dtOf(b.date)).reduce((run,r)=>{
+            const s=r.akun==="Kas & Bank"?run+r.d-r.k:run;
+            r.saldo=s;
+            return s;
+          },0);
+          const saldoAkhir=list.length?(list[0].saldo??0):0;
           const voucherN=new Set(list.map(r=>r.ref)).size;
           const pageRows=list.slice((jrnlPage-1)*jrnlPerPage,jrnlPage*jrnlPerPage);
           const periodLabel={all:"Semua waktu",today:"Hari ini",week:"7 hari terakhir",month:"Bulan ini",lastmonth:"Bulan lalu",custom:"Rentang tanggal"}[jrnlRange];
@@ -7024,6 +7312,7 @@ function AppInner() {
                 {key:"date",label:"Tanggal",w:14},{key:"ref",label:"Ref",w:12},
                 {key:"desc",label:"Keterangan",w:40},{key:"akun",label:"Akun",w:26},
                 {key:"d",label:"Debit (Rp)",num:true,w:16},{key:"k",label:"Kredit (Rp)",num:true,w:16},
+                {key:"saldo",label:"Saldo Kas (Rp)",num:true,w:18},
                 {key:"biz",label:"Bisnis",fn:r=>BIZ[r.biz]?.name||r.biz,w:14},
               ],"Jurnal","jurnal_umum")}>Export Excel</Btn>
             </div>
@@ -7039,20 +7328,24 @@ function AppInner() {
               </div>}
             </div>
             <Inp value={jrnlQ} onChange={e=>setJrnlQ(e.target.value)} placeholder="Cari akun, keterangan, atau ref" icon={<Search size={16}/>} style={{maxWidth:340,minHeight:40}}/>
-            <div className="stat-grid-4" style={{display:"grid",gap:8}}>
+            <div style={{display:"grid",gap:8,gridTemplateColumns:"repeat(auto-fit,minmax(min(160px,44vw),1fr))"}}>
               <Stat icon="🪙" label="Total Debit" value={rp(totalD)} color={C.b}/>
               <Stat icon="🪙" label="Total Kredit" value={rp(totalK)} color={C.p}/>
               <Stat icon="⚖️" label="Selisih" value={rpS(totalD-totalK)} color={totalD===totalK?C.g:C.r} sub={totalD===totalK?"Jurnal seimbang":"Periksa data"}/>
+              <Stat icon="💵" label="Saldo kas" value={rp(saldoAkhir)} color={saldoAkhir>=0?C.g:C.r} sub="Saldo berjalan Kas & Bank"/>
               <Stat icon="📄" label="Bukti / baris" value={`${voucherN} / ${list.length}`} color={C.cy}/>
             </div>
             {list.length===0
               ? <Card><EmptyState icon={<FileText size={24} strokeWidth={1.6}/>} title="Belum ada jurnal pada periode ini" hint="Ubah periode atau filter bisnis. Penjualan dan biaya otomatis dicatat di sini."/></Card>
               : <Card noPad style={{overflow:"hidden"}}>
                   <TableWrap compact maxH="58vh">
-                    <table style={{width:"100%",borderCollapse:"collapse",minWidth:760}}>
-                      <THead cols={["Tanggal","Ref","Keterangan","Akun","Debit","Kredit"]}/>
+                    <table style={{width:"100%",borderCollapse:"collapse",minWidth:880}}>
+                      <THead cols={["Tanggal","Ref","Keterangan","Akun","Debit","Kredit","Saldo"]}/>
                       <tbody>{pageRows.map((r,i)=>{
                         const baru=i===0||pageRows[i-1].ref!==r.ref;
+                        const prev=i>0?pageRows[i-1].saldo:r.saldo;
+                        const ganti=r.saldo!==prev;
+                        const kas=r.akun==="Kas & Bank";
                         return <tr key={i} className="hrow" style={{borderTop:baru?`1px solid ${C.bo1}`:`1px solid ${C.bo0}`}}>
                           <td style={{padding:"10px 14px",whiteSpace:"nowrap",color:C.t2,fontSize:12.5,verticalAlign:"top"}}>{baru?shortDate(r.date):""}</td>
                           <td style={{padding:"10px 14px",verticalAlign:"top"}}>
@@ -7063,6 +7356,9 @@ function AppInner() {
                           <td style={{padding:"10px 14px",fontWeight:650,fontSize:13,verticalAlign:"top",whiteSpace:"nowrap"}}>{r.akun}</td>
                           <td className="mn" style={{padding:"10px 14px",textAlign:"right",whiteSpace:"nowrap",fontWeight:700,color:r.d?C.t0:C.t3}}>{r.d?rp(r.d):"–"}</td>
                           <td className="mn" style={{padding:"10px 14px",textAlign:"right",whiteSpace:"nowrap",fontWeight:700,color:r.k?C.t0:C.t3}}>{r.k?rp(r.k):"–"}</td>
+                          <td className="mn" style={{padding:"10px 14px",textAlign:"right",whiteSpace:"nowrap",
+                            fontWeight:ganti&&kas?800:600,color:(r.saldo??0)<0?C.r:(kas?C.g:(ganti?C.t1:C.t3)),
+                            opacity:ganti?1:.75}}>{rp(r.saldo??0)}</td>
                         </tr>;})}</tbody>
                     </table>
                   </TableWrap>
@@ -7070,7 +7366,7 @@ function AppInner() {
             <TablePagination page={jrnlPage} perPage={jrnlPerPage} totalItems={list.length}
               onPageChange={setJrnlPage} onPerPageChange={setJrnlPerPage} perPageOptions={[20,50,100]}/>
             <div style={{fontSize:12,color:C.t2,lineHeight:1.65}}>
-              Tiap penjualan dicatat <b>Kas &amp; Bank</b> / <b>Pendapatan Penjualan</b>, dilanjut <b>Beban HPP</b> / <b>Persediaan Barang</b>. Tiap biaya dicatat <b>Beban (kategori)</b> / <b>Kas &amp; Bank</b>. Transaksi yang diretur tidak ikut dicatat.
+              Tiap penjualan dicatat <b>Kas &amp; Bank</b> / <b>Pendapatan Penjualan</b>, dilanjut <b>Beban HPP</b> / <b>Persediaan Barang</b>. Tiap biaya dicatat <b>akun biaya</b> (Belanja Produk, Biaya Pengiriman, Listrik, …) / <b>Kas &amp; Bank</b>. Kolom <b>Saldo</b> adalah saldo berjalan Kas &amp; Bank setelah baris tersebut. Transaksi yang diretur tidak ikut dicatat.
             </div>
           </div>;
         })()}
@@ -7225,6 +7521,7 @@ function AppInner() {
             .reduce((s,t)=>s+(Number(t.totalHpp)||0),0);
           const byCat={};list.forEach(e=>{byCat[e.category]=(byCat[e.category]||0)+e.amount;});
           const top=Object.entries(byCat).sort((a,b)=>b[1]-a[1])[0];
+          const akunOptions=["ALL",...[...new Set([...AKUN_CATS,...expenses.map(e=>e.category).filter(Boolean)])]];
           const del=(e)=>{if(!window.confirm(`Hapus belanja ${e.category} ${rp(e.amount)}?`))return;
             fbDeleteExpense(e.id,`${e.category} ${rp(e.amount)}`,e.business,user.name).then(()=>toast("Belanja dihapus","warn")).catch(er=>toast(er.message,"err"));};
           const bizChip=(b)=>b==="ALL"?"Semua":BIZ[b]?.name;
@@ -7234,17 +7531,17 @@ function AppInner() {
                 <p style={{fontSize:12.5,color:C.t2,marginTop:2}}>Biaya operasional di luar pembelian barang dagangan. Rinciannya otomatis masuk ke Jurnal dan Laporan Keuangan.</p></div>
               <Btn size="sm" outline onClick={()=>downloadXLSX(list,[
                 {key:"date",label:"Tanggal",w:14},{key:"business",label:"Bisnis",fn:r=>BIZ[r.business]?.name||r.business,w:14},
-                {key:"category",label:"Kategori",w:24},{key:"description",label:"Keterangan",w:36},{key:"payment",label:"Dibayar",w:12},
+                {key:"category",label:"Akun",w:24},{key:"description",label:"Keterangan",w:36},{key:"payment",label:"Dibayar",w:12},
                 {key:"by",label:"Dicatat oleh",w:18},{key:"amount",label:"Jumlah (Rp)",fn:r=>r.amount,num:true,w:16},
               ],"Operasional","belanja_operasional")}>Export Excel</Btn>
               <Btn size="sm" onClick={()=>setExpenseModal(true)}><Plus size={16}/>Catat biaya</Btn>
             </div>
             <div style={{display:"flex",gap:6,flexWrap:"wrap",alignItems:"center"}}>
               {["ALL","JS_CLOTHING","JB_STORE"].map(b=><button key={b} onClick={()=>setExpBiz(b)} className={`chip${expBiz===b?" on":""}`}>{bizChip(b)}</button>)}
-              <select value={expCat} onChange={e=>setExpCat(e.target.value)} aria-label="Kategori"
-                style={{padding:"8px 12px",background:expCat!=="ALL"?C.pri1:C.bg2,border:`1.5px solid ${expCat!=="ALL"?C.pri:C.bo1}`,borderRadius:50,color:expCat!=="ALL"?C.pri:C.t0,fontSize:13,fontFamily:F.sans,fontWeight:600}}>
-                <option value="ALL">Semua kategori</option>{EXPENSE_CATS.map(c=><option key={c} value={c}>{c}</option>)}
-              </select>
+              <div style={{width:240}}>
+                <SearchSelect value={expCat} onChange={setExpCat} options={akunOptions}
+                  renderLabel={v=>v==="ALL"?"Semua akun":akunOf(v)} placeholder="Cari akun…"/>
+              </div>
             </div>
             <div style={{display:"flex",gap:6,flexWrap:"wrap",alignItems:"center"}}>
               {[["all","Semua"],["today","Hari ini"],["week","7 hari"],["month","Bulan ini"],["lastmonth","Bulan lalu"],["custom","Rentang"]].map(([v,l])=>
@@ -7255,7 +7552,7 @@ function AppInner() {
                 <input type="date" value={expTo} onChange={e=>setExpTo(e.target.value)} style={{padding:"8px 10px",background:C.bg3,border:`1.5px solid ${C.bo1}`,borderRadius:10,color:C.t0,fontSize:13,fontFamily:F.sans}}/>
               </div>}
             </div>
-            <Inp value={expQ} onChange={e=>setExpQ(e.target.value)} placeholder="Cari keterangan atau kategori" icon={<Search size={16}/>} style={{minHeight:42}}/>
+            <Inp value={expQ} onChange={e=>setExpQ(e.target.value)} placeholder="Cari keterangan atau akun" icon={<Search size={16}/>} style={{minHeight:42}}/>
             <div className="stat-grid-3" style={{display:"grid",gap:10,gridTemplateColumns:"repeat(3,1fr)"}}>
               <Stat icon="📦" label="Biaya pokok penjualan (HPP)" value={rp(hppPeriod)} color={C.r}/>
               <Stat icon="🧾" label="Biaya operasional" value={rp(total)} color={C.a} sub={top?`${list.length} catatan · terbesar ${top[0]}`:`${list.length} catatan`}/>
@@ -7266,7 +7563,7 @@ function AppInner() {
               return <>
               <div className="hide-mobile"><Card noPad style={{overflow:"hidden"}}><TableWrap>
                 <table style={{width:"100%",borderCollapse:"collapse",minWidth:720}}>
-                  <THead cols={["Tanggal","Bisnis","Kategori","Keterangan","Dibayar","Dicatat oleh","Jumlah",""]}/>
+                  <THead cols={["Tanggal","Bisnis","Akun","Keterangan","Dibayar","Dicatat oleh","Jumlah",""]}/>
                   <tbody>{paginatedExpenses.map((e,i)=><tr key={e.id} className="hrow" style={{borderTop:`1px solid ${C.bo0}`,background:i%2===0?"transparent":C.bg0}}>
                     <td style={{padding:"12px 14px",whiteSpace:"nowrap",color:C.t2}}>{e.date}</td>
                     <td style={{padding:"12px 14px"}}><BizChip biz={e.business} sm/></td>
@@ -7335,7 +7632,7 @@ function AppInner() {
           const colIds=plBiz==="ALL"?["JS_CLOTHING","JB_STORE","ALL"]:[plBiz];
           const D=Object.fromEntries(colIds.map(c=>[c,calc(c)]));
           const main=D[plBiz==="ALL"?"ALL":plBiz];
-          const cats=[...EXPENSE_CATS.filter(c=>colIds.some(id=>D[id].byCat[c])),...[...new Set(plExp.map(e=>e.category))].filter(c=>!EXPENSE_CATS.includes(c)&&colIds.some(id=>D[id].byCat[c]))];
+          const cats=[...AKUN_CATS.filter(c=>colIds.some(id=>D[id].byCat[c])),...[...new Set(plExp.map(e=>e.category))].filter(c=>!AKUN_CATS.includes(c)&&colIds.some(id=>D[id].byCat[c]))];
           const colName=id=>id==="ALL"?"Gabungan":BIZ[id].name;
           const rows=[
             {l:"Penjualan kotor",f:d=>d.gross},
