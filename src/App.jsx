@@ -3918,6 +3918,8 @@ function AppInner() {
   const [plRange,setPlRange]=useState("month");
   const [plFrom,setPlFrom]=useState("");
   const [plTo,setPlTo]=useState("");
+  const [plTaxRate,setPlTaxRate]=useState(12);
+  const [plViewMode,setPlViewMode]=useState("sheet");
   // ── Jurnal & Laporan Keuangan (Neraca / Laba Rugi / Perubahan Modal) ──
   const [jrnlRange,setJrnlRange]=useState("all");
   const [jrnlFrom,setJrnlFrom]=useState("");
@@ -7114,44 +7116,32 @@ function AppInner() {
             </div>
             {list.length===0
               ? <Card><EmptyState icon={<FileText size={24} strokeWidth={1.6}/>} title="Belum ada jurnal pada periode ini" hint="Ubah periode atau filter bisnis. Penjualan dan biaya otomatis dicatat di sini."/></Card>
-              : <div>
-                  <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill, minmax(310px, 1fr))",gap:10}}>
-                    {pageRows.map((r,i)=>{
-                      const kas=r.akun==="Kas & Bank";
-                      return (
-                        <div key={i} className="card-in" style={{background:C.bg2,borderRadius:14,border:`1px solid ${C.bo0}`,padding:"13px 15px",display:"flex",flexDirection:"column",justifyContent:"space-between",gap:8}}>
-                          <div>
-                            <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:8,marginBottom:4}}>
-                              <div style={{display:"flex",alignItems:"center",gap:6,flexWrap:"wrap"}}>
-                                <span style={{fontSize:11.5,fontWeight:800,color:C.pri}}>{r.ref}</span>
-                                <BizChip biz={r.biz} sm/>
-                              </div>
-                              <span style={{fontSize:11,color:C.t2}}>{shortDate(r.date)}</span>
-                            </div>
-                            <div style={{fontSize:13,fontWeight:750,color:C.t0,marginTop:2}}>{r.akun}</div>
-                            <div style={{fontSize:12,color:C.t2,marginTop:2,lineHeight:1.35}}>{r.desc}</div>
-                          </div>
-
-                          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:6,background:C.bg3,borderRadius:8,padding:"7px 10px",fontSize:11}}>
-                            <div>
-                              <span style={{color:C.t3,fontSize:10}}>DEBIT: </span>
-                              <b className="mn" style={{color:r.d?C.b:C.t3}}>{r.d?rp(r.d):"–"}</b>
-                            </div>
-                            <div>
-                              <span style={{color:C.t3,fontSize:10}}>KREDIT: </span>
-                              <b className="mn" style={{color:r.k?C.p:C.t3}}>{r.k?rp(r.k):"–"}</b>
-                            </div>
-                          </div>
-
-                          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",fontSize:11,paddingTop:4,borderTop:`1px solid ${C.bo0}`}}>
-                            <span style={{color:C.t3,fontSize:10.5}}>Saldo Kas Berjalan</span>
-                            <span className="mn" style={{fontWeight:750,fontSize:12,color:(r.saldo??0)<0?C.r:(kas?C.g:C.t1)}}>{rp(r.saldo??0)}</span>
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>}
+              : <Card noPad style={{overflow:"hidden"}}>
+                  <TableWrap compact maxH="62vh">
+                    <table style={{width:"100%",borderCollapse:"collapse",minWidth:880}}>
+                      <THead cols={["Tanggal","Ref","Keterangan","Akun","Debit","Kredit","Saldo"]}/>
+                      <tbody>{pageRows.map((r,i)=>{
+                        const baru=i===0||pageRows[i-1].ref!==r.ref;
+                        const prev=i>0?pageRows[i-1].saldo:r.saldo;
+                        const ganti=r.saldo!==prev;
+                        const kas=r.akun==="Kas & Bank";
+                        return <tr key={i} className="hrow" style={{borderTop:baru?`1px solid ${C.bo1}`:`1px solid ${C.bo0}`}}>
+                          <td style={{padding:"10px 14px",whiteSpace:"nowrap",color:C.t2,fontSize:12.5,verticalAlign:"top"}}>{baru?shortDate(r.date):""}</td>
+                          <td style={{padding:"10px 14px",verticalAlign:"top"}}>
+                            <span style={{fontSize:11.5,fontWeight:800,color:C.pri,whiteSpace:"nowrap"}}>{r.ref}</span>
+                            <div style={{marginTop:5}}><BizChip biz={r.biz} sm/></div>
+                          </td>
+                          <td style={{padding:"10px 14px",color:C.t1,fontSize:13,verticalAlign:"top"}}>{r.desc}</td>
+                          <td style={{padding:"10px 14px",fontWeight:650,fontSize:13,verticalAlign:"top",whiteSpace:"nowrap"}}>{r.akun}</td>
+                          <td className="mn" style={{padding:"10px 14px",textAlign:"right",whiteSpace:"nowrap",fontWeight:700,color:r.d?C.t0:C.t3}}>{r.d?rp(r.d):"–"}</td>
+                          <td className="mn" style={{padding:"10px 14px",textAlign:"right",whiteSpace:"nowrap",fontWeight:700,color:r.k?C.t0:C.t3}}>{r.k?rp(r.k):"–"}</td>
+                          <td className="mn" style={{padding:"10px 14px",textAlign:"right",whiteSpace:"nowrap",
+                            fontWeight:ganti&&kas?800:600,color:(r.saldo??0)<0?C.r:(kas?C.g:(ganti?C.t1:C.t3)),
+                            opacity:ganti?1:.75}}>{rp(r.saldo??0)}</td>
+                        </tr>;})}</tbody>
+                    </table>
+                  </TableWrap>
+                </Card>}
             <TablePagination page={jrnlPage} perPage={jrnlPerPage} totalItems={list.length}
               onPageChange={setJrnlPage} onPerPageChange={setJrnlPerPage} perPageOptions={[20,50,100]}/>
             <div style={{fontSize:12,color:C.t2,lineHeight:1.65}}>
@@ -7392,41 +7382,290 @@ function AppInner() {
           const returnedN=tIn.length-plTrx.length;
           const plExp=expenses.filter(e=>inRangeDate(expDate(e),plRange,plFrom,plTo));
           const sum=(a,f)=>a.reduce((t,x)=>t+(f(x)||0),0);
-          const calc=b=>{
-            const tt=plTrx.filter(t=>b==="ALL"||t.business===b), ee=plExp.filter(e=>b==="ALL"||e.business===b);
-            const net=sum(tt,t=>t.total), disc=sum(tt,t=>t.discount), hpp=sum(tt,t=>t.totalHpp), gp=net-hpp;
-            const byCat={};ee.forEach(e=>{byCat[e.category]=(byCat[e.category]||0)+e.amount;});
-            const opex=sum(ee,e=>e.amount), np=gp-opex;
-            return {trx:tt.length,gross:net+disc,disc,net,hpp,gp,byCat,opex,np,gm:net>0?gp/net*100:0,nm:net>0?np/net*100:0};
+
+          const calc = b => {
+            const tt = plTrx.filter(t => b === "ALL" || t.business === b);
+            const ee = plExp.filter(e => b === "ALL" || e.business === b);
+            const net = sum(tt, t => t.total);
+            const disc = sum(tt, t => t.discount);
+            const gross = net + disc;
+            const hppTrx = sum(tt, t => t.totalHpp);
+            const byCat = {};
+            ee.forEach(e => {
+              const cName = e.category || "Lain-lain";
+              byCat[cName] = (byCat[cName] || 0) + (Number(e.amount) || 0);
+            });
+
+            // Belanja produk: prioritas HPP transaksi penjualan jika ada, atau pengeluaran belanja produk
+            const belanjaProdukExp = byCat["Belanja Produk"] || 0;
+            const belanjaProduk = hppTrx > 0 ? hppTrx : belanjaProdukExp;
+
+            // Biaya pengiriman
+            const biayaPengiriman = (byCat["Biaya Pengiriman"] || 0) + (byCat["Pengiriman"] || 0) + (byCat["Ongkir"] || 0);
+            const totalBiayaProduksi = belanjaProduk + biayaPengiriman;
+
+            // Kategori operasional standar dari format contoh laba rugi
+            const stdOpex = [
+              { key: "gaji", label: "Biaya Gaji", match: ["biaya gaji", "gaji"] },
+              { key: "listrik", label: "listrik", match: ["listrik"] },
+              { key: "peralatan_listrik", label: "Peeralatan listrik", match: ["peralatan listrik", "peeralatan listrik"] },
+              { key: "bbm", label: "BBM", match: ["bbm", "bahan bakar"] },
+              { key: "pulsa", label: "Pulsa", match: ["pulsa", "paket data"] },
+              { key: "wifi", label: "wifi", match: ["wifi", "wi-fi", "internet"] },
+              { key: "kebersihan", label: "Peralatan Kebersihan", match: ["peralatan kebersihan", "kebersihan"] },
+              { key: "penyusutan", label: "Beban Penyusutan", match: ["beban penyusutan", "penyusutan"] },
+            ];
+
+            const matchedCats = new Set(["belanja produk", "biaya pengiriman", "pengiriman", "ongkir", "pendapatan penjualan", "pendapatan lainnya", "biaya lain-lain", "lain-lain"]);
+            const opexItems = stdOpex.map(s => {
+              let val = 0;
+              Object.entries(byCat).forEach(([c, amt]) => {
+                const cl = c.toLowerCase().trim();
+                if (s.match.includes(cl)) {
+                  val += amt;
+                  matchedCats.add(cl);
+                }
+              });
+              return { label: s.label, val };
+            });
+
+            // Kategori operasional tambahan jika ada di pengeluaran
+            Object.entries(byCat).forEach(([c, amt]) => {
+              const cl = c.toLowerCase().trim();
+              if (!matchedCats.has(cl) && amt > 0) {
+                opexItems.push({ label: c, val: amt });
+              }
+            });
+
+            const totalBiayaOperasional = opexItems.reduce((acc, it) => acc + it.val, 0);
+
+            // Biaya lain-lain
+            let biayaLainLain = 0;
+            Object.entries(byCat).forEach(([c, amt]) => {
+              const cl = c.toLowerCase().trim();
+              if (cl === "biaya lain-lain" || cl === "lain-lain") {
+                biayaLainLain += amt;
+              }
+            });
+
+            const totalBiayaAtasPendapatan = totalBiayaProduksi + totalBiayaOperasional + biayaLainLain;
+
+            // Pendapatan lainnya
+            const pendapatanLain = byCat["Pendapatan Lainnya"] || byCat["Pendapatan Lain"] || 0;
+            const totalPendapatan = net + pendapatanLain;
+
+            const labaSebelumPajak = totalPendapatan - totalBiayaAtasPendapatan;
+            const taxRate = Number(plTaxRate) || 0;
+            const nilaiPajak = labaSebelumPajak > 0 ? Math.round(labaSebelumPajak * (taxRate / 100)) : 0;
+            const labaBersih = labaSebelumPajak - nilaiPajak;
+
+            return {
+              trx: tt.length,
+              net,
+              disc,
+              gross,
+              pendapatanLain,
+              totalPendapatan,
+              belanjaProduk,
+              biayaPengiriman,
+              totalBiayaProduksi,
+              opexItems,
+              totalBiayaOperasional,
+              biayaLainLain,
+              totalBiayaAtasPendapatan,
+              labaSebelumPajak,
+              taxRate,
+              nilaiPajak,
+              labaBersih,
+              byCat,
+              opex: totalBiayaOperasional,
+              gp: totalPendapatan - totalBiayaProduksi,
+              gm: totalPendapatan > 0 ? ((totalPendapatan - totalBiayaProduksi) / totalPendapatan) * 100 : 0,
+              nm: totalPendapatan > 0 ? (labaBersih / totalPendapatan) * 100 : 0,
+            };
           };
-          const colIds=plBiz==="ALL"?["JS_CLOTHING","JB_STORE","ALL"]:[plBiz];
-          const D=Object.fromEntries(colIds.map(c=>[c,calc(c)]));
-          const main=D[plBiz==="ALL"?"ALL":plBiz];
-          const cats=[...AKUN_CATS.filter(c=>colIds.some(id=>D[id].byCat[c])),...[...new Set(plExp.map(e=>e.category))].filter(c=>!AKUN_CATS.includes(c)&&colIds.some(id=>D[id].byCat[c]))];
-          const colName=id=>id==="ALL"?"Gabungan":BIZ[id].name;
-          const rows=[
-            {l:"Penjualan kotor",f:d=>d.gross},
-            {l:"Diskon",f:d=>-d.disc,indent:true,col:()=>C.r},
-            {l:"Penjualan bersih",f:d=>d.net,strong:true},
-            {l:"Harga pokok penjualan (HPP)",f:d=>-d.hpp,indent:true,col:()=>C.r},
-            {l:"Laba kotor",f:d=>d.gp,strong:true,note:d=>`Margin ${d.gm.toFixed(1)}%`},
-            {head:"Biaya operasional"},
-            ...cats.map(c=>({l:c,f:d=>-(d.byCat[c]||0),indent:true,col:()=>C.r})),
-            {l:"Total biaya operasional",f:d=>-d.opex,strong:true},
-            {l:"Laba (rugi) bersih",f:d=>d.np,total:true,note:d=>`Margin ${d.nm.toFixed(1)}%`},
-          ];
-          const periodLabel={all:"Semua waktu",today:"Hari ini",week:"7 hari terakhir",month:"Bulan ini",lastmonth:"Bulan lalu",custom:"Rentang tanggal"}[plRange];
-          const exportRows=rows.filter(r=>!r.head).map(r=>({l:r.l,...Object.fromEntries(colIds.map(id=>["c_"+id,r.f(D[id])]))}));
-          return <div style={{display:"flex",flexDirection:"column",gap:10,marginTop:10}}>
-            <div style={{display:"flex",alignItems:"center",gap:8,flexWrap:"wrap"}}>
-              <div style={{flex:1,minWidth:180}}><h2 style={{fontSize:15,fontWeight:800}}>Laporan Laba Rugi</h2>
-                <p style={{fontSize:12.5,color:C.t2,marginTop:2}}>{periodLabel} · {main.trx} transaksi · {plExp.filter(e=>plBiz==="ALL"||e.business===plBiz).length} catatan operasional</p></div>
-              <Btn size="sm" outline onClick={()=>downloadXLSX(exportRows,[{key:"l",label:"Keterangan",w:34},...colIds.map(id=>({key:"c_"+id,label:colName(id)+" (Rp)",fn:r=>r["c_"+id],num:true,w:20}))],"Laba Rugi","laporan_laba_rugi")}>Export Excel</Btn>
-              <Btn size="sm" onClick={()=>setExpenseModal(true)}><ShoppingBasket size={16}/>Catat biaya</Btn>
+
+          const cur = calc(plBiz);
+          const bizTitle = plBiz === "JB_STORE" ? "JE BEAUTY STORE" : plBiz === "JS_CLOTHING" ? "JE CLOTHING" : "JE GRUP";
+          const periodLabel = {all:"Semua waktu",today:"Hari ini",week:"7 hari terakhir",month:"Bulan ini",lastmonth:"Bulan lalu",custom:"Rentang tanggal"}[plRange];
+          const periodDetail = plRange === "custom" && plFrom && plTo ? `${plFrom} s/d ${plTo}` : periodLabel;
+
+          const colIds = plBiz === "ALL" ? ["JS_CLOTHING", "JB_STORE", "ALL"] : [plBiz];
+          const D = Object.fromEntries(colIds.map(c => [c, calc(c)]));
+          const colName = id => id === "ALL" ? "Gabungan" : BIZ[id].name;
+
+          // Handler cetak dokumen
+          const handlePrint = () => {
+            const el = document.getElementById("laba-rugi-doc-sheet");
+            if (!el) { window.print(); return; }
+            const printWindow = window.open("", "_blank", "width=920,height=850");
+            if (!printWindow) { window.print(); return; }
+            printWindow.document.write(`
+              <!DOCTYPE html>
+              <html>
+                <head>
+                  <meta charset="utf-8" />
+                  <title>Laporan Laba Rugi - ${bizTitle}</title>
+                  <style>
+                    @page { size: A4 portrait; margin: 12mm 15mm; }
+                    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; margin: 0; padding: 24px; color: #000; background: #fff; }
+                    .no-print { display: none !important; }
+                    * { box-sizing: border-box; }
+                    .sheet-container { max-width: 100% !important; border: none !important; box-shadow: none !important; padding: 0 !important; }
+                  </style>
+                </head>
+                <body>
+                  <div class="sheet-container">${el.innerHTML}</div>
+                  <script>
+                    window.onload = function() {
+                      setTimeout(function() {
+                        window.print();
+                        window.close();
+                      }, 350);
+                    };
+                  <\/script>
+                </body>
+              </html>
+            `);
+            printWindow.document.close();
+          };
+
+          // Handler Export Excel Standar Akuntansi
+          const handleExportExcel = () => {
+            const rows = [
+              { k: "LAPORAN LABA RUGI", c1: "", c2: "", c3: "" },
+              { k: bizTitle, c1: "", c2: "", c3: "" },
+              { k: `Periode: ${periodDetail}`, c1: "", c2: "", c3: "" },
+              { k: "", c1: "", c2: "", c3: "" },
+              { k: "Pendapatan", c1: "", c2: "", c3: "" },
+              { k: "  Pendapatan Usaha", c1: "", c2: "", c3: "" },
+              { k: "    Pendapatan Penjualan", c1: cur.net, c2: "", c3: "" },
+              { k: "  Total Pendapatan Usaha", c1: "", c2: cur.net, c3: "" },
+              { k: "  Pendapatan lainnya", c1: "", c2: cur.pendapatanLain, c3: "" },
+              { k: "Total Pendapatan", c1: "", c2: "", c3: cur.totalPendapatan },
+              { k: "", c1: "", c2: "", c3: "" },
+              { k: "Biaya Atas Pendapatan", c1: "", c2: "", c3: "" },
+              { k: "  Biaya Produksi", c1: "", c2: "", c3: "" },
+              { k: "    Belanja Produk", c1: cur.belanjaProduk, c2: "", c3: "" },
+              { k: "    Biaya Pengiriman", c1: cur.biayaPengiriman, c2: "", c3: "" },
+              { k: "  Total Biaya Produksi", c1: "", c2: cur.totalBiayaProduksi, c3: "" },
+              { k: "  Biaya Operasional", c1: "", c2: "", c3: "" },
+              ...cur.opexItems.map(o => ({ k: `    ${o.label}`, c1: o.val, c2: "", c3: "" })),
+              { k: "  Total Biaya Operasional", c1: "", c2: cur.totalBiayaOperasional, c3: "" },
+              { k: "  Biaya Lain-lain", c1: "", c2: cur.biayaLainLain, c3: "" },
+              { k: "Total Biaya Atas Pendapatan", c1: "", c2: "", c3: cur.totalBiayaAtasPendapatan },
+              { k: "", c1: "", c2: "", c3: "" },
+              { k: "LABA SEBELUM PAJAK", c1: "", c2: "", c3: cur.labaSebelumPajak },
+              { k: `Pajak (${cur.taxRate}%)`, c1: "", c2: "", c3: `${cur.taxRate}%` },
+              { k: "LABA BERSIH", c1: "", c2: "", c3: cur.labaBersih },
+            ];
+            downloadXLSX(
+              rows,
+              [
+                { key: "k", label: "Keterangan", w: 38 },
+                { key: "c1", label: "Rincian (Rp)", num: true, w: 20 },
+                { key: "c2", label: "Subtotal (Rp)", num: true, w: 20 },
+                { key: "c3", label: "Total (Rp)", num: true, w: 22 },
+              ],
+              "Laba Rugi",
+              `laporan_laba_rugi_${plBiz.toLowerCase()}`
+            );
+          };
+
+          // Komponen Sel Akuntansi (Rp di kiri, angka di kanan, garis bawah subtotal / tutup buku)
+          const AcctCell = ({ val, isPercent, underline, doubleUnderline, bold, color }) => {
+            let inner = null;
+            if (isPercent) {
+              inner = <span style={{ textAlign: "right", width: "100%", display: "inline-block", fontWeight: bold ? 800 : 600 }}>{val}%</span>;
+            } else if (val === null || val === undefined) {
+              inner = null;
+            } else if (val === 0 || val === "0" || val === "-") {
+              inner = (
+                <div style={{ display: "flex", justifyContent: "space-between", width: "100%", fontFamily: F.mono, fontSize: 13 }}>
+                  <span>Rp</span>
+                  <span>-</span>
+                </div>
+              );
+            } else {
+              const isNeg = val < 0;
+              const absVal = Math.abs(val);
+              const formatted = absVal.toLocaleString("id-ID", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+              inner = (
+                <div style={{ display: "flex", justifyContent: "space-between", width: "100%", fontFamily: F.mono, fontSize: 13, color: color || (isNeg ? "#dc2626" : "inherit") }}>
+                  <span>Rp</span>
+                  <span>{isNeg ? `(${formatted})` : formatted}</span>
+                </div>
+              );
+            }
+            return (
+              <div style={{
+                width: "100%",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "flex-end",
+                padding: "3px 6px",
+                fontWeight: bold ? 800 : 500,
+                borderBottom: doubleUnderline ? "3px double #000000" : underline ? "1.5px solid #000000" : "none",
+                minHeight: 24,
+                boxSizing: "border-box"
+              }}>
+                {inner}
+              </div>
+            );
+          };
+
+          // Komponen Baris Standar Laba Rugi
+          const StatementRow = ({ label, indent = 0, bold = false, uppercase = false, c1 = null, c2 = null, c3 = null, u1 = false, u2 = false, u3 = false, du3 = false, isPercent3 = false, color3 = null, spaceBefore = false, spaceAfter = false }) => {
+            return (
+              <div style={{
+                display: "grid",
+                gridTemplateColumns: "1fr 180px 180px 190px",
+                alignItems: "center",
+                marginTop: spaceBefore ? 14 : 0,
+                marginBottom: spaceAfter ? 14 : 0,
+                fontSize: bold ? 13.5 : 13,
+                color: "#000000",
+                lineHeight: 1.45,
+                padding: "2px 0",
+              }}>
+                <div style={{
+                  paddingLeft: indent,
+                  fontWeight: bold ? 800 : 500,
+                  textTransform: uppercase ? "uppercase" : "none",
+                  letterSpacing: uppercase ? "0.02em" : "normal",
+                }}>
+                  {label}
+                </div>
+                <div>{c1 !== null && <AcctCell val={c1} underline={u1} bold={bold} />}</div>
+                <div>{c2 !== null && <AcctCell val={c2} underline={u2} bold={bold} />}</div>
+                <div>{c3 !== null && <AcctCell val={c3} underline={u3} doubleUnderline={du3} bold={bold} isPercent={isPercent3} color={color3} />}</div>
+              </div>
+            );
+          };
+
+          return <div style={{display:"flex",flexDirection:"column",gap:12,marginTop:10}}>
+            {/* Header Controls */}
+            <div style={{display:"flex",alignItems:"center",gap:8,flexWrap:"wrap",justifyContent:"space-between"}}>
+              <div>
+                <h2 style={{fontSize:16,fontWeight:800}}>Laporan Laba Rugi</h2>
+                <p style={{fontSize:12.5,color:C.t2,marginTop:2}}>{periodLabel} · {cur.trx} transaksi · {plExp.filter(e=>plBiz==="ALL"||e.business===plBiz).length} catatan operasional</p>
+              </div>
+              <div style={{display:"flex",gap:7,flexWrap:"wrap",alignItems:"center"}}>
+                <Btn size="sm" onClick={handlePrint}><Printer size={15}/>Cetak / PDF</Btn>
+                <Btn size="sm" outline onClick={handleExportExcel}>Export Excel</Btn>
+                <Btn size="sm" onClick={()=>setExpenseModal(true)}><ShoppingBasket size={15}/>Catat biaya</Btn>
+              </div>
             </div>
+
+            {/* Filter Bisnis */}
             <div style={{display:"flex",gap:6,flexWrap:"wrap",alignItems:"center"}}>
-              {["ALL","JS_CLOTHING","JB_STORE"].map(b=><button key={b} onClick={()=>setPlBiz(b)} className={`chip${plBiz===b?" on":""}`}>{b==="ALL"?"Semua bisnis":BIZ[b].name}</button>)}
+              {["ALL","JB_STORE","JS_CLOTHING"].map(b=>
+                <button key={b} onClick={()=>setPlBiz(b)} className={`chip${plBiz===b?" on":""}`}>
+                  {b==="ALL"?"Semua Bisnis (JE Grup)":b==="JB_STORE"?"JE Beauty Store":BIZ[b].name}
+                </button>)}
             </div>
+
+            {/* Filter Periode & Tanggal */}
             <div style={{display:"flex",gap:6,flexWrap:"wrap",alignItems:"center"}}>
               {[["month","Bulan ini"],["lastmonth","Bulan lalu"],["week","7 hari"],["today","Hari ini"],["all","Semua"],["custom","Rentang"]].map(([v,l])=>
                 <button key={v} onClick={()=>setPlRange(v)} className={`chip${plRange===v?" on":""}`}>{l}</button>)}
@@ -7436,75 +7675,187 @@ function AppInner() {
                 <input type="date" value={plTo} onChange={e=>setPlTo(e.target.value)} style={{padding:"8px 10px",background:C.bg3,border:`1.5px solid ${C.bo1}`,borderRadius:10,color:C.t0,fontSize:13,fontFamily:F.sans}}/>
               </div>}
             </div>
-            <div className="stat-grid-4" style={{display:"grid",gap:10,gridTemplateColumns:"repeat(4,1fr)"}}>
-              <Stat icon="💰" label="Penjualan bersih" value={rp(main.net)} color={C.g}/>
-              <Stat icon="📈" label="Laba kotor" value={rpS(main.gp)} color={C.cy} sub={`Margin ${main.gm.toFixed(1)}%`}/>
-              <Stat icon="📋" label="Biaya operasional" value={rp(main.opex)} color={C.a}/>
-              <Stat icon="🎯" label={main.np>=0?"Laba bersih":"Rugi bersih"} value={rpS(main.np)} color={main.np>=0?C.g:C.r} sub={`Margin ${main.nm.toFixed(1)}%`}/>
+
+            {/* Opsi Tampilan & Pajak */}
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",flexWrap:"wrap",gap:10,background:C.bg2,padding:"10px 14px",borderRadius:12,border:`1px solid ${C.bo0}`}}>
+              <div style={{display:"flex",gap:6,alignItems:"center",flexWrap:"wrap"}}>
+                <span style={{fontSize:12,fontWeight:750,color:C.t2}}>Tampilan:</span>
+                <button onClick={()=>setPlViewMode("sheet")} className={`chip${plViewMode==="sheet"?" on":""}`}>📄 Format Resmi 3 Kolom</button>
+                <button onClick={()=>setPlViewMode("matrix")} className={`chip${plViewMode==="matrix"?" on":""}`}>📊 Matriks Perbandingan</button>
+              </div>
+              <div style={{display:"flex",alignItems:"center",gap:6,flexWrap:"wrap"}}>
+                <span style={{fontSize:12,fontWeight:750,color:C.t2}}>Tarif Pajak:</span>
+                {[[12,"12% (Contoh / PPN)"],[0.5,"0.5% (UMKM PP 55)"],[0,"0% (Non-Pajak)"]].map(([r,lbl])=>
+                  <button key={r} onClick={()=>setPlTaxRate(r)} className={`chip${plTaxRate===r?" on":""}`} style={{fontSize:11.5,padding:"4px 9px"}}>{lbl}</button>)}
+                <div style={{display:"flex",alignItems:"center",gap:4}}>
+                  <input type="number" min="0" max="100" step="0.5" value={plTaxRate} onChange={e=>setPlTaxRate(Number(e.target.value)||0)}
+                    style={{width:55,padding:"4px 8px",background:C.bg3,border:`1.5px solid ${C.bo1}`,borderRadius:8,color:C.t0,fontSize:12,textAlign:"center"}}/>
+                  <span style={{fontSize:12,color:C.t2}}>%</span>
+                </div>
+              </div>
             </div>
-            <Card style={{padding:0,overflow:"hidden",borderRadius:14}}>
-              <div style={{overflowX:"auto"}}>
-                <div style={{minWidth:plBiz==="ALL"?560:340}}>
-                  {/* Financial Statement Header */}
-                  <div style={{display:"grid",gridTemplateColumns:`1fr ${colIds.map(()=>"140px").join(" ")}`,padding:"12px 16px",background:C.bg3,borderBottom:`1px solid ${C.bo1}`,fontSize:12,fontWeight:750,color:C.t2}}>
-                    <div>Keterangan</div>
-                    {colIds.map(id=><div key={id} style={{textAlign:"right"}}>{colName(id)}</div>)}
-                  </div>
-                  {/* Financial Statement Rows */}
-                  <div>
-                    {rows.map((r,i)=>r.head ? (
-                      <div key={i} style={{padding:"14px 16px 6px",fontSize:12.5,fontWeight:800,color:C.t1,borderTop:`1px solid ${C.bo0}`,background:C.bg1}}>
-                        {r.head}
-                      </div>
-                    ) : (
-                      <div key={i} style={{
-                        display:"grid",
-                        gridTemplateColumns:`1fr ${colIds.map(()=>"140px").join(" ")}`,
-                        padding:r.total?"14px 16px":"10px 16px",
-                        borderTop:`1px solid ${C.bo0}`,
-                        background:r.total?C.pri1:r.strong?C.bg3:"transparent",
-                        alignItems:"center"
-                      }}>
-                        <div style={{
-                          paddingLeft:r.indent?24:0,
-                          fontWeight:r.strong||r.total?800:500,
-                          fontSize:r.total?14.5:13.5,
-                          color:r.total?C.pri:C.t0
-                        }}>
-                          {r.l}
+
+            {/* Stat Cards Ringkasan */}
+            <div className="stat-grid-4" style={{display:"grid",gap:10,gridTemplateColumns:"repeat(4,1fr)"}}>
+              <Stat icon="💰" label="Total Pendapatan" value={rp(cur.totalPendapatan)} color={C.g}/>
+              <Stat icon="🏭" label="Biaya Produksi" value={rp(cur.totalBiayaProduksi)} color={C.cy} sub={`HPP ${rp(cur.belanjaProduk)}`}/>
+              <Stat icon="📋" label="Biaya Operasional" value={rp(cur.totalBiayaOperasional)} color={C.a}/>
+              <Stat icon="🎯" label={cur.labaBersih>=0?"Laba Bersih":"Rugi Bersih"} value={rpS(cur.labaBersih)} color={cur.labaBersih>=0?C.g:C.r} sub={`Margin ${cur.nm.toFixed(1)}%`}/>
+            </div>
+
+            {/* ── TAMPILAN LEMBAR DOKUMEN RESMI (SESUAI CONTOH GAMBAR) ── */}
+            {plViewMode === "sheet" ? (
+              <div style={{overflowX:"auto",paddingBottom:10}}>
+                <div id="laba-rugi-doc-sheet" style={{
+                  background:"#ffffff",
+                  color:"#000000",
+                  borderRadius:8,
+                  boxShadow:"0 8px 30px rgba(0,0,0,0.06), 0 1px 3px rgba(0,0,0,0.04)",
+                  border:"1.5px solid #cbd5e1",
+                  padding:"36px 42px",
+                  minWidth:780,
+                  maxWidth:900,
+                  margin:"0 auto",
+                  fontFamily:'"Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif'
+                }}>
+                  {/* Kop Surat / Header Laporan */}
+                  <div style={{display:"flex",alignItems:"center",gap:24,paddingBottom:18,borderBottom:"2.5px solid #000000",marginBottom:24}}>
+                    <div style={{width:84,height:84,borderRadius:"50%",overflow:"hidden",display:"flex",alignItems:"center",justifyContent:"center",border:"1.5px solid #fbcfe8",background:"#fff",flexShrink:0}}>
+                      {plBiz === "JS_CLOTHING" ? (
+                        <div style={{width:"100%",height:"100%",background:"#232C75",display:"flex",alignItems:"center",justifyContent:"center",color:"#F5C518",fontSize:32,fontWeight:900}}>
+                          👕
                         </div>
-                        {colIds.map(id=>{
-                          const v=r.f(D[id]);
-                          const col=r.total?(v>=0?C.g:C.r):r.col?r.col(D[id]):C.t0;
-                          return (
-                            <div key={id} className="mn" style={{
-                              textAlign:"right",
-                              fontWeight:r.strong||r.total?800:600,
-                              color:col,
-                              fontSize:r.total?15:13.5
-                            }}>
-                              {rpS(v)}
-                              {r.note&&<div style={{fontSize:11,fontWeight:500,color:C.t2}}>{r.note(D[id])}</div>}
-                            </div>
-                          );
-                        })}
+                      ) : (
+                        <img src="/logo_je_beauty.png" alt="Logo" style={{width:"100%",height:"100%",objectFit:"contain"}} onError={e=>{ e.currentTarget.style.display="none"; }}/>
+                      )}
+                    </div>
+                    <div style={{flex:1}}>
+                      <h1 style={{fontSize:25,fontWeight:900,letterSpacing:"0.04em",margin:0,textTransform:"uppercase",color:"#000000",lineHeight:1.15}}>
+                        LAPORAN LABA RUGI
+                      </h1>
+                      <div style={{fontSize:20,fontWeight:800,letterSpacing:"0.05em",color:"#000000",textTransform:"uppercase",marginTop:4}}>
+                        {bizTitle}
                       </div>
-                    ))}
+                      <div style={{fontSize:12.5,color:"#475569",marginTop:4}}>
+                        Periode: <b>{periodDetail}</b> · {cur.trx} transaksi
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Isi Format 3 Kolom Sesuai Contoh */}
+                  <div>
+                    {/* SEKSI 1: PENDAPATAN */}
+                    <StatementRow label="Pendapatan" bold />
+                    <StatementRow label="Pendapatan Usaha" indent={24} bold />
+                    <StatementRow label="Pendapatan Penjualan" indent={48} c1={cur.net} />
+                    <StatementRow label="Total Pendapatan Usaha" indent={24} bold c2={cur.net} />
+                    <StatementRow label="Pendapatan lainnya" indent={24} c2={cur.pendapatanLain} u2={true} />
+                    <StatementRow label="Total Pendapatan" bold c3={cur.totalPendapatan} spaceAfter />
+
+                    {/* SEKSI 2: BIAYA ATAS PENDAPATAN */}
+                    <StatementRow label="Biaya Atas Pendapatan" bold />
+                    <StatementRow label="Biaya Produksi" indent={24} bold />
+                    <StatementRow label="Belanja Produk" indent={48} c1={cur.belanjaProduk} />
+                    <StatementRow label="Biaya Pengiriman" indent={48} c1={cur.biayaPengiriman} u1={true} />
+                    <StatementRow label="Total Biaya Produksi" indent={24} bold c2={cur.totalBiayaProduksi} />
+
+                    <StatementRow label="Biaya Operasional" indent={24} bold />
+                    {cur.opexItems.map((op, idx) => {
+                      const isLast = idx === cur.opexItems.length - 1;
+                      return (
+                        <StatementRow
+                          key={idx}
+                          label={op.label}
+                          indent={48}
+                          c1={op.val}
+                          u1={isLast}
+                        />
+                      );
+                    })}
+                    <StatementRow label="Total Biaya Operasional" indent={24} bold c2={cur.totalBiayaOperasional} />
+                    <StatementRow label="Biaya Lain-lain" indent={24} c2={cur.biayaLainLain} u2={true} />
+                    <StatementRow label="Total Biaya Atas Pendapatan" bold c3={cur.totalBiayaAtasPendapatan} u3={true} spaceAfter />
+
+                    {/* SEKSI 3: LABA & PAJAK */}
+                    <StatementRow label="LABA SEBELUM PAJAK" bold uppercase c3={cur.labaSebelumPajak} />
+                    <StatementRow label="Pajak" bold c3={cur.taxRate} isPercent3={true} u3={true} />
+                    <StatementRow label="LABA BERSIH" bold uppercase c3={cur.labaBersih} du3={true} color3={cur.labaBersih >= 0 ? "#000000" : "#dc2626"} />
                   </div>
                 </div>
               </div>
-            </Card>
-            {main.opex>0&&<Card>
-              <div style={{fontSize:13,fontWeight:800,marginBottom:12}}>Komposisi biaya operasional</div>
-              <div style={{display:"flex",flexDirection:"column",gap:12}}>
-                {Object.entries(main.byCat).sort((a,b)=>b[1]-a[1]).map(([c,v])=><div key={c}>
-                  <div style={{display:"flex",justifyContent:"space-between",fontSize:13.5,marginBottom:5}}><span style={{fontWeight:600}}>{c}</span><span className="mn" style={{color:C.t1}}>{rp(v)}</span></div>
-                  <ProgressBar value={v} max={main.opex} color={C.a}/>
+            ) : (
+              /* ── TAMPILAN MATRIKS PERBANDINGAN BISNIS ── */
+              <Card style={{padding:0,overflow:"hidden",borderRadius:14}}>
+                <div style={{overflowX:"auto"}}>
+                  <div style={{minWidth:colIds.length > 1 ? 640 : 420}}>
+                    <div style={{display:"grid",gridTemplateColumns:`1fr ${colIds.map(()=>"150px").join(" ")}`,padding:"12px 16px",background:C.bg3,borderBottom:`1px solid ${C.bo1}`,fontSize:12,fontWeight:750,color:C.t2}}>
+                      <div>Keterangan</div>
+                      {colIds.map(id=><div key={id} style={{textAlign:"right"}}>{colName(id)}</div>)}
+                    </div>
+                    <div>
+                      {[
+                        {l:"Total Pendapatan",f:d=>d.totalPendapatan,strong:true},
+                        {l:"HPP / Belanja Produk",f:d=>d.belanjaProduk,indent:true},
+                        {l:"Biaya Pengiriman",f:d=>d.biayaPengiriman,indent:true},
+                        {l:"Total Biaya Produksi",f:d=>d.totalBiayaProduksi,strong:true},
+                        {head:"Biaya Operasional"},
+                        ...cur.opexItems.map(o=>({l:o.label,f:d=>{
+                          const found=d.opexItems.find(x=>x.label===o.label);
+                          return found?found.val:0;
+                        },indent:true})),
+                        {l:"Total Biaya Operasional",f:d=>d.totalBiayaOperasional,strong:true},
+                        {l:"Total Biaya Atas Pendapatan",f:d=>d.totalBiayaAtasPendapatan,strong:true},
+                        {l:"LABA SEBELUM PAJAK",f:d=>d.labaSebelumPajak,strong:true},
+                        {l:`Pajak (${cur.taxRate}%)`,f:d=>d.nilaiPajak,indent:true},
+                        {l:"LABA BERSIH",f:d=>d.labaBersih,total:true,note:d=>`Margin ${d.nm.toFixed(1)}%`},
+                      ].map((r,i)=>r.head ? (
+                        <div key={i} style={{padding:"12px 16px 6px",fontSize:12.5,fontWeight:800,color:C.t1,borderTop:`1px solid ${C.bo0}`,background:C.bg1}}>{r.head}</div>
+                      ) : (
+                        <div key={i} style={{
+                          display:"grid",
+                          gridTemplateColumns:`1fr ${colIds.map(()=>"150px").join(" ")}`,
+                          padding:r.total?"13px 16px":"9px 16px",
+                          borderTop:`1px solid ${C.bo0}`,
+                          background:r.total?C.pri1:r.strong?C.bg3:"transparent",
+                          alignItems:"center"
+                        }}>
+                          <div style={{paddingLeft:r.indent?24:0,fontWeight:r.strong||r.total?800:500,fontSize:r.total?14.5:13,color:r.total?C.pri:C.t0}}>
+                            {r.l}
+                          </div>
+                          {colIds.map(id=>{
+                            const v=r.f(D[id]);
+                            const col=r.total?(v>=0?C.g:C.r):C.t0;
+                            return (
+                              <div key={id} className="mn" style={{textAlign:"right",fontWeight:r.strong||r.total?800:600,color:col,fontSize:r.total?14.5:13}}>
+                                {rp(v)}
+                                {r.note&&<div style={{fontSize:11,fontWeight:500,color:C.t2}}>{r.note(D[id])}</div>}
+                              </div>
+                            );
+                          })}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </Card>
+            )}
+
+            {/* Komposisi Biaya Operasional */}
+            {cur.totalBiayaOperasional > 0 && <Card>
+              <div style={{fontSize:13,fontWeight:800,marginBottom:12}}>Komposisi biaya operasional ({bizTitle})</div>
+              <div style={{display:"flex",flexDirection:"column",gap:10}}>
+                {cur.opexItems.filter(o=>o.val>0).sort((a,b)=>b.val-a.val).map(o=><div key={o.label}>
+                  <div style={{display:"flex",justifyContent:"space-between",fontSize:13,marginBottom:4}}>
+                    <span style={{fontWeight:600}}>{o.label}</span>
+                    <span className="mn" style={{color:C.t1}}>{rp(o.val)}</span>
+                  </div>
+                  <ProgressBar value={o.val} max={cur.totalBiayaOperasional} color={C.a}/>
                 </div>)}
               </div>
             </Card>}
+
             <div style={{fontSize:12.5,color:C.t2,lineHeight:1.6,padding:"4px 2px"}}>
-              Penjualan bersih adalah total transaksi setelah diskon{returnedN>0?`, tidak termasuk ${returnedN} transaksi yang diretur`:", tidak termasuk transaksi yang diretur"}. HPP diambil dari HPP produk saat transaksi terjadi. Biaya operasional berasal dari menu Laporan Biaya; belanja yang dibagi rata sudah terpecah per bisnis.
+              Laporan laba rugi disajikan sesuai standar multi-step akuntansi Indonesia dengan 3 lajur keuangan (Rincian, Subtotal, dan Total). HPP diambil dari HPP produk pada transaksi yang terjadi{returnedN>0?` (tidak termasuk ${returnedN} transaksi yang diretur)`:""}. Biaya operasional otomatis terhubung dengan Jurnal dan menu Laporan Biaya.
             </div>
           </div>;
         })()}
