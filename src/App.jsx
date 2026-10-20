@@ -3919,7 +3919,8 @@ function AppInner() {
   const [plFrom,setPlFrom]=useState("");
   const [plTo,setPlTo]=useState("");
   const [plTaxRate,setPlTaxRate]=useState(12);
-  const [plViewMode,setPlViewMode]=useState("sheet");
+  const [plViewMode,setPlViewMode]=useState("pro");
+  const [plAccountQ,setPlAccountQ]=useState("");
   // ── Jurnal & Laporan Keuangan (Neraca / Laba Rugi / Perubahan Modal) ──
   const [jrnlRange,setJrnlRange]=useState("all");
   const [jrnlFrom,setJrnlFrom]=useState("");
@@ -7582,7 +7583,7 @@ function AppInner() {
             );
           };
 
-          // Komponen Sel Akuntansi (Rp di kiri, angka di kanan, garis bawah subtotal / tutup buku)
+          // Komponen Sel Akuntansi untuk Dokumen Cetak Formal
           const AcctCell = ({ val, isPercent, underline, doubleUnderline, bold, color }) => {
             let inner = null;
             if (isPercent) {
@@ -7624,7 +7625,7 @@ function AppInner() {
             );
           };
 
-          // Komponen Baris Standar Laba Rugi
+          // Komponen Baris Standar Laba Rugi Cetak Formal
           const StatementRow = ({ label, indent = 0, bold = false, uppercase = false, c1 = null, c2 = null, c3 = null, u1 = false, u2 = false, u3 = false, du3 = false, isPercent3 = false, color3 = null, spaceBefore = false, spaceAfter = false }) => {
             return (
               <div style={{
@@ -7653,17 +7654,318 @@ function AppInner() {
             );
           };
 
-          return <div style={{display:"flex",flexDirection:"column",gap:12,marginTop:10}}>
-            {/* Header Controls */}
-            <div style={{display:"flex",alignItems:"center",gap:8,flexWrap:"wrap",justifyContent:"space-between"}}>
-              <div>
-                <h2 style={{fontSize:16,fontWeight:800}}>Laporan Laba Rugi</h2>
-                <p style={{fontSize:12.5,color:C.t2,marginTop:2}}>{periodLabel} · {cur.trx} transaksi · {plExp.filter(e=>plBiz==="ALL"||e.business===plBiz).length} catatan operasional</p>
+          // ── KOMPONEN PRO MAX UNTUK LAYAR ON-SCREEN (THEME-AWARE & EXECUTIVE) ──
+          const ProCell = ({ val, isPercent, bold, color, isGrandTotal }) => {
+            if (isPercent) {
+              return (
+                <div style={{ textAlign: "right", width: "100%", fontWeight: bold ? 800 : 600, color: color || C.t1, fontSize: 13, fontFamily: F.mono }}>
+                  {val}%
+                </div>
+              );
+            }
+            if (val === null || val === undefined) return null;
+            if (val === 0 || val === "0" || val === "-") {
+              return (
+                <div style={{ display: "flex", justifyContent: "space-between", width: "100%", fontFamily: F.mono, fontSize: 13, color: C.t3, opacity: 0.7 }}>
+                  <span style={{ fontSize: 11, fontWeight: 500 }}>Rp</span>
+                  <span>-</span>
+                </div>
+              );
+            }
+            const isNeg = val < 0;
+            const absVal = Math.abs(val);
+            const formatted = absVal.toLocaleString("id-ID");
+            return (
+              <div style={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "baseline",
+                width: "100%",
+                fontFamily: F.mono,
+                fontSize: isGrandTotal ? 16 : bold ? 13.5 : 13,
+                fontWeight: bold || isGrandTotal ? 800 : 600,
+                color: color || (isNeg ? C.r : C.t0)
+              }}>
+                <span style={{ fontSize: isGrandTotal ? 12 : 11, opacity: 0.65, fontWeight: 600, marginRight: 4 }}>Rp</span>
+                <span>{isNeg ? `(${formatted})` : formatted}</span>
               </div>
-              <div style={{display:"flex",gap:7,flexWrap:"wrap",alignItems:"center"}}>
+            );
+          };
+
+          const ProRow = ({
+            icon,
+            label,
+            sublabel,
+            indent = 0,
+            bold = false,
+            uppercase = false,
+            c1 = null,
+            c2 = null,
+            c3 = null,
+            isPercent3 = false,
+            color3 = null,
+            highlight = false,
+            isGrandTotal = false,
+            isSubtotal = false,
+            spaceBefore = false,
+            spaceAfter = false,
+            badge = null
+          }) => {
+            return (
+              <div className={!isGrandTotal && !isSubtotal ? "hrow" : ""} style={{
+                display: "grid",
+                gridTemplateColumns: "1fr 165px 165px 185px",
+                alignItems: "center",
+                marginTop: spaceBefore ? 10 : 0,
+                marginBottom: spaceAfter ? 10 : 0,
+                padding: isGrandTotal ? "14px 18px" : isSubtotal ? "9px 16px" : "8px 16px",
+                borderRadius: isGrandTotal ? 14 : isSubtotal ? 10 : 8,
+                background: isGrandTotal
+                  ? (color3 === C.r ? C.r1 : C.g1)
+                  : isSubtotal
+                  ? C.bg3
+                  : highlight
+                  ? C.pri1
+                  : "transparent",
+                border: isGrandTotal
+                  ? `1.5px solid ${color3 === C.r ? C.r : C.g}55`
+                  : isSubtotal
+                  ? `1px solid ${C.bo0}`
+                  : "none",
+                gap: 12,
+                transition: "background 0.15s ease",
+              }}>
+                <div style={{
+                  paddingLeft: indent,
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 8,
+                  minWidth: 0,
+                }}>
+                  {icon && <span style={{ display: "grid", placeItems: "center", flexShrink: 0 }}>{icon}</span>}
+                  <div style={{ minWidth: 0, flex: 1 }}>
+                    <div style={{
+                      fontSize: isGrandTotal ? 14.5 : bold ? 13.5 : 13,
+                      fontWeight: bold || isGrandTotal ? 800 : 500,
+                      textTransform: uppercase ? "uppercase" : "none",
+                      letterSpacing: uppercase ? "0.03em" : "normal",
+                      color: isGrandTotal ? (color3 === C.r ? C.r : C.g) : isSubtotal ? C.t0 : bold ? C.t0 : C.t1,
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 6,
+                      flexWrap: "wrap",
+                    }}>
+                      <span>{label}</span>
+                      {badge && <span style={{
+                        fontSize: 10.5,
+                        fontWeight: 700,
+                        padding: "2px 7px",
+                        borderRadius: 6,
+                        background: C.bg4,
+                        color: C.t2,
+                        whiteSpace: "nowrap"
+                      }}>{badge}</span>}
+                    </div>
+                    {sublabel && (
+                      <div style={{ fontSize: 11, color: C.t2, marginTop: 1, lineHeight: 1.25 }}>
+                        {sublabel}
+                      </div>
+                    )}
+                  </div>
+                </div>
+                <div>
+                  {c1 !== null && (
+                    <div style={{ padding: "3px 8px" }}>
+                      <ProCell val={c1} bold={bold} />
+                    </div>
+                  )}
+                </div>
+                <div>
+                  {c2 !== null && (
+                    <div style={{
+                      padding: "4px 8px",
+                      borderRadius: 7,
+                      background: isSubtotal ? C.bg2 : "transparent",
+                      border: isSubtotal ? `1px solid ${C.bo1}` : "none",
+                    }}>
+                      <ProCell val={c2} bold={bold || isSubtotal} />
+                    </div>
+                  )}
+                </div>
+                <div>
+                  {c3 !== null && (
+                    <div style={{
+                      padding: isGrandTotal ? "4px 10px" : "4px 8px",
+                      borderRadius: isGrandTotal ? 8 : 7,
+                      background: isGrandTotal ? "transparent" : highlight ? C.bg2 : "transparent",
+                      border: isGrandTotal ? "none" : highlight ? `1px solid ${C.bo1}` : "none",
+                    }}>
+                      <ProCell
+                        val={c3}
+                        bold={bold || isGrandTotal}
+                        isPercent={isPercent3}
+                        color={color3}
+                        isGrandTotal={isGrandTotal}
+                      />
+                    </div>
+                  )}
+                </div>
+              </div>
+            );
+          };
+
+          const ProSectionHeader = ({ icon, title, subtitle, color, count }) => (
+            <div style={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              padding: "9px 14px",
+              borderRadius: 10,
+              background: `linear-gradient(90deg, ${color}16 0%, transparent 100%)`,
+              borderLeft: `3.5px solid ${color}`,
+              marginTop: 14,
+              marginBottom: 6,
+            }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                <span style={{ fontSize: 14 }}>{icon}</span>
+                <span style={{ fontSize: 12.5, fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.06em", color: C.t0 }}>
+                  {title}
+                </span>
+                {subtitle && <span style={{ fontSize: 11.5, color: C.t2, fontWeight: 500 }}>· {subtitle}</span>}
+              </div>
+              {count !== undefined && (
+                <span style={{ fontSize: 11, fontWeight: 700, padding: "2px 8px", borderRadius: 12, background: C.bg3, color: color, border: `1px solid ${C.bo0}` }}>
+                  {count}
+                </span>
+              )}
+            </div>
+          );
+
+          // Lembar Dokumen Formal (Cetak A4 & Pratinjau Resmi)
+          const FormalDocumentSheet = () => (
+            <div id="laba-rugi-doc-sheet" style={{
+              background:"#ffffff",
+              color:"#000000",
+              borderRadius:10,
+              boxShadow:"0 10px 35px rgba(0,0,0,0.07), 0 2px 6px rgba(0,0,0,0.04)",
+              border:"1.5px solid #cbd5e1",
+              padding:"36px 42px",
+              minWidth:780,
+              maxWidth:900,
+              margin:"0 auto",
+              fontFamily:'"Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif'
+            }}>
+              {/* Kop Surat Resmi */}
+              <div style={{display:"flex",alignItems:"center",gap:24,paddingBottom:18,borderBottom:"2.5px solid #000000",marginBottom:24}}>
+                <div style={{flexShrink:0}}>
+                  <BrandMark size={58} />
+                </div>
+                <div style={{flex:1}}>
+                  <h1 style={{fontSize:24,fontWeight:900,letterSpacing:"0.04em",margin:0,textTransform:"uppercase",color:"#000000",lineHeight:1.15}}>
+                    LAPORAN LABA RUGI
+                  </h1>
+                  <div style={{fontSize:19,fontWeight:800,letterSpacing:"0.05em",color:"#000000",textTransform:"uppercase",marginTop:4}}>
+                    {bizTitle}
+                  </div>
+                  <div style={{fontSize:12.5,color:"#475569",marginTop:4}}>
+                    Periode: <b>{periodDetail}</b> · {cur.trx} transaksi
+                  </div>
+                </div>
+              </div>
+
+              {/* Isi Format 3 Kolom */}
+              <div>
+                <StatementRow label="Pendapatan" bold />
+                <StatementRow label="Pendapatan Usaha" indent={24} bold />
+                <StatementRow label="Pendapatan Penjualan" indent={48} c1={cur.net} />
+                <StatementRow label="Total Pendapatan Usaha" indent={24} bold c2={cur.net} />
+                <StatementRow label="Pendapatan lainnya" indent={24} c2={cur.pendapatanLain} u2={true} />
+                <StatementRow label="Total Pendapatan" bold c3={cur.totalPendapatan} spaceAfter />
+
+                <StatementRow label="Biaya Atas Pendapatan" bold />
+                <StatementRow label="Biaya Produksi" indent={24} bold />
+                {cur.prodItems.map((prod, idx) => (
+                  <StatementRow
+                    key={prod.label}
+                    label={prod.label}
+                    indent={48}
+                    c1={prod.val}
+                    u1={idx === cur.prodItems.length - 1}
+                  />
+                ))}
+                <StatementRow label="Total Biaya Produksi" indent={24} bold c2={cur.totalBiayaProduksi} />
+
+                <StatementRow label="Biaya Operasional" indent={24} bold />
+                {cur.opexItems.length > 0 ? (
+                  cur.opexItems.map((op, idx) => (
+                    <StatementRow
+                      key={op.label}
+                      label={op.label}
+                      indent={48}
+                      c1={op.val}
+                      u1={idx === cur.opexItems.length - 1}
+                    />
+                  ))
+                ) : (
+                  <StatementRow
+                    label="(Belum ada catatan biaya operasional)"
+                    indent={48}
+                    c1={0}
+                    u1={true}
+                  />
+                )}
+                <StatementRow label="Total Biaya Operasional" indent={24} bold c2={cur.totalBiayaOperasional} />
+                <StatementRow label="Biaya Lain-lain" indent={24} c2={cur.biayaLainLain} u2={true} />
+                <StatementRow label="Total Biaya Atas Pendapatan" bold c3={cur.totalBiayaAtasPendapatan} u3={true} spaceAfter />
+
+                <StatementRow label="LABA SEBELUM PAJAK" bold uppercase c3={cur.labaSebelumPajak} />
+                <StatementRow label="Pajak" bold c3={cur.taxRate} isPercent3={true} u3={true} />
+                <StatementRow label="LABA BERSIH" bold uppercase c3={cur.labaBersih} du3={true} color3={cur.labaBersih >= 0 ? "#000000" : "#dc2626"} />
+              </div>
+
+              {/* Tanda Tangan Formal */}
+              <div style={{ display: "flex", justifyContent: "space-between", marginTop: 42, paddingTop: 18, borderTop: "1px dashed #cbd5e1", fontSize: 12 }}>
+                <div style={{ textAlign: "center", minWidth: 160 }}>
+                  <div style={{ color: "#64748b", marginBottom: 54 }}>Dibuat Oleh,</div>
+                  <div style={{ fontWeight: 800, borderTop: "1px solid #000", paddingTop: 4 }}>Staff Keuangan / Kasir</div>
+                </div>
+                <div style={{ textAlign: "center", minWidth: 160 }}>
+                  <div style={{ color: "#64748b", marginBottom: 54 }}>Disetujui Oleh,</div>
+                  <div style={{ fontWeight: 800, borderTop: "1px solid #000", paddingTop: 4 }}>Pimpinan / Owner JE Grup</div>
+                </div>
+              </div>
+            </div>
+          );
+
+          // Filter akun operasional berdasarkan pencarian
+          const filteredOpex = cur.opexItems.filter(o =>
+            !plAccountQ || o.label.toLowerCase().includes(plAccountQ.toLowerCase().trim())
+          );
+
+          return <div style={{display:"flex",flexDirection:"column",gap:14,marginTop:10}}>
+            {/* Header Eksekutif Pro Max */}
+            <div style={{display:"flex",alignItems:"center",gap:12,flexWrap:"wrap",justifyContent:"space-between",background:C.bg2,padding:"14px 18px",borderRadius:16,border:`1px solid ${C.bo0}`,boxShadow:C.sh}}>
+              <div style={{display:"flex",alignItems:"center",gap:14}}>
+                <BrandMark size={44} />
+                <div>
+                  <div style={{display:"flex",alignItems:"center",gap:8,flexWrap:"wrap"}}>
+                    <h2 style={{fontSize:17,fontWeight:850,color:C.t0,margin:0}}>Laporan Laba Rugi</h2>
+                    <span style={{fontSize:11,fontWeight:800,padding:"2px 9px",borderRadius:12,background:C.pri1,color:C.pri}}>
+                      {bizTitle}
+                    </span>
+                    <span style={{fontSize:11.5,fontWeight:750,padding:"2px 10px",borderRadius:14,background:cur.labaBersih>=0?C.g1:C.r1,color:cur.labaBersih>=0?C.g:C.r,border:`1px solid ${cur.labaBersih>=0?C.g:C.r}33`}}>
+                      {cur.labaBersih >= 0 ? `🟢 Untung (${cur.nm.toFixed(1)}%)` : `🔴 Defisit (${cur.nm.toFixed(1)}%)`}
+                    </span>
+                  </div>
+                  <p style={{fontSize:12,color:C.t2,marginTop:3}}>
+                    Periode: <b>{periodDetail}</b> · {cur.trx} penjualan · {plExp.filter(e=>plBiz==="ALL"||e.business===plBiz).length} pengeluaran operasional
+                  </p>
+                </div>
+              </div>
+              <div style={{display:"flex",gap:8,flexWrap:"wrap",alignItems:"center"}}>
                 <Btn size="sm" onClick={handlePrint}><Printer size={15}/>Cetak / PDF</Btn>
-                <Btn size="sm" outline onClick={handleExportExcel}>Export Excel</Btn>
-                <Btn size="sm" onClick={()=>setExpenseModal(true)}><ShoppingBasket size={15}/>Catat biaya</Btn>
+                <Btn size="sm" outline onClick={handleExportExcel}><Download size={15}/>Export Excel</Btn>
+                <Btn size="sm" ghost onClick={()=>setExpenseModal(true)}><ShoppingBasket size={15}/>+ Catat Biaya</Btn>
               </div>
             </div>
 
@@ -7671,7 +7973,7 @@ function AppInner() {
             <div style={{display:"flex",gap:6,flexWrap:"wrap",alignItems:"center"}}>
               {["ALL","JB_STORE","JS_CLOTHING"].map(b=>
                 <button key={b} onClick={()=>setPlBiz(b)} className={`chip${plBiz===b?" on":""}`}>
-                  {b==="ALL"?"Semua Bisnis (JE Grup)":b==="JB_STORE"?"JE Beauty Store":BIZ[b].name}
+                  {b==="ALL"?"🏢 Semua Bisnis (JE Grup)":b==="JB_STORE"?"✨ JE Beauty Store":"👕 "+BIZ[b].name}
                 </button>)}
             </div>
 
@@ -7687,15 +7989,16 @@ function AppInner() {
             </div>
 
             {/* Opsi Tampilan & Pajak */}
-            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",flexWrap:"wrap",gap:10,background:C.bg2,padding:"10px 14px",borderRadius:12,border:`1px solid ${C.bo0}`}}>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",flexWrap:"wrap",gap:10,background:C.bg2,padding:"10px 14px",borderRadius:14,border:`1px solid ${C.bo0}`}}>
               <div style={{display:"flex",gap:6,alignItems:"center",flexWrap:"wrap"}}>
-                <span style={{fontSize:12,fontWeight:750,color:C.t2}}>Tampilan:</span>
-                <button onClick={()=>setPlViewMode("sheet")} className={`chip${plViewMode==="sheet"?" on":""}`}>📄 Format Resmi 3 Kolom</button>
-                <button onClick={()=>setPlViewMode("matrix")} className={`chip${plViewMode==="matrix"?" on":""}`}>📊 Matriks Perbandingan</button>
+                <span style={{fontSize:12,fontWeight:750,color:C.t2}}>Mode:</span>
+                <button onClick={()=>setPlViewMode("pro")} className={`chip${plViewMode==="pro"?" on":""}`}>⚡ Dashboard Pro Max</button>
+                <button onClick={()=>setPlViewMode("matrix")} className={`chip${plViewMode==="matrix"?" on":""}`}>📊 Matriks Bisnis</button>
+                <button onClick={()=>setPlViewMode("sheet")} className={`chip${plViewMode==="sheet"?" on":""}`}>📄 Lembar Cetak Formal</button>
               </div>
               <div style={{display:"flex",alignItems:"center",gap:6,flexWrap:"wrap"}}>
                 <span style={{fontSize:12,fontWeight:750,color:C.t2}}>Tarif Pajak:</span>
-                {[[12,"12% (Contoh / PPN)"],[0.5,"0.5% (UMKM PP 55)"],[0,"0% (Non-Pajak)"]].map(([r,lbl])=>
+                {[[12,"12% PPN"],[0.5,"0.5% UMKM"],[0,"0% Non-Pajak"]].map(([r,lbl])=>
                   <button key={r} onClick={()=>setPlTaxRate(r)} className={`chip${plTaxRate===r?" on":""}`} style={{fontSize:11.5,padding:"4px 9px"}}>{lbl}</button>)}
                 <div style={{display:"flex",alignItems:"center",gap:4}}>
                   <input type="number" min="0" max="100" step="0.5" value={plTaxRate} onChange={e=>setPlTaxRate(Number(e.target.value)||0)}
@@ -7705,110 +8008,271 @@ function AppInner() {
               </div>
             </div>
 
-            {/* Stat Cards Ringkasan */}
+            {/* 4 Stat Cards Ringkasan Eksekutif */}
             <div className="stat-grid-4" style={{display:"grid",gap:10,gridTemplateColumns:"repeat(4,1fr)"}}>
-              <Stat icon="💰" label="Total Pendapatan" value={rp(cur.totalPendapatan)} color={C.g}/>
-              <Stat icon="🏭" label="Biaya Produksi" value={rp(cur.totalBiayaProduksi)} color={C.cy} sub={`HPP ${rp(cur.totalBiayaProduksi)}`}/>
-              <Stat icon="📋" label="Biaya Operasional" value={rp(cur.totalBiayaOperasional)} color={C.a} sub={`${cur.opexItems.length} akun pengeluaran`}/>
-              <Stat icon="🎯" label={cur.labaBersih>=0?"Laba Bersih":"Rugi Bersih"} value={rpS(cur.labaBersih)} color={cur.labaBersih>=0?C.g:C.r} sub={`Margin ${cur.nm.toFixed(1)}%`}/>
+              <Stat icon="💰" label="Total Pendapatan" value={rp(cur.totalPendapatan)} color={C.g} sub={`Penjualan ${rp(cur.net)}`} />
+              <Stat icon="🏭" label="Biaya Pokok (HPP)" value={rp(cur.totalBiayaProduksi)} color={C.cy} sub={`Laba Kotor ${rp(cur.gp)} (${cur.gm.toFixed(1)}%)`} />
+              <Stat icon="📋" label="Biaya Operasional" value={rp(cur.totalBiayaOperasional)} color={C.a} sub={`${cur.opexItems.length} akun biaya aktif`} />
+              <Stat icon="🎯" label={cur.labaBersih>=0?"Laba Bersih":"Defisit Bersih"} value={rpS(cur.labaBersih)} color={cur.labaBersih>=0?C.g:C.r} sub={`Margin Akhir ${cur.nm.toFixed(1)}%`} />
             </div>
 
-            {/* ── TAMPILAN LEMBAR DOKUMEN RESMI (SESUAI CONTOH GAMBAR) ── */}
-            {plViewMode === "sheet" ? (
-              <div style={{overflowX:"auto",paddingBottom:10}}>
-                <div id="laba-rugi-doc-sheet" style={{
-                  background:"#ffffff",
-                  color:"#000000",
-                  borderRadius:8,
-                  boxShadow:"0 8px 30px rgba(0,0,0,0.06), 0 1px 3px rgba(0,0,0,0.04)",
-                  border:"1.5px solid #cbd5e1",
-                  padding:"36px 42px",
-                  minWidth:780,
-                  maxWidth:900,
-                  margin:"0 auto",
-                  fontFamily:'"Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif'
-                }}>
-                  {/* Kop Surat / Header Laporan */}
-                  <div style={{display:"flex",alignItems:"center",gap:24,paddingBottom:18,borderBottom:"2.5px solid #000000",marginBottom:24}}>
-                    <div style={{flexShrink:0}}>
-                      <BrandMark size={58} />
+            {/* Visual Alokasi Distribusi Pendapatan (Revenue Waterfall Bar) */}
+            {cur.totalPendapatan > 0 && (() => {
+              const rev = cur.totalPendapatan;
+              const pProd = Math.max(0, Math.min(100, Math.round((cur.totalBiayaProduksi / rev) * 100)));
+              const pOpex = Math.max(0, Math.min(100 - pProd, Math.round((cur.totalBiayaOperasional / rev) * 100)));
+              const pLain = Math.max(0, Math.min(100 - pProd - pOpex, Math.round((cur.biayaLainLain / rev) * 100)));
+              const pTax = Math.max(0, Math.min(100 - pProd - pOpex - pLain, Math.round((cur.nilaiPajak / rev) * 100)));
+              const pNet = cur.labaBersih > 0 ? Math.max(0, 100 - pProd - pOpex - pLain - pTax) : 0;
+
+              return (
+                <Card style={{ padding: "14px 18px", border: `1px solid ${C.bo0}` }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8, flexWrap: "wrap", gap: 8 }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                      <span style={{ width: 28, height: 28, borderRadius: 8, background: C.pri1, color: C.pri, display: "grid", placeItems: "center" }}>
+                        <Activity size={16} />
+                      </span>
+                      <div>
+                        <div style={{ fontSize: 13, fontWeight: 800, color: C.t0 }}>Distribusi Alokasi Omset</div>
+                        <div style={{ fontSize: 11.5, color: C.t2 }}>Proporsi HPP, Beban Operasional, Pajak, dan Laba Bersih terhadap Pendapatan</div>
+                      </div>
                     </div>
-                    <div style={{flex:1}}>
-                      <h1 style={{fontSize:25,fontWeight:900,letterSpacing:"0.04em",margin:0,textTransform:"uppercase",color:"#000000",lineHeight:1.15}}>
-                        LAPORAN LABA RUGI
-                      </h1>
-                      <div style={{fontSize:20,fontWeight:800,letterSpacing:"0.05em",color:"#000000",textTransform:"uppercase",marginTop:4}}>
-                        {bizTitle}
-                      </div>
-                      <div style={{fontSize:12.5,color:"#475569",marginTop:4}}>
-                        Periode: <b>{periodDetail}</b> · {cur.trx} transaksi
-                      </div>
+                    <div style={{ fontSize: 12, fontWeight: 750, color: cur.labaBersih >= 0 ? C.g : C.r, background: cur.labaBersih >= 0 ? C.g1 : C.r1, padding: "3px 10px", borderRadius: 20 }}>
+                      {cur.labaBersih >= 0 ? `Net Margin +${cur.nm.toFixed(1)}%` : `Defisit Net -${Math.abs(cur.nm).toFixed(1)}%`}
                     </div>
                   </div>
 
-                  {/* Isi Format 3 Kolom Sesuai Contoh */}
-                  <div>
+                  {/* Multi-segment Bar */}
+                  <div style={{
+                    height: 12,
+                    borderRadius: 6,
+                    background: C.bg3,
+                    display: "flex",
+                    overflow: "hidden",
+                    border: `1px solid ${C.bo1}`,
+                    margin: "8px 0 12px",
+                  }}>
+                    {pProd > 0 && <div title={`Biaya Produksi / HPP: ${pProd}%`} style={{ width: `${pProd}%`, background: C.cy, transition: "width .3s" }} />}
+                    {pOpex > 0 && <div title={`Beban Operasional: ${pOpex}%`} style={{ width: `${pOpex}%`, background: C.a, transition: "width .3s" }} />}
+                    {pLain > 0 && <div title={`Beban Lain: ${pLain}%`} style={{ width: `${pLain}%`, background: C.vi, transition: "width .3s" }} />}
+                    {pTax > 0 && <div title={`Pajak: ${pTax}% `} style={{ width: `${pTax}%`, background: C.b, transition: "width .3s" }} />}
+                    {pNet > 0 && <div title={`Laba Bersih: ${pNet}%`} style={{ width: `${pNet}%`, background: C.g, transition: "width .3s" }} />}
+                  </div>
+
+                  {/* Chips Legend */}
+                  <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(130px, 1fr))", gap: 8 }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 11.5, color: C.t1 }}>
+                      <span style={{ width: 8, height: 8, borderRadius: "50%", background: C.cy, flexShrink: 0 }} />
+                      <span><b>HPP:</b> {pProd}% ({rp(cur.totalBiayaProduksi)})</span>
+                    </div>
+                    <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 11.5, color: C.t1 }}>
+                      <span style={{ width: 8, height: 8, borderRadius: "50%", background: C.a, flexShrink: 0 }} />
+                      <span><b>Opex:</b> {pOpex}% ({rp(cur.totalBiayaOperasional)})</span>
+                    </div>
+                    {cur.biayaLainLain > 0 && (
+                      <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 11.5, color: C.t1 }}>
+                        <span style={{ width: 8, height: 8, borderRadius: "50%", background: C.vi, flexShrink: 0 }} />
+                        <span><b>Lainnya:</b> {pLain}% ({rp(cur.biayaLainLain)})</span>
+                      </div>
+                    )}
+                    <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 11.5, color: C.t1 }}>
+                      <span style={{ width: 8, height: 8, borderRadius: "50%", background: C.b, flexShrink: 0 }} />
+                      <span><b>Pajak:</b> {pTax}% ({rp(cur.nilaiPajak)})</span>
+                    </div>
+                    <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 11.5, color: cur.labaBersih >= 0 ? C.g : C.r }}>
+                      <span style={{ width: 8, height: 8, borderRadius: "50%", background: cur.labaBersih >= 0 ? C.g : C.r, flexShrink: 0 }} />
+                      <span><b>Laba:</b> {cur.nm.toFixed(1)}% ({rpS(cur.labaBersih)})</span>
+                    </div>
+                  </div>
+                </Card>
+              );
+            })()}
+
+            {/* ── MODE 1: DASHBOARD PRO MAX (STANDAR 3 KOLOM INTERAKTIF) ── */}
+            {plViewMode === "pro" && (
+              <div style={{ overflowX: "auto", paddingBottom: 6 }}>
+                <Card style={{ padding: 0, overflow: "hidden", borderRadius: 18, minWidth: 700 }}>
+                  {/* Top Bar Filter Akun & Panduan Kolom */}
+                  <div style={{
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                    padding: "12px 18px",
+                    background: C.bg3,
+                    borderBottom: `1px solid ${C.bo1}`,
+                    flexWrap: "wrap",
+                    gap: 10
+                  }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                      <span style={{ fontSize: 12.5, fontWeight: 800, color: C.t1 }}>Format Multi-Step 3 Lajur:</span>
+                      <span style={{ fontSize: 11.5, color: C.t2 }}>Rincian Akun ➔ Subtotal Golongan ➔ Total Utama</span>
+                    </div>
+                    <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                      <Inp
+                        value={plAccountQ}
+                        onChange={e => setPlAccountQ(e.target.value)}
+                        placeholder="Filter akun pengeluaran..."
+                        icon={<Search size={14} />}
+                        style={{ minHeight: 34, padding: "6px 12px 6px 36px", fontSize: 12, width: 220, borderRadius: 8 }}
+                      />
+                    </div>
+                  </div>
+
+                  {/* Header Kolom Akuntansi */}
+                  <div style={{
+                    display: "grid",
+                    gridTemplateColumns: "1fr 165px 165px 185px",
+                    padding: "12px 18px",
+                    background: C.bg2,
+                    borderBottom: `1.5px solid ${C.bo1}`,
+                    fontSize: 11.5,
+                    fontWeight: 800,
+                    letterSpacing: "0.06em",
+                    textTransform: "uppercase",
+                    color: C.t2,
+                    gap: 12,
+                    alignItems: "center"
+                  }}>
+                    <div>Akun & Keterangan</div>
+                    <div style={{ textAlign: "right" }}>(1) Rincian Akun</div>
+                    <div style={{ textAlign: "right" }}>(2) Subtotal Golongan</div>
+                    <div style={{ textAlign: "right" }}>(3) Total Utama</div>
+                  </div>
+
+                  {/* Isi Statement Laba Rugi Pro Max */}
+                  <div style={{ padding: "8px 12px 18px" }}>
                     {/* SEKSI 1: PENDAPATAN */}
-                    <StatementRow label="Pendapatan" bold />
-                    <StatementRow label="Pendapatan Usaha" indent={24} bold />
-                    <StatementRow label="Pendapatan Penjualan" indent={48} c1={cur.net} />
-                    <StatementRow label="Total Pendapatan Usaha" indent={24} bold c2={cur.net} />
-                    <StatementRow label="Pendapatan lainnya" indent={24} c2={cur.pendapatanLain} u2={true} />
-                    <StatementRow label="Total Pendapatan" bold c3={cur.totalPendapatan} spaceAfter />
+                    <ProSectionHeader icon="💰" title="I. Pendapatan Usaha & Operasi" color={C.g} subtitle="Revenue" />
+                    <ProRow label="Pendapatan Usaha" indent={16} bold />
+                    <ProRow
+                      label="Pendapatan Penjualan"
+                      sublabel={`${cur.trx} transaksi tercatat${cur.disc > 0 ? `, diskon ${rp(cur.disc)}` : ""}`}
+                      indent={36}
+                      c1={cur.net}
+                    />
+                    <ProRow label="Total Pendapatan Usaha" indent={16} bold isSubtotal c2={cur.net} />
+                    <ProRow label="Pendapatan lainnya" indent={16} c2={cur.pendapatanLain} />
+                    <ProRow
+                      label="TOTAL PENDAPATAN"
+                      bold
+                      uppercase
+                      highlight
+                      c3={cur.totalPendapatan}
+                      color3={C.g}
+                      spaceAfter
+                    />
 
-                    {/* SEKSI 2: BIAYA ATAS PENDAPATAN */}
-                    <StatementRow label="Biaya Atas Pendapatan" bold />
-                    <StatementRow label="Biaya Produksi" indent={24} bold />
-                    {cur.prodItems.map((prod, idx) => {
-                      const isLast = idx === cur.prodItems.length - 1;
-                      return (
-                        <StatementRow
-                          key={prod.label}
-                          label={prod.label}
-                          indent={48}
-                          c1={prod.val}
-                          u1={isLast}
-                        />
-                      );
-                    })}
-                    <StatementRow label="Total Biaya Produksi" indent={24} bold c2={cur.totalBiayaProduksi} />
+                    {/* SEKSI 2: BIAYA PRODUKSI / HPP */}
+                    <ProSectionHeader icon="🏭" title="II. Biaya Pokok Penjualan & Produksi" color={C.cy} subtitle="COGS" count={cur.prodItems.length} />
+                    <ProRow label="Biaya Produksi" indent={16} bold />
+                    {cur.prodItems.map((prod) => (
+                      <ProRow
+                        key={prod.label}
+                        label={prod.label}
+                        sublabel={prod.label.includes("HPP") ? "Beban pokok barang yang laku terjual" : "Biaya langsung konveksi/produksi"}
+                        indent={36}
+                        c1={prod.val}
+                      />
+                    ))}
+                    <ProRow label="Total Biaya Produksi / HPP" indent={16} bold isSubtotal c2={cur.totalBiayaProduksi} />
+                    <ProRow
+                      label="LABA KOTOR (GROSS PROFIT)"
+                      sublabel="Total Pendapatan dikurangi Biaya Produksi/HPP"
+                      bold
+                      uppercase
+                      c3={cur.gp}
+                      color3={C.cy}
+                      badge={`Margin ${cur.gm.toFixed(1)}%`}
+                      spaceAfter
+                    />
 
-                    <StatementRow label="Biaya Operasional" indent={24} bold />
-                    {cur.opexItems.length > 0 ? (
-                      cur.opexItems.map((op, idx) => {
-                        const isLast = idx === cur.opexItems.length - 1;
+                    {/* SEKSI 3: BEBAN OPERASIONAL (OPEX) */}
+                    <ProSectionHeader
+                      icon="📋"
+                      title="III. Beban Operasional Usaha"
+                      color={C.a}
+                      subtitle="Operating Expenses"
+                      count={`${filteredOpex.length} Akun`}
+                    />
+                    <ProRow label="Biaya Operasional" indent={16} bold />
+                    {filteredOpex.length > 0 ? (
+                      filteredOpex.map((op) => {
+                        const pctOpex = cur.totalBiayaOperasional > 0 ? ((op.val / cur.totalBiayaOperasional) * 100).toFixed(1) : 0;
                         return (
-                          <StatementRow
+                          <ProRow
                             key={op.label}
                             label={op.label}
-                            indent={48}
+                            badge={`${pctOpex}% Opex`}
+                            indent={36}
                             c1={op.val}
-                            u1={isLast}
                           />
                         );
                       })
                     ) : (
-                      <StatementRow
-                        label="(Belum ada catatan biaya operasional)"
-                        indent={48}
+                      <ProRow
+                        label={plAccountQ ? `(Tidak ada akun cocok dengan "${plAccountQ}")` : "(Belum ada catatan biaya operasional)"}
+                        indent={36}
                         c1={0}
-                        u1={true}
                       />
                     )}
-                    <StatementRow label="Total Biaya Operasional" indent={24} bold c2={cur.totalBiayaOperasional} />
-                    <StatementRow label="Biaya Lain-lain" indent={24} c2={cur.biayaLainLain} u2={true} />
-                    <StatementRow label="Total Biaya Atas Pendapatan" bold c3={cur.totalBiayaAtasPendapatan} u3={true} spaceAfter />
+                    <ProRow label="Total Biaya Operasional" indent={16} bold isSubtotal c2={cur.totalBiayaOperasional} />
 
-                    {/* SEKSI 3: LABA & PAJAK */}
-                    <StatementRow label="LABA SEBELUM PAJAK" bold uppercase c3={cur.labaSebelumPajak} />
-                    <StatementRow label="Pajak" bold c3={cur.taxRate} isPercent3={true} u3={true} />
-                    <StatementRow label="LABA BERSIH" bold uppercase c3={cur.labaBersih} du3={true} color3={cur.labaBersih >= 0 ? "#000000" : "#dc2626"} />
+                    {/* SEKSI 4: BEBAN LAIN-LAIN */}
+                    {cur.biayaLainLain > 0 && (
+                      <>
+                        <ProSectionHeader icon="📦" title="IV. Beban Lain-lain & Non-Operasional" color={C.vi} subtitle="Other Expenses" />
+                        <ProRow label="Biaya Lain-lain / Admin Bank" indent={16} c2={cur.biayaLainLain} />
+                      </>
+                    )}
+
+                    {/* REKAP TOTAL BIAYA */}
+                    <ProRow
+                      label="TOTAL BIAYA ATAS PENDAPATAN"
+                      sublabel="Akumulasi Biaya Produksi + Beban Operasional + Beban Lain"
+                      bold
+                      uppercase
+                      c3={cur.totalBiayaAtasPendapatan}
+                      color3={C.a}
+                      spaceBefore
+                      spaceAfter
+                    />
+
+                    {/* SEKSI 5: LABA & PAJAK */}
+                    <ProSectionHeader icon="🏛️" title="V. Laba Sebelum Pajak & Hasil Akhir" color={C.pri} subtitle="Net Income" />
+                    <ProRow
+                      label="LABA SEBELUM PAJAK (EBT)"
+                      bold
+                      uppercase
+                      c3={cur.labaSebelumPajak}
+                    />
+                    <ProRow
+                      label={`Beban Pajak Penghasilan (${cur.taxRate}%)`}
+                      sublabel="Berdasarkan tarif pajak yang dipilih di atas"
+                      indent={16}
+                      c3={cur.nilaiPajak > 0 ? -cur.nilaiPajak : 0}
+                      color3={C.r}
+                    />
+
+                    {/* GRAND TOTAL: LABA BERSIH */}
+                    <ProRow
+                      label="LABA BERSIH TAHUN / PERIODE BERJALAN"
+                      sublabel={`${bizTitle} · Periode ${periodDetail}`}
+                      bold
+                      uppercase
+                      isGrandTotal
+                      c3={cur.labaBersih}
+                      color3={cur.labaBersih >= 0 ? C.g : C.r}
+                      badge={`Net Margin: ${cur.nm.toFixed(1)}%`}
+                      spaceBefore
+                    />
                   </div>
-                </div>
+                </Card>
               </div>
-            ) : (
-              /* ── TAMPILAN MATRIKS PERBANDINGAN BISNIS ── */
-              <Card style={{padding:0,overflow:"hidden",borderRadius:14}}>
+            )}
+
+            {/* ── MODE 2: MATRIKS PERBANDINGAN ANTAR BISNIS ── */}
+            {plViewMode === "matrix" && (
+              <Card style={{padding:0,overflow:"hidden",borderRadius:16}}>
                 <div style={{overflowX:"auto"}}>
                   <div style={{minWidth:colIds.length > 1 ? 640 : 420}}>
                     <div style={{display:"grid",gridTemplateColumns:`1fr ${colIds.map(()=>"150px").join(" ")}`,padding:"12px 16px",background:C.bg3,borderBottom:`1px solid ${C.bo1}`,fontSize:12,fontWeight:750,color:C.t2}}>
@@ -7876,9 +8340,21 @@ function AppInner() {
               </Card>
             )}
 
+            {/* ── MODE 3: LEMBAR CETAK FORMAL (A4 PRINT VIEW) ── */}
+            {plViewMode === "sheet" ? (
+              <div style={{overflowX:"auto",paddingBottom:10}}>
+                <FormalDocumentSheet />
+              </div>
+            ) : (
+              /* Hidden Sheet Container agar tombol "Cetak / PDF" selalu menemukan DOM untuk window.print() */
+              <div style={{display:"none"}}>
+                <FormalDocumentSheet />
+              </div>
+            )}
+
             {/* Komposisi Biaya Operasional */}
             {cur.totalBiayaOperasional > 0 && <Card>
-              <div style={{fontSize:13,fontWeight:800,marginBottom:12}}>Komposisi biaya operasional ({bizTitle})</div>
+              <div style={{fontSize:13,fontWeight:800,marginBottom:12}}>Komposisi akun biaya operasional ({bizTitle})</div>
               <div style={{display:"flex",flexDirection:"column",gap:10}}>
                 {cur.opexItems.map(o=><div key={o.label}>
                   <div style={{display:"flex",justifyContent:"space-between",fontSize:13,marginBottom:4}}>
