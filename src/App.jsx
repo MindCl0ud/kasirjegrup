@@ -7730,14 +7730,8 @@ function AppInner() {
                 }}>
                   {/* Kop Surat / Header Laporan */}
                   <div style={{display:"flex",alignItems:"center",gap:24,paddingBottom:18,borderBottom:"2.5px solid #000000",marginBottom:24}}>
-                    <div style={{width:84,height:84,borderRadius:"50%",overflow:"hidden",display:"flex",alignItems:"center",justifyContent:"center",border:"1.5px solid #fbcfe8",background:"#fff",flexShrink:0}}>
-                      {plBiz === "JS_CLOTHING" ? (
-                        <div style={{width:"100%",height:"100%",background:"#232C75",display:"flex",alignItems:"center",justifyContent:"center",color:"#F5C518",fontSize:32,fontWeight:900}}>
-                          👕
-                        </div>
-                      ) : (
-                        <img src="/logo_je_beauty.png" alt="Logo" style={{width:"100%",height:"100%",objectFit:"contain"}} onError={e=>{ e.currentTarget.style.display="none"; }}/>
-                      )}
+                    <div style={{flexShrink:0}}>
+                      <BrandMark size={58} />
                     </div>
                     <div style={{flex:1}}>
                       <h1 style={{fontSize:25,fontWeight:900,letterSpacing:"0.04em",margin:0,textTransform:"uppercase",color:"#000000",lineHeight:1.15}}>
