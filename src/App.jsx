@@ -7383,6 +7383,31 @@ function AppInner() {
           const plExp=expenses.filter(e=>inRangeDate(expDate(e),plRange,plFrom,plTo));
           const sum=(a,f)=>a.reduce((t,x)=>t+(f(x)||0),0);
 
+          // Klasifikasi akun
+          const isProductionCat = (cat) => {
+            const s = (cat || "").toLowerCase().trim();
+            return s.includes("belanja produk") ||
+                   s.includes("biaya pengiriman") ||
+                   s.includes("pengiriman") ||
+                   s.includes("ongkir") ||
+                   s.includes("bahan baku") ||
+                   s.includes("kain") ||
+                   s.includes("sablon") ||
+                   s.includes("jahit") ||
+                   s.includes("konveksi") ||
+                   s.includes("hpp");
+          };
+
+          const isOtherExpCat = (cat) => {
+            const s = (cat || "").toLowerCase().trim();
+            return s === "biaya lain-lain" ||
+                   s === "lain-lain" ||
+                   s === "beban lain-lain" ||
+                   s.includes("admin bank") ||
+                   s.includes("bunga bank") ||
+                   s.includes("non-operasional");
+          };
+
           const calc = b => {
             const tt = plTrx.filter(t => b === "ALL" || t.business === b);
             const ee = plExp.filter(e => b === "ALL" || e.business === b);
@@ -7392,65 +7417,50 @@ function AppInner() {
             const hppTrx = sum(tt, t => t.totalHpp);
             const byCat = {};
             ee.forEach(e => {
-              const cName = e.category || "Lain-lain";
+              const cName = (e.category || "Lain-lain").trim();
               byCat[cName] = (byCat[cName] || 0) + (Number(e.amount) || 0);
             });
 
-            // Belanja produk: prioritas HPP transaksi penjualan jika ada, atau pengeluaran belanja produk
+            // 1. Akun Biaya Produksi / Pokok
+            const prodItems = [];
             const belanjaProdukExp = byCat["Belanja Produk"] || 0;
-            const belanjaProduk = hppTrx > 0 ? hppTrx : belanjaProdukExp;
-
-            // Biaya pengiriman
-            const biayaPengiriman = (byCat["Biaya Pengiriman"] || 0) + (byCat["Pengiriman"] || 0) + (byCat["Ongkir"] || 0);
-            const totalBiayaProduksi = belanjaProduk + biayaPengiriman;
-
-            // Kategori operasional standar dari format contoh laba rugi
-            const stdOpex = [
-              { key: "gaji", label: "Biaya Gaji", match: ["biaya gaji", "gaji"] },
-              { key: "listrik", label: "listrik", match: ["listrik"] },
-              { key: "peralatan_listrik", label: "Peeralatan listrik", match: ["peralatan listrik", "peeralatan listrik"] },
-              { key: "bbm", label: "BBM", match: ["bbm", "bahan bakar"] },
-              { key: "pulsa", label: "Pulsa", match: ["pulsa", "paket data"] },
-              { key: "wifi", label: "wifi", match: ["wifi", "wi-fi", "internet"] },
-              { key: "kebersihan", label: "Peralatan Kebersihan", match: ["peralatan kebersihan", "kebersihan"] },
-              { key: "penyusutan", label: "Beban Penyusutan", match: ["beban penyusutan", "penyusutan"] },
-            ];
-
-            const matchedCats = new Set(["belanja produk", "biaya pengiriman", "pengiriman", "ongkir", "pendapatan penjualan", "pendapatan lainnya", "biaya lain-lain", "lain-lain"]);
-            const opexItems = stdOpex.map(s => {
-              let val = 0;
-              Object.entries(byCat).forEach(([c, amt]) => {
-                const cl = c.toLowerCase().trim();
-                if (s.match.includes(cl)) {
-                  val += amt;
-                  matchedCats.add(cl);
-                }
-              });
-              return { label: s.label, val };
-            });
-
-            // Kategori operasional tambahan jika ada di pengeluaran
-            Object.entries(byCat).forEach(([c, amt]) => {
-              const cl = c.toLowerCase().trim();
-              if (!matchedCats.has(cl) && amt > 0) {
-                opexItems.push({ label: c, val: amt });
+            const totalHpp = hppTrx > 0 ? hppTrx : belanjaProdukExp;
+            if (totalHpp > 0 || (Object.keys(byCat).length === 0 && tt.length > 0)) {
+              prodItems.push({ label: "Belanja Produk (HPP)", val: totalHpp });
+            }
+            // Akun biaya produksi lain yang benar-benar ada di catatan biaya
+            Object.entries(byCat).forEach(([cat, amt]) => {
+              if (cat !== "Belanja Produk" && isProductionCat(cat) && amt > 0) {
+                prodItems.push({ label: cat, val: amt });
               }
             });
+            if (prodItems.length === 0) {
+              prodItems.push({ label: "Belanja Produk (HPP)", val: 0 });
+            }
+            const totalBiayaProduksi = prodItems.reduce((acc, it) => acc + it.val, 0);
 
+            // 2. Akun Biaya Operasional — Dinamis dari akun yang dicatat di data expenses
+            const opexItems = [];
+            Object.entries(byCat).forEach(([cat, amt]) => {
+              if (!isProductionCat(cat) && !isOtherExpCat(cat) && amt > 0) {
+                opexItems.push({ label: cat, val: amt });
+              }
+            });
+            // Urutkan akun dari pengeluaran terbesar
+            opexItems.sort((a, b) => b.val - a.val);
             const totalBiayaOperasional = opexItems.reduce((acc, it) => acc + it.val, 0);
 
-            // Biaya lain-lain
+            // 3. Akun Biaya Lain-lain
             let biayaLainLain = 0;
-            Object.entries(byCat).forEach(([c, amt]) => {
-              const cl = c.toLowerCase().trim();
-              if (cl === "biaya lain-lain" || cl === "lain-lain") {
+            Object.entries(byCat).forEach(([cat, amt]) => {
+              if (isOtherExpCat(cat)) {
                 biayaLainLain += amt;
               }
             });
 
             const totalBiayaAtasPendapatan = totalBiayaProduksi + totalBiayaOperasional + biayaLainLain;
 
-            // Pendapatan lainnya
+            // 4. Pendapatan lainnya
             const pendapatanLain = byCat["Pendapatan Lainnya"] || byCat["Pendapatan Lain"] || 0;
             const totalPendapatan = net + pendapatanLain;
 
@@ -7466,8 +7476,7 @@ function AppInner() {
               gross,
               pendapatanLain,
               totalPendapatan,
-              belanjaProduk,
-              biayaPengiriman,
+              prodItems,
               totalBiayaProduksi,
               opexItems,
               totalBiayaOperasional,
@@ -7546,11 +7555,12 @@ function AppInner() {
               { k: "", c1: "", c2: "", c3: "" },
               { k: "Biaya Atas Pendapatan", c1: "", c2: "", c3: "" },
               { k: "  Biaya Produksi", c1: "", c2: "", c3: "" },
-              { k: "    Belanja Produk", c1: cur.belanjaProduk, c2: "", c3: "" },
-              { k: "    Biaya Pengiriman", c1: cur.biayaPengiriman, c2: "", c3: "" },
+              ...cur.prodItems.map(p => ({ k: `    ${p.label}`, c1: p.val, c2: "", c3: "" })),
               { k: "  Total Biaya Produksi", c1: "", c2: cur.totalBiayaProduksi, c3: "" },
               { k: "  Biaya Operasional", c1: "", c2: "", c3: "" },
-              ...cur.opexItems.map(o => ({ k: `    ${o.label}`, c1: o.val, c2: "", c3: "" })),
+              ...(cur.opexItems.length > 0
+                ? cur.opexItems.map(o => ({ k: `    ${o.label}`, c1: o.val, c2: "", c3: "" }))
+                : [{ k: "    (Tidak ada beban operasional)", c1: 0, c2: "", c3: "" }]),
               { k: "  Total Biaya Operasional", c1: "", c2: cur.totalBiayaOperasional, c3: "" },
               { k: "  Biaya Lain-lain", c1: "", c2: cur.biayaLainLain, c3: "" },
               { k: "Total Biaya Atas Pendapatan", c1: "", c2: "", c3: cur.totalBiayaAtasPendapatan },
@@ -7698,8 +7708,8 @@ function AppInner() {
             {/* Stat Cards Ringkasan */}
             <div className="stat-grid-4" style={{display:"grid",gap:10,gridTemplateColumns:"repeat(4,1fr)"}}>
               <Stat icon="💰" label="Total Pendapatan" value={rp(cur.totalPendapatan)} color={C.g}/>
-              <Stat icon="🏭" label="Biaya Produksi" value={rp(cur.totalBiayaProduksi)} color={C.cy} sub={`HPP ${rp(cur.belanjaProduk)}`}/>
-              <Stat icon="📋" label="Biaya Operasional" value={rp(cur.totalBiayaOperasional)} color={C.a}/>
+              <Stat icon="🏭" label="Biaya Produksi" value={rp(cur.totalBiayaProduksi)} color={C.cy} sub={`HPP ${rp(cur.totalBiayaProduksi)}`}/>
+              <Stat icon="📋" label="Biaya Operasional" value={rp(cur.totalBiayaOperasional)} color={C.a} sub={`${cur.opexItems.length} akun pengeluaran`}/>
               <Stat icon="🎯" label={cur.labaBersih>=0?"Laba Bersih":"Rugi Bersih"} value={rpS(cur.labaBersih)} color={cur.labaBersih>=0?C.g:C.r} sub={`Margin ${cur.nm.toFixed(1)}%`}/>
             </div>
 
@@ -7755,23 +7765,42 @@ function AppInner() {
                     {/* SEKSI 2: BIAYA ATAS PENDAPATAN */}
                     <StatementRow label="Biaya Atas Pendapatan" bold />
                     <StatementRow label="Biaya Produksi" indent={24} bold />
-                    <StatementRow label="Belanja Produk" indent={48} c1={cur.belanjaProduk} />
-                    <StatementRow label="Biaya Pengiriman" indent={48} c1={cur.biayaPengiriman} u1={true} />
-                    <StatementRow label="Total Biaya Produksi" indent={24} bold c2={cur.totalBiayaProduksi} />
-
-                    <StatementRow label="Biaya Operasional" indent={24} bold />
-                    {cur.opexItems.map((op, idx) => {
-                      const isLast = idx === cur.opexItems.length - 1;
+                    {cur.prodItems.map((prod, idx) => {
+                      const isLast = idx === cur.prodItems.length - 1;
                       return (
                         <StatementRow
-                          key={idx}
-                          label={op.label}
+                          key={prod.label}
+                          label={prod.label}
                           indent={48}
-                          c1={op.val}
+                          c1={prod.val}
                           u1={isLast}
                         />
                       );
                     })}
+                    <StatementRow label="Total Biaya Produksi" indent={24} bold c2={cur.totalBiayaProduksi} />
+
+                    <StatementRow label="Biaya Operasional" indent={24} bold />
+                    {cur.opexItems.length > 0 ? (
+                      cur.opexItems.map((op, idx) => {
+                        const isLast = idx === cur.opexItems.length - 1;
+                        return (
+                          <StatementRow
+                            key={op.label}
+                            label={op.label}
+                            indent={48}
+                            c1={op.val}
+                            u1={isLast}
+                          />
+                        );
+                      })
+                    ) : (
+                      <StatementRow
+                        label="(Belum ada catatan biaya operasional)"
+                        indent={48}
+                        c1={0}
+                        u1={true}
+                      />
+                    )}
                     <StatementRow label="Total Biaya Operasional" indent={24} bold c2={cur.totalBiayaOperasional} />
                     <StatementRow label="Biaya Lain-lain" indent={24} c2={cur.biayaLainLain} u2={true} />
                     <StatementRow label="Total Biaya Atas Pendapatan" bold c3={cur.totalBiayaAtasPendapatan} u3={true} spaceAfter />
@@ -7793,47 +7822,60 @@ function AppInner() {
                       {colIds.map(id=><div key={id} style={{textAlign:"right"}}>{colName(id)}</div>)}
                     </div>
                     <div>
-                      {[
-                        {l:"Total Pendapatan",f:d=>d.totalPendapatan,strong:true},
-                        {l:"HPP / Belanja Produk",f:d=>d.belanjaProduk,indent:true},
-                        {l:"Biaya Pengiriman",f:d=>d.biayaPengiriman,indent:true},
-                        {l:"Total Biaya Produksi",f:d=>d.totalBiayaProduksi,strong:true},
-                        {head:"Biaya Operasional"},
-                        ...cur.opexItems.map(o=>({l:o.label,f:d=>{
-                          const found=d.opexItems.find(x=>x.label===o.label);
-                          return found?found.val:0;
-                        },indent:true})),
-                        {l:"Total Biaya Operasional",f:d=>d.totalBiayaOperasional,strong:true},
-                        {l:"Total Biaya Atas Pendapatan",f:d=>d.totalBiayaAtasPendapatan,strong:true},
-                        {l:"LABA SEBELUM PAJAK",f:d=>d.labaSebelumPajak,strong:true},
-                        {l:`Pajak (${cur.taxRate}%)`,f:d=>d.nilaiPajak,indent:true},
-                        {l:"LABA BERSIH",f:d=>d.labaBersih,total:true,note:d=>`Margin ${d.nm.toFixed(1)}%`},
-                      ].map((r,i)=>r.head ? (
-                        <div key={i} style={{padding:"12px 16px 6px",fontSize:12.5,fontWeight:800,color:C.t1,borderTop:`1px solid ${C.bo0}`,background:C.bg1}}>{r.head}</div>
-                      ) : (
-                        <div key={i} style={{
-                          display:"grid",
-                          gridTemplateColumns:`1fr ${colIds.map(()=>"150px").join(" ")}`,
-                          padding:r.total?"13px 16px":"9px 16px",
-                          borderTop:`1px solid ${C.bo0}`,
-                          background:r.total?C.pri1:r.strong?C.bg3:"transparent",
-                          alignItems:"center"
-                        }}>
-                          <div style={{paddingLeft:r.indent?24:0,fontWeight:r.strong||r.total?800:500,fontSize:r.total?14.5:13,color:r.total?C.pri:C.t0}}>
-                            {r.l}
+                      {(()=>{
+                        const allProdLabels = [...new Set(colIds.flatMap(id => D[id].prodItems.map(p => p.label)))];
+                        const allOpexLabels = [...new Set(colIds.flatMap(id => D[id].opexItems.map(o => o.label)))];
+                        const rows = [
+                          {l:"Total Pendapatan",f:d=>d.totalPendapatan,strong:true},
+                          {head:"Biaya Produksi"},
+                          ...allProdLabels.map(lbl=>({
+                            l:lbl,
+                            f:d=>{ const it = d.prodItems.find(p=>p.label===lbl); return it ? it.val : 0; },
+                            indent:true
+                          })),
+                          {l:"Total Biaya Produksi",f:d=>d.totalBiayaProduksi,strong:true},
+                          {head:"Biaya Operasional"},
+                          ...(allOpexLabels.length > 0
+                            ? allOpexLabels.map(lbl=>({
+                                l:lbl,
+                                f:d=>{ const it = d.opexItems.find(o=>o.label===lbl); return it ? it.val : 0; },
+                                indent:true
+                              }))
+                            : [{l:"(Tidak ada beban operasional)",f:()=>0,indent:true}]),
+                          {l:"Total Biaya Operasional",f:d=>d.totalBiayaOperasional,strong:true},
+                          {l:"Biaya Lain-lain",f:d=>d.biayaLainLain,indent:true},
+                          {l:"Total Biaya Atas Pendapatan",f:d=>d.totalBiayaAtasPendapatan,strong:true},
+                          {l:"LABA SEBELUM PAJAK",f:d=>d.labaSebelumPajak,strong:true},
+                          {l:`Pajak (${cur.taxRate}%)`,f:d=>d.nilaiPajak,indent:true},
+                          {l:"LABA BERSIH",f:d=>d.labaBersih,total:true,note:d=>`Margin ${d.nm.toFixed(1)}%`},
+                        ];
+                        return rows.map((r,i)=>r.head ? (
+                          <div key={i} style={{padding:"12px 16px 6px",fontSize:12.5,fontWeight:800,color:C.t1,borderTop:`1px solid ${C.bo0}`,background:C.bg1}}>{r.head}</div>
+                        ) : (
+                          <div key={i} style={{
+                            display:"grid",
+                            gridTemplateColumns:`1fr ${colIds.map(()=>"150px").join(" ")}`,
+                            padding:r.total?"13px 16px":"9px 16px",
+                            borderTop:`1px solid ${C.bo0}`,
+                            background:r.total?C.pri1:r.strong?C.bg3:"transparent",
+                            alignItems:"center"
+                          }}>
+                            <div style={{paddingLeft:r.indent?24:0,fontWeight:r.strong||r.total?800:500,fontSize:r.total?14.5:13,color:r.total?C.pri:C.t0}}>
+                              {r.l}
+                            </div>
+                            {colIds.map(id=>{
+                              const v=r.f(D[id]);
+                              const col=r.total?(v>=0?C.g:C.r):C.t0;
+                              return (
+                                <div key={id} className="mn" style={{textAlign:"right",fontWeight:r.strong||r.total?800:600,color:col,fontSize:r.total?14.5:13}}>
+                                  {rp(v)}
+                                  {r.note&&<div style={{fontSize:11,fontWeight:500,color:C.t2}}>{r.note(D[id])}</div>}
+                                </div>
+                              );
+                            })}
                           </div>
-                          {colIds.map(id=>{
-                            const v=r.f(D[id]);
-                            const col=r.total?(v>=0?C.g:C.r):C.t0;
-                            return (
-                              <div key={id} className="mn" style={{textAlign:"right",fontWeight:r.strong||r.total?800:600,color:col,fontSize:r.total?14.5:13}}>
-                                {rp(v)}
-                                {r.note&&<div style={{fontSize:11,fontWeight:500,color:C.t2}}>{r.note(D[id])}</div>}
-                              </div>
-                            );
-                          })}
-                        </div>
-                      ))}
+                        ));
+                      })()}
                     </div>
                   </div>
                 </div>
@@ -7844,7 +7886,7 @@ function AppInner() {
             {cur.totalBiayaOperasional > 0 && <Card>
               <div style={{fontSize:13,fontWeight:800,marginBottom:12}}>Komposisi biaya operasional ({bizTitle})</div>
               <div style={{display:"flex",flexDirection:"column",gap:10}}>
-                {cur.opexItems.filter(o=>o.val>0).sort((a,b)=>b.val-a.val).map(o=><div key={o.label}>
+                {cur.opexItems.map(o=><div key={o.label}>
                   <div style={{display:"flex",justifyContent:"space-between",fontSize:13,marginBottom:4}}>
                     <span style={{fontWeight:600}}>{o.label}</span>
                     <span className="mn" style={{color:C.t1}}>{rp(o.val)}</span>
