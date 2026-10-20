@@ -738,7 +738,7 @@ function Header({title,biz,user,onLogout,onSwitchBiz,onAbsenPulang,hasCheckedIn,
             </div>)
           : <div style={{minWidth:0}}>
               <div style={{fontSize:15,fontWeight:800,color:C.t0,lineHeight:1.15,letterSpacing:"-.015em"}}>{title||"JE Grup"}</div>
-              <div style={{fontSize:11,fontWeight:600,color:C.t2,lineHeight:1.2}}>JS Clothing · JB Store</div>
+              <div style={{fontSize:11,fontWeight:600,color:C.t2,lineHeight:1.2}}>JE Clothing · JE Beauty</div>
             </div>}
       </div>
       <div style={{display:"flex",alignItems:"center",gap:4,flexShrink:0}}>
@@ -2778,9 +2778,13 @@ const PHOTO_FIELDS = [
   ["hero",    "Foto utama (tegak) - koleksi unggulan satu toko"],
   ["hero2",   "Poster video (16:9) - tampil sebelum video diputar"],
   ["atelier", "Foto lebar bagian Kenapa belanja di sini"],
+  ["koleksi1","Koleksi Unggulan 1 - JE Clothing (grid foto kiri)"],
+  ["koleksi2","Koleksi Unggulan 2 - JE Beauty (grid foto kanan)"],
 ];
 const LANDING = {}; // diisi subscribeLanding dari settings/landing
 const photo = (slot, w, h) => driveImg(LANDING[slot], w) || picPhoto(slot, w, h);
+// Foto koleksi unggulan: kalau slotnya belum diisi admin, jatuh ke foto lama supaya tidak kosong.
+const klcPhoto = (slot, fb, w, h) => driveImg(LANDING[slot], w) || driveImg(LANDING[fb], w) || picPhoto(slot, w, h);
 // ponytail: selama slot kosong, tampil placeholder picsum.
 
 // ── Review pelanggan yang tampil di halaman promosi ──
@@ -2843,8 +2847,10 @@ function ProductLandingPage({ prods, cfg, user, onLogin, onToggleTheme, isDark, 
 
   const stockLabel = p => p.stock <= 0 ? "Stok habis" : (p.stock < 10 ? "Stok terbatas" : "Tersedia");
 
-  // Foto yang bisa di-preview di lightbox galeri (foto toko + foto produk unggulan).
+  // Foto yang bisa di-preview di lightbox galeri (koleksi unggulan + foto toko + foto produk unggulan).
   const galPhotos = React.useMemo(() => ([
+    { src: klcPhoto("koleksi1", "hero", 900, 675), cap: "JE Clothing", sub: "Koleksi unggulan" },
+    { src: klcPhoto("koleksi2", "atelier", 900, 675), cap: "JE Beauty", sub: "Koleksi unggulan" },
     { src: photo("hero", 900, 1125), cap: "Koleksi unggulan", sub: "Foto utama toko" },
     { src: photo("atelier", 1200, 800), cap: "Kenapa belanja di sini", sub: "Suasana toko" },
     ...advertisedList.slice(0, 6).map(p => ({ src: productPhoto(p), cap: p.name, sub: (BIZ[p.business] || {}).name || "" })),
@@ -3117,8 +3123,8 @@ function ProductLandingPage({ prods, cfg, user, onLogin, onToggleTheme, isDark, 
         ) : (
           <div style={{display:"flex",flexDirection:"column",gap:6}}>
             {[
-              { id:"JS_CLOTHING", title:"JS Clothing", sub:"Pakaian, kaos custom & seragam", Icon:Shirt },
-              { id:"JB_STORE",    title:"JB Store",    sub:"Beauty & skincare original",     Icon:Sparkles },
+              { id:"JS_CLOTHING", title:"JE Clothing", sub:"Pakaian, kaos custom & seragam", Icon:Shirt },
+              { id:"JB_STORE",    title:"JE Beauty",   sub:"Beauty & skincare original",     Icon:Sparkles },
             ].map(row => {
               const items = filtered.filter(p => p.business === row.id);
               if (!items.length && (selectedBiz !== "ALL" || searchWord.trim())) return null;
@@ -3279,7 +3285,7 @@ function ProductLandingPage({ prods, cfg, user, onLogin, onToggleTheme, isDark, 
             <div style={{display:"flex",flexWrap:"wrap",alignItems:"flex-end",justifyContent:"space-between",gap:16,marginBottom:20}}>
               <div style={{maxWidth:560}}>
                 <h2 style={{fontSize:"clamp(22px,3vw,28px)",fontWeight:800,letterSpacing:"-.025em",marginBottom:6}}>Apa Kata Pelanggan</h2>
-                <p style={{fontSize:14,color:C.t2,lineHeight:1.6}}>Ulasan pelanggan JS Clothing dan JB Store yang sudah berbelanja langsung maupun pesan custom di toko kami.</p>
+                <p style={{fontSize:14,color:C.t2,lineHeight:1.6}}>Ulasan pelanggan JE Clothing dan JE Beauty yang sudah berbelanja langsung maupun pesan custom di toko kami.</p>
               </div>
               <div style={{display:"flex",alignItems:"center",gap:14,padding:"14px 18px",borderRadius:18,background:C.bg2,
                 border:`1px solid ${C.bo1}`,boxShadow:C.sh,flexShrink:0}}>
@@ -4627,7 +4633,7 @@ function AppInner() {
           <OnlineDot online={online} onDark/>
         </div>
         <h1 style={{fontSize:30,fontWeight:800,letterSpacing:"-.03em",lineHeight:1.1,marginBottom:10}}>JE Grup</h1>
-        <p style={{fontSize:14.5,lineHeight:1.5,color:"rgba(255,255,255,.78)",maxWidth:320,textWrap:"balance"}}>Penjualan dan stok untuk JS Clothing dan JB Store.</p>
+        <p style={{fontSize:14.5,lineHeight:1.5,color:"rgba(255,255,255,.78)",maxWidth:320,textWrap:"balance"}}>Penjualan dan stok untuk JE Clothing dan JE Beauty.</p>
       </section>
       <div className="ikat-band" aria-hidden="true"/>
       <section className="login-body">
