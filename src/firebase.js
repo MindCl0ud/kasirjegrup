@@ -357,6 +357,16 @@ export const fbSetLanding = async (data, actor) => {
   if (actor) await fbLogActivity(actor, "Etalase Publik", "Perbarui foto / nomor WA landing page");
 };
 
+// ── Setelan laporan keuangan (modal awal & prive) ──
+export const subscribeFinance = (cb) => onSnapshot(
+  doc(_db,"settings","finance"),
+  s => cb(s.exists() ? s.data() : {}), console.warn);
+
+export const fbSetFinance = async (data, actor) => {
+  await setDoc(doc(_db,"settings","finance"), { ...data, updatedAt:serverTimestamp() }, { merge:true });
+  if (actor) await fbLogActivity(actor, "Keuangan", "Perbarui modal awal / prive");
+};
+
 // ── Pesanan Baju Custom ────────────────────────────────────────
 export const subscribeCustomOrders = (cb, n = 200) => {
   if (!_db) return () => {};

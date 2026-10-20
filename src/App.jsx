@@ -12,6 +12,7 @@ import {
   subscribeOpnames, subscribeOpnameItems, fbCreateOpname, fbCloseOpname,
   fbDeleteOpname, fbUpdateOpnameItem, fbBulkUpdateOpnameItems, fbApplyOpnameAdjustments,
   subscribeLanding, fbSetLanding,
+  subscribeFinance, fbSetFinance,
   subscribeCustomOrders, fbUpdateCustomOrderStatus, fbDeleteCustomOrder,
 } from "./firebase.js";
 // QRIS dinonaktifkan (stub). Untuk mengaktifkan: pakai `import { getQris, toDynamicQris, qrDataUrl } from "./qris.js";`
@@ -25,7 +26,7 @@ import {
   Shirt, Sparkles, Home, Printer, RefreshCw, Folder, FileText, Eye, EyeOff, Building2, LayoutDashboard,
   Undo2, Activity, Upload, PanelLeftClose, PanelLeftOpen, ChevronRight, LogOut, Bell, ArrowLeftRight, ArrowLeft, MoreHorizontal, WifiOff, Info,
   QrCode, ChevronLeft, ShoppingBasket, Megaphone, ExternalLink, ShoppingBag,
-  ArrowRight, MessageCircle, ShieldCheck, BadgeCheck, Download, LayoutGrid, List,
+  ArrowRight, MessageCircle, ShieldCheck, BadgeCheck, Download, LayoutGrid, List, Play,
 } from "lucide-react";
 import CustomShirtStudio from "./CustomShirtStudio.jsx";
 
@@ -357,7 +358,41 @@ const makeCSS = () => `
   .lp-card-in{animation:fadeUp .45s cubic-bezier(.16,1,.3,1) both;}
   .lp-card-in:nth-child(2n){animation-delay:.05s;}
   .lp-card-in:nth-child(3n){animation-delay:.1s;}
-  #katalog,#tentang,#kontak{scroll-margin-top:90px;}
+  #katalog,#tentang,#kontak,#video{scroll-margin-top:90px;}
+  /* Hero: satu foto utama + kapsi di atas scrim */
+  .lp-hero-shot{aspect-ratio:4 / 5;border-radius:24px;}
+  @media(max-width:640px){.lp-hero-shot{aspect-ratio:1 / 1;}}
+  .lp-shot-scrim{position:absolute;left:0;right:0;bottom:0;height:52%;pointer-events:none;
+    background:linear-gradient(to top,rgba(8,11,30,.9) 0%,rgba(8,11,30,.55) 45%,rgba(8,11,30,0) 100%);}
+  .lp-shot-cap{position:absolute;left:20px;right:20px;bottom:18px;z-index:2;display:flex;flex-direction:column;gap:3px;
+    color:#fff;font-size:13.5px;font-weight:600;line-height:1.4;text-shadow:0 1px 10px rgba(0,0,0,.45);}
+  .lp-shot-cap-k{font-size:10.5px;font-weight:800;letter-spacing:.16em;text-transform:uppercase;color:rgba(255,255,255,.75);}
+  /* Video promosi (embed Google Drive) */
+  .lp-video{position:relative;width:100%;aspect-ratio:16 / 9;border-radius:24px;overflow:hidden;
+    background:${C.bg3};border:1px solid ${C.bo1};box-shadow:${C.sh2};}
+  .lp-video-frame{position:absolute;inset:0;width:100%;height:100%;border:0;display:block;background:#000;}
+  .lp-video-poster{position:absolute;inset:0;width:100%;height:100%;padding:0;margin:0;border:none;background:none;
+    cursor:pointer;display:block;overflow:hidden;}
+  .lp-video-poster>.lp-photo{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;}
+  .lp-video-scrim{position:absolute;inset:0;background:linear-gradient(180deg,rgba(8,11,30,.32),rgba(8,11,30,.62));}
+  .lp-video-play{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);z-index:2;
+    width:76px;height:76px;border-radius:50%;display:grid;place-items:center;padding-left:4px;
+    background:${isDarkTheme()?"rgba(255,255,255,.94)":"#fff"};color:${C.pri};
+    box-shadow:0 12px 34px rgba(0,0,0,.4);transition:transform .18s cubic-bezier(.16,1,.3,1);}
+  .lp-video-poster:hover .lp-video-play{transform:translate(-50%,-50%) scale(1.06);}
+  .lp-video-poster:active .lp-video-play{transform:translate(-50%,-50%) scale(.96);}
+  .lp-video-label{position:absolute;left:0;right:0;bottom:16px;z-index:2;text-align:center;
+    color:#fff;font-size:13px;font-weight:700;text-shadow:0 1px 10px rgba(0,0,0,.55);}
+  /* Alat katalog: filter chip + pencarian (wajib min-width:0 agar bisa menyusut) */
+  .lp-tools{min-width:0;max-width:100%;}
+  .lp-chips{min-width:0;max-width:100%;}
+  .lp-search{position:relative;flex:1 1 200px;min-width:180px;}
+  @media(max-width:640px){
+    .lp-tools{width:100%;flex-direction:column;align-items:stretch;gap:10px;}
+    .lp-chips{scroll-snap-type:x proximity;}
+    .lp-chip{scroll-snap-align:start;}
+    .lp-search{flex:0 0 100%;width:100%;min-width:0;}
+  }
   .lp-header-wrap{position:sticky;top:0;z-index:100;width:100%;padding:calc(12px + var(--safe-t)) 16px 8px;transition:padding .2s ease;}
   @media(min-width:641px){.lp-header-wrap{padding:calc(14px + var(--safe-t)) 24px 8px;}}
   .lp-navbar{max-width:1180px;margin:0 auto;height:60px;padding:0 14px 0 16px;
@@ -375,6 +410,21 @@ const makeCSS = () => `
   @media(max-width:820px){.lp-nav-links{display:none!important;}}
   @media(max-width:480px){.lp-status-badge{display:none!important;}}
   @media(hover:none){.lp-shot:hover .lp-photo{transform:none;}.lp-lift:hover{transform:none;}}
+  /* ── Jurnal & Laporan Keuangan ── */
+  .fin-tabs{display:inline-flex;gap:4px;background:${C.bg3};padding:4px;border-radius:14px;
+    border:1px solid ${C.bo0};align-self:flex-start;max-width:100%;overflow-x:auto;scrollbar-width:none;}
+  .fin-tabs::-webkit-scrollbar{display:none;}
+  .fin-ta{display:grid;grid-template-columns:1fr 1fr;gap:14px;align-items:start;}
+  @media(max-width:820px){.fin-ta{grid-template-columns:1fr;}}
+  .fin-side{background:${C.bg2};border:1px solid ${C.bo1};border-radius:20px;padding:18px 18px 14px;box-shadow:${C.sh};}
+  .fin-h{font-size:11px;font-weight:800;letter-spacing:.14em;text-transform:uppercase;color:${C.t2};margin-bottom:6px;}
+  .fin-row{display:flex;justify-content:space-between;gap:14px;align-items:baseline;padding:9px 0;border-bottom:1px dashed ${C.bo1};}
+  .fin-l{font-size:13.5px;font-weight:600;color:${C.t0};display:flex;flex-direction:column;gap:2px;min-width:0;}
+  .fin-note{font-size:11px;font-weight:500;color:${C.t3};line-height:1.4;}
+  .fin-v{font-size:14px;font-weight:700;color:${C.t0};white-space:nowrap;}
+  .fin-total{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-top:14px;
+    padding:13px 15px;border-radius:14px;background:${C.pri1};border:1px solid ${C.pri}22;}
+  .fin-total b{font-size:15px;font-weight:850;color:${C.pri};}
   @media(prefers-reduced-motion:no-preference){html{scroll-behavior:smooth;}}
 `;
 let CSS = makeCSS();
@@ -2528,7 +2578,7 @@ function ExpenseFormModal({ open, onClose, onSave, access, user }) {
     else onSave([mk(f.business, amt)]);
   };
   const opts = [...access.map(b => ({ id: b, label: BIZ[b].name })), ...(access.length > 1 ? [{ id: "BOTH", label: "Bagi rata" }] : [])];
-  return <Modal open size="md" dismiss={false} onClose={onClose} icon={<ShoppingBasket size={20}/>} title="Catat belanja operasional" subtitle="Biaya di luar pembelian barang dagangan"
+  return <Modal open size="md" dismiss={false} onClose={onClose} icon={<ShoppingBasket size={20}/>} title="Catat biaya operasional" subtitle="Biaya di luar pembelian barang dagangan"
     footer={<><Btn outline onClick={onClose}>Batal</Btn><Btn onClick={submit}><Check size={17}/>Simpan</Btn></>}>
     <div className="fgrid">
       <Inp label="Tanggal *" type="date" value={f.date} onChange={e => setF(x => ({ ...x, date: e.target.value }))}/>
@@ -2594,17 +2644,22 @@ function syncSheet(sh,rows,headers){
 
 // Foto: diatur dari Admin Panel > tab "Landing Page" (tersimpan di Firestore: settings/landing).
 // Cukup tempel link Google Drive - link "share" apa pun otomatis diubah ke URL gambar.
+const driveId = (u) => /[-\w]{25,}/.exec(String(u || ""))?.[0] || "";
 const driveImg = (u, w = 1600) => {
-  const id = /[-\w]{25,}/.exec(u || "")?.[0];
+  const id = driveId(u);
   return id ? `https://drive.google.com/thumbnail?id=${id}&sz=w${w}` : "";
+};
+// Link video Google Drive → URL embed (izin "Siapa saja yang memiliki link").
+const driveVideo = (u) => {
+  const id = driveId(u);
+  return id ? `https://drive.google.com/file/d/${id}/preview` : "";
 };
 const picPhoto = (seed, w, h) => `https://picsum.photos/seed/je-${seed}/${w}/${h}`;
 // Slot foto landing page: [key, label] - key sama dengan field di settings/landing.
+// Dua usaha tampil sebagai satu toko (JE Store), jadi tidak ada slot kartu per merek.
 const PHOTO_FIELDS = [
-  ["hero",    "Foto utama (tegak) - mis. kaos konveksi"],
-  ["hero2",   "Foto pendamping (kotak) - mis. serum skincare"],
-  ["js",      "Foto kartu JS Clothing"],
-  ["jb",      "Foto kartu JB Store"],
+  ["hero",    "Foto utama (tegak) - koleksi unggulan satu toko"],
+  ["hero2",   "Poster video (16:9) - tampil sebelum video diputar"],
   ["atelier", "Foto lebar bagian Kenapa belanja di sini"],
 ];
 const LANDING = {}; // diisi subscribeLanding dari settings/landing
@@ -2625,6 +2680,9 @@ const productPhoto = (p) => (p.photo ? driveImg(p.photo, 700) : picPhoto(p.barco
 function ProductLandingPage({ prods, cfg, user, onLogin, onToggleTheme, isDark, onOpenCustomizer }) {
   const [selectedBiz, setSelectedBiz] = React.useState("ALL");
   const [searchWord, setSearchWord] = React.useState("");
+  // Video promosi: link Google Drive diisi admin (tab Landing Page).
+  const [playVid, setPlayVid] = React.useState(false);
+  const videoSrc = driveVideo(LANDING.video);
 
   // Produk yang diiklankan admin (p.advertised), dipotong sesuai "jumlah tampil" per bisnis
   // yang diatur di Admin Panel > Landing Page. Fallback: produk berstok, maksimal 8.
@@ -2646,8 +2704,6 @@ function ProductLandingPage({ prods, cfg, user, onLogin, onToggleTheme, isDark, 
     return matchBiz && (!q || p.name.toLowerCase().includes(q) || (p.category || "").toLowerCase().includes(q));
   }), [advertisedList, selectedBiz, searchWord]);
 
-  const jsCount = advertisedList.filter(p => p.business === "JS_CLOTHING").length;
-  const jbCount = advertisedList.filter(p => p.business === "JB_STORE").length;
   const stockLabel = p => p.stock <= 0 ? "Stok habis" : (p.stock < 10 ? "Stok terbatas" : "Tersedia");
 
   const pickBiz = biz => {
@@ -2721,54 +2777,37 @@ function ProductLandingPage({ prods, cfg, user, onLogin, onToggleTheme, isDark, 
         </header>
       </div>
 
-      {/* ── Hero: Fokus Iklan Produk & Custom ── */}
+      {/* ── Hero: satu toko untuk semua lini produk ── */}
       <section style={{maxWidth:1180,width:"100%",margin:"0 auto",padding:"40px 20px 34px"}}>
-        <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(330px,1fr))",gap:"clamp(28px,5vw,56px)",alignItems:"center"}}>
+        <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(min(330px,100%),1fr))",gap:"clamp(28px,5vw,56px)",alignItems:"center"}}>
           <div>
             <div style={{display:"inline-flex",alignItems:"center",gap:7,padding:"5px 13px",borderRadius:50,background:C.pri1,color:C.pri,fontSize:12,fontWeight:800,marginBottom:14}}>
-              <Sparkles size={14}/> Katalog Produk Pilihan Siap Pesan
+              <Sparkles size={14}/> Satu Toko, Dua Lini Produk
             </div>
             <h1 className="lp-title" style={{fontWeight:800,letterSpacing:"-.03em",lineHeight:1.08,margin:"0 0 16px"}}>
-              Koleksi Produk Pilihan &amp; Desain Baju Custom
+              Pakaian, Skincare &amp; Kaos Custom dalam Satu Toko
             </h1>
             <p style={{fontSize:16,color:C.t1,lineHeight:1.65,maxWidth:480,marginBottom:26}}>
-              Pilih produk favorit Anda atau rancang kaos custom Anda sendiri. Pesan langsung via WhatsApp dengan respon cepat, produk berkualitas, dan harga resmi terpercaya.
+              Koleksi pakaian, produk perawatan, dan kaos custom siap pesan. Pilih produknya, lalu kirim pesanan langsung via WhatsApp.
             </p>
             <div style={{display:"flex",gap:10,flexWrap:"wrap"}}>
               <a href="#katalog" className="press" style={btnPrimary}>
                 <ShoppingBag size={17}/> Lihat Katalog Produk
               </a>
-              {onOpenCustomizer && (
-                <button onClick={onOpenCustomizer} className="press" style={{...btnGhost, background:C.b1, color:C.b, border:`1.5px solid ${C.b}44`}}>
-                  <Shirt size={17}/> Buat Kaos Custom
-                </button>
-              )}
               <a href={waHref("Halo, saya mau tanya produk katalog.")} target="_blank" rel="noreferrer" className="press" style={btnGhost}>
                 <MessageCircle size={17}/> Chat WhatsApp
               </a>
             </div>
           </div>
 
-          <div style={{display:"grid",gridTemplateColumns:"1.12fr .88fr",gap:14}}>
-            <div className="lp-shot" style={{aspectRatio:"4 / 5",borderRadius:24}}>
-              <img src={photo("hero",1200,1500)} alt="Produk Pakaian Pilihan" className="lp-photo" loading="eager" decoding="async"/>
-            </div>
-            <div style={{display:"flex",flexDirection:"column",gap:14}}>
-              <div className="lp-shot" style={{aspectRatio:"1 / 1",borderRadius:20}}>
-                <img src={photo("hero2",800,800)} alt="Produk Perawatan Original" className="lp-photo" loading="lazy" decoding="async"/>
-              </div>
-              <div style={{flex:1,minHeight:96,borderRadius:20,background:C.bg2,border:`1px solid ${C.bo1}`,
-                padding:"16px 16px 14px",display:"flex",flexDirection:"column",justifyContent:"center",gap:7}}>
-                <div style={{display:"flex",gap:6}}>
-                  <span style={{flex:1,height:4,borderRadius:2,background:"#25D366"}}/>
-                  <span style={{flex:1,height:4,borderRadius:2,background:C.pri}}/>
-                  <span style={{flex:1,height:4,borderRadius:2,background:"var(--ik2)"}}/>
-                </div>
-                <div className="mn" style={{fontSize:20,fontWeight:850,letterSpacing:"-.02em",lineHeight:1.1,color:"#25D366",display:"flex",alignItems:"center",gap:7}}>
-                  <MessageCircle size={20}/> Pesan via WA
-                </div>
-                <div style={{fontSize:12,color:C.t2,fontWeight:600,lineHeight:1.35}}>Klik produk &amp; langsung kirim pesanan</div>
-              </div>
+          <div>
+            <div className="lp-shot lp-hero-shot">
+              <img src={photo("hero",1200,1500)} alt="Koleksi pakaian dan produk perawatan JE Store" className="lp-photo" loading="eager" decoding="async"/>
+              <span className="lp-shot-scrim" aria-hidden="true"/>
+              <span className="lp-shot-cap">
+                <span className="lp-shot-cap-k">JE Store</span>
+                Pakaian, skincare &amp; kaos custom dalam satu tempat
+              </span>
             </div>
           </div>
         </div>
@@ -2790,14 +2829,14 @@ function ProductLandingPage({ prods, cfg, user, onLogin, onToggleTheme, isDark, 
             border:`1.5px solid ${C.b}44`,
             padding:"clamp(24px, 4.5vw, 36px)",
             display:"grid",
-            gridTemplateColumns:"repeat(auto-fit, minmax(290px, 1fr))",
+            gridTemplateColumns:"repeat(auto-fit, minmax(min(290px,100%), 1fr))",
             gap:24,
             alignItems:"center",
             boxShadow:C.sh2
           }}>
             <div>
               <div style={{display:"inline-flex",alignItems:"center",gap:7,padding:"4px 12px",borderRadius:50,background:C.b1,color:C.b,fontSize:12,fontWeight:800,marginBottom:10}}>
-                <Sparkles size={14}/> Studio Desain Online JS Clothing
+                <Sparkles size={14}/> Studio Desain Baju Online
               </div>
               <h3 style={{fontSize:"clamp(22px, 3.2vw, 29px)",fontWeight:850,letterSpacing:"-.025em",lineHeight:1.2,marginBottom:8}}>
                 Bikin Kaos Custom Sendiri, Kirim Hasilnya ke WhatsApp
@@ -2814,7 +2853,7 @@ function ProductLandingPage({ prods, cfg, user, onLogin, onToggleTheme, isDark, 
 
             <div style={{display:"flex",flexDirection:"column",gap:10,background:C.bg2,padding:18,borderRadius:18,border:`1px solid ${C.bo1}`}}>
               <div style={{fontSize:13,fontWeight:800,color:C.t0,display:"flex",alignItems:"center",gap:6}}>
-                <ShieldCheck size={16} color={C.g}/> Fitur Studio Desain JS Clothing:
+                <ShieldCheck size={16} color={C.g}/> Fitur Studio Desain:
               </div>
               <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,fontSize:12,color:C.t1}}>
                 <div style={{display:"flex",alignItems:"center",gap:6}}>• Kaos 30s, 24s, Polo, Hoodie</div>
@@ -2836,9 +2875,9 @@ function ProductLandingPage({ prods, cfg, user, onLogin, onToggleTheme, isDark, 
             <h2 style={{fontSize:"clamp(22px,3vw,30px)",fontWeight:800,letterSpacing:"-.025em"}}>Katalog Produk Siap Pesan</h2>
             <p style={{fontSize:14,color:C.t2,marginTop:4}}>Pilih produk favorit Anda, lalu klik tombol <b>Pesan Sekarang</b> untuk langsung order via WhatsApp.</p>
           </div>
-          <div style={{display:"flex",gap:8,alignItems:"center",flexWrap:"wrap"}}>
+          <div className="lp-tools" style={{display:"flex",gap:8,alignItems:"center",flexWrap:"wrap"}}>
             {/* Filter Jenis Produk */}
-            <div style={{display:"flex",gap:6,background:C.bg3,padding:4,borderRadius:12,border:`1px solid ${C.bo0}`}}>
+            <div className="lp-chips" style={{display:"flex",gap:6,background:C.bg3,padding:4,borderRadius:12,border:`1px solid ${C.bo0}`}}>
               {[
                 ["ALL", "Semua Produk", ShoppingBag],
                 ["JS_CLOTHING", "Pakaian & Kaos", Shirt],
@@ -2846,7 +2885,7 @@ function ProductLandingPage({ prods, cfg, user, onLogin, onToggleTheme, isDark, 
               ].map(([k, label, IconComp]) => {
                 const active = selectedBiz === k;
                 return (
-                  <button key={k} onClick={()=>setSelectedBiz(k)} className="press fbtn"
+                  <button key={k} onClick={()=>setSelectedBiz(k)} className="press fbtn lp-chip"
                     style={{border:"none",borderRadius:8,padding:"8px 14px",fontSize:12.5,
                       fontWeight:active?800:600,background:active?C.bg2:"transparent",
                       color:active?C.pri:C.t2,boxShadow:active?C.sh:"none",display:"inline-flex",alignItems:"center",gap:6}}>
@@ -2857,7 +2896,7 @@ function ProductLandingPage({ prods, cfg, user, onLogin, onToggleTheme, isDark, 
               })}
             </div>
             {/* Pencarian Produk */}
-            <div style={{position:"relative",flex:"1 1 200px",minWidth:180}}>
+            <div className="lp-search">
               <Search size={15} style={{position:"absolute",left:12,top:"50%",transform:"translateY(-50%)",color:C.t2}}/>
               <input value={searchWord} onChange={e=>setSearchWord(e.target.value)} placeholder="Cari nama produk..." aria-label="Cari produk"
                 style={{width:"100%",padding:"10px 12px 10px 34px",background:C.bg2,border:`1.5px solid ${C.bo1}`,
@@ -2946,6 +2985,31 @@ function ProductLandingPage({ prods, cfg, user, onLogin, onToggleTheme, isDark, 
           </div>
         )}
       </section>
+
+      {/* ── Video Promosi (link Google Drive diisi dari Admin > Landing Page) ── */}
+      {videoSrc && (
+        <section id="video" style={{maxWidth:1180,width:"100%",margin:"0 auto",padding:"4px 20px 56px"}}>
+          <div style={{maxWidth:660,marginBottom:18}}>
+            <h2 style={{fontSize:"clamp(22px,3vw,30px)",fontWeight:800,letterSpacing:"-.025em"}}>Sekilas Tentang Toko Kami</h2>
+            <p style={{fontSize:14,color:C.t2,marginTop:6,lineHeight:1.6}}>Lihat langsung koleksi pakaian, produk perawatan, dan proses pesanan custom sebelum membeli.</p>
+          </div>
+
+          <div className="lp-video">
+            {playVid ? (
+              <iframe className="lp-video-frame" src={videoSrc} title="Video profil JE Store"
+                allow="autoplay; encrypted-media; picture-in-picture" allowFullScreen loading="lazy"/>
+            ) : (
+              <button type="button" className="lp-video-poster press" onClick={() => setPlayVid(true)}
+                aria-label="Putar video profil toko">
+                <img src={photo("hero2", 1200, 675)} alt="" className="lp-photo" loading="lazy" decoding="async"/>
+                <span className="lp-video-scrim" aria-hidden="true"/>
+                <span className="lp-video-play" aria-hidden="true"><Play size={28} fill="currentColor" strokeWidth={1.4}/></span>
+                <span className="lp-video-label">Putar video</span>
+              </button>
+            )}
+          </div>
+        </section>
+      )}
 
       {/* ── Keunggulan Belanja di Sini: Benefit Pembeli ── */}
       <section id="keunggulan" style={{maxWidth:1180,width:"100%",margin:"0 auto",padding:"8px 20px 56px"}}>
@@ -3205,6 +3269,7 @@ function AppInner() {
       subscribeOpnames(d=>setOpnames(d)),
       subscribeExpenses(d=>setExpenses(d)),
       subscribeLanding(d=>{Object.assign(LANDING,d);setLandingCfg(d);}),
+      subscribeFinance(d=>setFinCfg(x=>({...x,modalAwal:+d.modalAwal||0,prive:+d.prive||0}))),
       subscribeCustomOrders(d=>{
         setCustomOrders(d);
         try { localStorage.setItem("je_custom_orders_backup", JSON.stringify(d)); } catch {}
@@ -3549,6 +3614,20 @@ function AppInner() {
   const [plRange,setPlRange]=useState("month");
   const [plFrom,setPlFrom]=useState("");
   const [plTo,setPlTo]=useState("");
+  // ── Jurnal & Laporan Keuangan (Neraca / Laba Rugi / Perubahan Modal) ──
+  const [jrnlRange,setJrnlRange]=useState("all");
+  const [jrnlFrom,setJrnlFrom]=useState("");
+  const [jrnlTo,setJrnlTo]=useState("");
+  const [jrnlBiz,setJrnlBiz]=useState("ALL");
+  const [jrnlQ,setJrnlQ]=useState("");
+  const [jrnlPage,setJrnlPage]=useState(1);
+  const [jrnlPerPage,setJrnlPerPage]=useState(20);
+  const [keuSub,setKeuSub]=useState("neraca");
+  const [finCfg,setFinCfg]=useState({modalAwal:0,prive:0});
+  const [finDraft,setFinDraft]=useState(null);
+  useEffect(()=>{setJrnlPage(1);},[jrnlRange,jrnlFrom,jrnlTo,jrnlBiz,jrnlQ]);
+  // Legacy: tab lama "Laba Rugi" pindah ke dalam Laporan Keuangan
+  useEffect(()=>{ if(adminTab==="labarugi") setAdminTab("keuangan"); },[adminTab]);
   const [qrisOpen,setQrisOpen]=useState(false);
   const [pForm,setPForm]=useState({});
   const [editPid,setEditPid]=useState(null);
@@ -4872,8 +4951,9 @@ function AppInner() {
         title: "Keuangan",
         items: [
           { id: "laporan", l: "Laporan Penjualan", ic: Wallet },
-          { id: "labarugi", l: "Laba Rugi", ic: TrendingUp },
-          { id: "operasional", l: "Operasional", ic: ShoppingBasket },
+          { id: "operasional", l: "Laporan Biaya", ic: ShoppingBasket },
+          { id: "jurnal", l: "Jurnal", ic: FileText },
+          { id: "keuangan", l: "Laporan Keuangan", ic: BarChart3 },
         ],
       },
       {
@@ -4896,8 +4976,9 @@ function AppInner() {
     const MORE_TABS=[
       {id:"customorders",ic:Shirt,label:"Pesanan Baju",badge:newCustomOrdersCount},
       {id:"users",ic:Users,label:"Pengguna"},
-      {id:"labarugi",ic:TrendingUp,label:"Laba Rugi"},
-      {id:"operasional",ic:ShoppingBasket,label:"Operasional"},
+      {id:"operasional",ic:ShoppingBasket,label:"Laporan Biaya"},
+      {id:"jurnal",ic:FileText,label:"Jurnal"},
+      {id:"keuangan",ic:BarChart3,label:"Laporan Keuangan"},
       {id:"stoklog",ic:ClipboardList,label:"Log Stok"},
       {id:"returns",ic:Undo2,label:"Retur"},
       {id:"actlog",ic:Activity,label:"Aktivitas"},
@@ -6368,6 +6449,7 @@ function AppInner() {
             try{
               const data={};
               PHOTO_FIELDS.forEach(([k])=>{data[k]=String(lf[k]||"").trim();});
+              data.video=String(lf.video||"").trim();
               data.wa=String(lf.wa||"").replace(/[^\d+]/g,"");
               data.limits={JS_CLOTHING:+limits.JS_CLOTHING||0,JB_STORE:+limits.JB_STORE||0};
               await fbSetLanding(data,user.name);
@@ -6392,7 +6474,7 @@ function AppInner() {
             <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",flexWrap:"wrap",gap:8}}>
               <div style={{maxWidth:560}}>
                 <h2 style={{fontSize:15,fontWeight:800}}>Etalase Publik</h2>
-                <p style={{fontSize:11.5,color:C.t2,marginTop:3,lineHeight:1.5}}>Foto dan nomor WhatsApp yang tampil di halaman promosi pelanggan. Tempel link Google Drive (Share &rarr; Copy link). Kosongkan satu slot untuk memakai foto contoh.</p>
+                <p style={{fontSize:11.5,color:C.t2,marginTop:3,lineHeight:1.5}}>Foto, video, dan nomor WhatsApp yang tampil di halaman promosi pelanggan. Tempel link Google Drive (Share &rarr; Copy link). Kosongkan satu slot untuk memakai foto contoh.</p>
               </div>
               <div style={{display:"flex",gap:7}}>
                 {/* Preview ikut menampilkan perubahan yang belum disimpan */}
@@ -6414,6 +6496,20 @@ function AppInner() {
                   </div>
                 </div>;
               })}
+              <div style={{display:"flex",gap:12,alignItems:"center",padding:"10px 0",borderTop:`1px solid ${C.bo0}`}}>
+                <div style={{width:56,height:56,borderRadius:10,overflow:"hidden",flexShrink:0,background:C.bg3,border:`1px solid ${C.bo0}`,display:"grid",placeItems:"center"}}>
+                  {driveImg(lf.video,200)
+                    ? <img src={driveImg(lf.video,200)} alt="" style={{width:"100%",height:"100%",objectFit:"cover"}}/>
+                    : <Play size={18} color={C.t3}/>}
+                </div>
+                <div style={{flex:1,minWidth:0}}>
+                  <label style={{fontSize:11,fontWeight:700,color:C.t2,display:"block",marginBottom:4}}>Link video promosi (Google Drive)</label>
+                  <input value={lf.video||""} onChange={e=>setLf("video",e.target.value)} placeholder="https://drive.google.com/file/d/..." style={IS}/>
+                  <div style={{fontSize:10.5,color:C.t3,marginTop:4,lineHeight:1.4}}>
+                    Atur izin file &ldquo;Siapa saja yang memiliki link&rdquo;. Kosongkan untuk menyembunyikan bagian video di halaman promosi.
+                  </div>
+                </div>
+              </div>
               <div style={{padding:"12px 0 2px",borderTop:`1px solid ${C.bo0}`}}>
                 <label style={{fontSize:11,fontWeight:700,color:C.t2,display:"block",marginBottom:4}}>Nomor WhatsApp (62xxx, tanpa + dan spasi)</label>
                 <input value={lf.wa||""} onChange={e=>setLf("wa",e.target.value)} placeholder={LANDING_WA} style={IS}/>
@@ -6468,14 +6564,14 @@ function AppInner() {
                   </>}
               </div>
             </Card>
-            <p style={{fontSize:11.5,color:C.t3,lineHeight:1.5}}>Tekan <b>Simpan</b> untuk menyimpan foto besar dan jumlah tampil. Centang produk dan isi foto produk langsung tersimpan per produk.</p>
+            <p style={{fontSize:11.5,color:C.t3,lineHeight:1.5}}>Tekan <b>Simpan</b> untuk menyimpan foto besar, video, dan jumlah tampil. Centang produk dan isi foto produk langsung tersimpan per produk.</p>
           </div>;
         })()}
 
         {/* ── LAPORAN ── */}
         {adminTab==="laporan"&&<div style={{display:"flex",flexDirection:"column",gap:10}}>
           <div style={{display:"flex",gap:7,alignItems:"center",flexWrap:"wrap"}}>
-            <div style={{flex:1}}><h2 style={{fontSize:15,fontWeight:800}}>Laporan Keuangan</h2></div>
+            <div style={{flex:1}}><h2 style={{fontSize:15,fontWeight:800}}>Laporan Penjualan</h2></div>
             <button onClick={()=>downloadXLSX(filtTrx,[
               {key:"id",label:"ID Transaksi",w:22},{key:"date",label:"Tanggal",w:22},
               {key:"kasir",label:"Kasir",w:20},{key:"business",label:"Bisnis",fn:r=>BIZ[r.business]?.name||r.business,w:14},
@@ -6884,13 +6980,249 @@ function AppInner() {
 
 
 
-        {/* ── OPERASIONAL ── */}
+        {/* ── JURNAL: seluruh penjualan & biaya dicatat jadi satu buku jurnal ── */}
+        {adminTab==="jurnal"&&(()=>{
+          const num=n=>Number(n)||0;
+          const dtOf=s=>{ if(!s||typeof s!=="string") return 0; if(/^\d{4}-\d{2}-\d{2}/.test(s)){ const d=new Date(s.slice(0,19).replace(" ","T")); return isNaN(d)?0:d.getTime(); } const d=parseD(s); return d?d.getTime():0; };
+          const inJ=d=>!!d&&!isNaN(d)&&inRangeDate(d,jrnlRange,jrnlFrom,jrnlTo);
+          const passBiz=b=>jrnlBiz==="ALL"||b===jrnlBiz;
+          const refOf=(prefix,id)=>prefix+"-"+String(id||"").replace(/[^A-Za-z0-9]/g,"").slice(-6).toUpperCase();
+          const shortDate=s=>{ const t=String(s||""); const m=t.match(/(\d{1,2})\/(\d{1,2})\/(\d{4})/); if(m) return m[0]; const i=t.indexOf("T"); return (i>0?t.slice(0,i):t).trim()||"—"; };
+          const entries=[];
+          trxs.filter(t=>!t.returned&&inJ(parseD(t.date))&&passBiz(t.business)).forEach(t=>{
+            const ref=refOf("TRX",t.id), biz=BIZ[t.business]?.name||"–";
+            const dsc=`Penjualan ${t.date} · ${biz}`, total=num(t.total), hpp=num(t.totalHpp);
+            entries.push({date:t.date,ref,desc:dsc,akun:"Kas & Bank",d:total,k:0,biz:t.business});
+            entries.push({date:t.date,ref,desc:dsc,akun:"Pendapatan Penjualan",d:0,k:total,biz:t.business});
+            if(hpp>0){
+              const d2=`Harga pokok penjualan · ${t.date}`;
+              entries.push({date:t.date,ref,desc:d2,akun:"Beban HPP",d:hpp,k:0,biz:t.business});
+              entries.push({date:t.date,ref,desc:d2,akun:"Persediaan Barang",d:0,k:hpp,biz:t.business});
+            }
+          });
+          expenses.filter(e=>inJ(expDate(e))&&passBiz(e.business)).forEach(e=>{
+            const ref=refOf("EXP",e.id), dsc=`${e.description||e.category} · ${e.date}`;
+            const amt=num(e.amount);
+            entries.push({date:e.date||e.dateISO,ref,desc:dsc,akun:`Beban ${e.category}`,d:amt,k:0,biz:e.business});
+            entries.push({date:e.date||e.dateISO,ref,desc:dsc,akun:"Kas & Bank",d:0,k:amt,biz:e.business});
+          });
+          const q=jrnlQ.trim().toLowerCase();
+          const list=entries.filter(r=>!q||((r.akun+" "+r.desc+" "+r.ref).toLowerCase().includes(q)))
+            .sort((a,b)=>dtOf(b.date)-dtOf(a.date)||String(b.ref).localeCompare(String(a.ref)));
+          const totalD=list.reduce((s,r)=>s+r.d,0), totalK=list.reduce((s,r)=>s+r.k,0);
+          const voucherN=new Set(list.map(r=>r.ref)).size;
+          const pageRows=list.slice((jrnlPage-1)*jrnlPerPage,jrnlPage*jrnlPerPage);
+          const periodLabel={all:"Semua waktu",today:"Hari ini",week:"7 hari terakhir",month:"Bulan ini",lastmonth:"Bulan lalu",custom:"Rentang tanggal"}[jrnlRange];
+          const dateBox={padding:"8px 10px",background:C.bg3,border:`1.5px solid ${C.bo1}`,borderRadius:10,color:C.t0,fontSize:13,fontFamily:F.sans};
+          return <div style={{display:"flex",flexDirection:"column",gap:10}}>
+            <div style={{display:"flex",alignItems:"center",gap:8,flexWrap:"wrap"}}>
+              <div style={{flex:1,minWidth:180}}>
+                <h2 style={{fontSize:15,fontWeight:800}}>Jurnal</h2>
+                <p style={{fontSize:12.5,color:C.t2,marginTop:2}}>{periodLabel} · {voucherN} bukti · {list.length} baris. Laporan penjualan dan biaya dicatat di sini sebagai dasar Laporan Keuangan.</p>
+              </div>
+              <Btn size="sm" outline onClick={()=>downloadXLSX(list,[
+                {key:"date",label:"Tanggal",w:14},{key:"ref",label:"Ref",w:12},
+                {key:"desc",label:"Keterangan",w:40},{key:"akun",label:"Akun",w:26},
+                {key:"d",label:"Debit (Rp)",num:true,w:16},{key:"k",label:"Kredit (Rp)",num:true,w:16},
+                {key:"biz",label:"Bisnis",fn:r=>BIZ[r.biz]?.name||r.biz,w:14},
+              ],"Jurnal","jurnal_umum")}>Export Excel</Btn>
+            </div>
+            <div style={{display:"flex",gap:6,flexWrap:"wrap",alignItems:"center"}}>
+              {["ALL","JS_CLOTHING","JB_STORE"].map(b=><button key={b} onClick={()=>setJrnlBiz(b)} className={`chip${jrnlBiz===b?" on":""}`}>{b==="ALL"?"Semua":BIZ[b]?.name}</button>)}
+              <div style={{width:1,height:20,background:C.bo0,alignSelf:"center"}}/>
+              {[["all","Semua"],["today","Hari ini"],["week","7 hari"],["month","Bulan ini"],["lastmonth","Bulan lalu"],["custom","Rentang"]].map(([v,l])=>
+                <button key={v} onClick={()=>setJrnlRange(v)} className={`chip${jrnlRange===v?" on":""}`}>{l}</button>)}
+              {jrnlRange==="custom"&&<div style={{display:"flex",gap:7,alignItems:"center",flexWrap:"wrap"}}>
+                <input type="date" value={jrnlFrom} onChange={e=>setJrnlFrom(e.target.value)} style={dateBox}/>
+                <span style={{color:C.t2,fontSize:13}}>s/d</span>
+                <input type="date" value={jrnlTo} onChange={e=>setJrnlTo(e.target.value)} style={dateBox}/>
+              </div>}
+            </div>
+            <Inp value={jrnlQ} onChange={e=>setJrnlQ(e.target.value)} placeholder="Cari akun, keterangan, atau ref" icon={<Search size={16}/>} style={{maxWidth:340,minHeight:40}}/>
+            <div className="stat-grid-4" style={{display:"grid",gap:8}}>
+              <Stat icon="🪙" label="Total Debit" value={rp(totalD)} color={C.b}/>
+              <Stat icon="🪙" label="Total Kredit" value={rp(totalK)} color={C.p}/>
+              <Stat icon="⚖️" label="Selisih" value={rpS(totalD-totalK)} color={totalD===totalK?C.g:C.r} sub={totalD===totalK?"Jurnal seimbang":"Periksa data"}/>
+              <Stat icon="📄" label="Bukti / baris" value={`${voucherN} / ${list.length}`} color={C.cy}/>
+            </div>
+            {list.length===0
+              ? <Card><EmptyState icon={<FileText size={24} strokeWidth={1.6}/>} title="Belum ada jurnal pada periode ini" hint="Ubah periode atau filter bisnis. Penjualan dan biaya otomatis dicatat di sini."/></Card>
+              : <Card noPad style={{overflow:"hidden"}}>
+                  <TableWrap compact maxH="58vh">
+                    <table style={{width:"100%",borderCollapse:"collapse",minWidth:760}}>
+                      <THead cols={["Tanggal","Ref","Keterangan","Akun","Debit","Kredit"]}/>
+                      <tbody>{pageRows.map((r,i)=>{
+                        const baru=i===0||pageRows[i-1].ref!==r.ref;
+                        return <tr key={i} className="hrow" style={{borderTop:baru?`1px solid ${C.bo1}`:`1px solid ${C.bo0}`}}>
+                          <td style={{padding:"10px 14px",whiteSpace:"nowrap",color:C.t2,fontSize:12.5,verticalAlign:"top"}}>{baru?shortDate(r.date):""}</td>
+                          <td style={{padding:"10px 14px",verticalAlign:"top"}}>
+                            <span style={{fontSize:11.5,fontWeight:800,color:C.pri,whiteSpace:"nowrap"}}>{r.ref}</span>
+                            <div style={{marginTop:5}}><BizChip biz={r.biz} sm/></div>
+                          </td>
+                          <td style={{padding:"10px 14px",color:C.t1,fontSize:13,verticalAlign:"top"}}>{r.desc}</td>
+                          <td style={{padding:"10px 14px",fontWeight:650,fontSize:13,verticalAlign:"top",whiteSpace:"nowrap"}}>{r.akun}</td>
+                          <td className="mn" style={{padding:"10px 14px",textAlign:"right",whiteSpace:"nowrap",fontWeight:700,color:r.d?C.t0:C.t3}}>{r.d?rp(r.d):"–"}</td>
+                          <td className="mn" style={{padding:"10px 14px",textAlign:"right",whiteSpace:"nowrap",fontWeight:700,color:r.k?C.t0:C.t3}}>{r.k?rp(r.k):"–"}</td>
+                        </tr>;})}</tbody>
+                    </table>
+                  </TableWrap>
+                </Card>}
+            <TablePagination page={jrnlPage} perPage={jrnlPerPage} totalItems={list.length}
+              onPageChange={setJrnlPage} onPerPageChange={setJrnlPerPage} perPageOptions={[20,50,100]}/>
+            <div style={{fontSize:12,color:C.t2,lineHeight:1.65}}>
+              Tiap penjualan dicatat <b>Kas &amp; Bank</b> / <b>Pendapatan Penjualan</b>, dilanjut <b>Beban HPP</b> / <b>Persediaan Barang</b>. Tiap biaya dicatat <b>Beban (kategori)</b> / <b>Kas &amp; Bank</b>. Transaksi yang diretur tidak ikut dicatat.
+            </div>
+          </div>;
+        })()}
+
+        {/* ── LAPORAN KEUANGAN: Neraca / Laba Rugi / Perubahan Modal ── */}
+        {adminTab==="keuangan"&&(()=>{
+          const num=n=>Number(n)||0;
+          const allTrx=trxs.filter(t=>!t.returned);
+          const penjualan=allTrx.reduce((s,t)=>s+num(t.total),0);
+          const hpp=allTrx.reduce((s,t)=>s+num(t.totalHpp),0);
+          const biaya=expenses.reduce((s,e)=>s+num(e.amount),0);
+          const laba=penjualan-hpp-biaya;
+          const persediaan=prods.reduce((s,p)=>s+num(p.stock)*num(p.hpp),0);
+          const pengadaan=hpp+persediaan;
+          const modalAwal=num(finCfg.modalAwal), prive=num(finCfg.prive);
+          const kas=modalAwal+penjualan-biaya-pengadaan-prive;
+          const modalAkhir=modalAwal+laba-prive;
+          const totalAktiva=kas+persediaan;
+          const totalPasiva=modalAkhir;
+          const seimbang=Math.abs(totalAktiva-totalPasiva)<1;
+          const lf=finDraft||finCfg;
+          const setF=(k,v)=>setFinDraft({...lf,[k]:v});
+          const saveFin=async()=>{
+            try{
+              await fbSetFinance({modalAwal:+lf.modalAwal||0,prive:+lf.prive||0},user.name);
+              setFinDraft(null); toast("Modal awal & prive disimpan");
+            }catch(err){ toast("Gagal: "+err.message,"err"); }
+          };
+          const SUBS=[["neraca","Neraca",LayoutGrid],["laba","Laba Rugi",TrendingUp],["modal","Perubahan Modal",ArrowLeftRight]];
+          const side=(title,sections,totalLabel,totalVal,totalColor)=>(
+            <div className="fin-side">
+              <div className="fin-h">{title}</div>
+              {sections.map((sec,si)=>(
+                <div key={sec.h||si} style={{marginTop:si?18:0}}>
+                  {sec.h&&<div className="fin-h" style={{marginTop:2}}>{sec.h}</div>}
+                  {sec.rows.map(r=>(
+                    <div key={r.l} className="fin-row">
+                      <span className="fin-l">{r.l}{r.note&&<span className="fin-note">{r.note}</span>}</span>
+                      <span className="fin-v" style={{color:r.color||C.t0}}>{rpS(r.v)}</span>
+                    </div>
+                  ))}
+                </div>
+              ))}
+              <div className="fin-total"><span style={{fontSize:13.5,fontWeight:700,color:C.t1}}>{totalLabel}</span><b style={{color:totalColor||C.pri}}>{rpS(totalVal)}</b></div>
+            </div>
+          );
+          const keuExport=()=>{
+            if(keuSub==="modal"){
+              downloadXLSX([
+                {l:"Modal awal",v:modalAwal},{l:"Laba (rugi) bersih",v:laba},
+                {l:"Prive (penarikan pribadi)",v:-prive},{l:"Modal akhir",v:modalAkhir},
+              ],[{key:"l",label:"Keterangan",w:38},{key:"v",label:"Nilai (Rp)",num:true,w:24}],"Perubahan Modal","perubahan_modal");
+              return;
+            }
+            downloadXLSX([
+              {l:"Kas & Bank",v:kas},{l:"Persediaan Barang Dagangan",v:persediaan},{l:"Total Aktiva",v:totalAktiva},
+              {l:"Utang",v:0},{l:"Modal Awal",v:modalAwal},{l:"Prive (penarikan pribadi)",v:-prive},
+              {l:"Laba (rugi) bersih",v:laba},{l:"Total Kewajiban + Modal",v:totalPasiva},
+            ],[{key:"l",label:"Keterangan",w:38},{key:"v",label:"Nilai (Rp)",num:true,w:24}],"Neraca","neraca");
+          };
+          return <div style={{display:"flex",flexDirection:"column",gap:10}}>
+            <div style={{display:"flex",alignItems:"center",gap:8,flexWrap:"wrap"}}>
+              <div style={{flex:1,minWidth:180}}>
+                <h2 style={{fontSize:15,fontWeight:800}}>Laporan Keuangan</h2>
+                <p style={{fontSize:12.5,color:C.t2,marginTop:2}}>Ditutup dari Jurnal — penjualan dan biaya menjadi Neraca, Laba Rugi, dan Perubahan Modal.</p>
+              </div>
+              <span style={{display:"inline-flex",alignItems:"center",gap:6,padding:"5px 12px",borderRadius:20,
+                fontSize:11.5,fontWeight:800,background:seimbang?C.g1:C.r1,color:seimbang?C.g:C.r,
+                border:`1px solid ${seimbang?C.g:C.r}33`}}>
+                {seimbang?"Neraca seimbang":"Selisih "+rpS(totalAktiva-totalPasiva)}
+              </span>
+              {keuSub!=="laba"&&<Btn size="sm" outline onClick={keuExport}>Export Excel</Btn>}
+            </div>
+            <div className="fin-tabs">
+              {SUBS.map(([id,l,Icon])=>{
+                const on=keuSub===id;
+                return <button key={id} onClick={()=>setKeuSub(id)} className="press"
+                  style={{border:"none",borderRadius:10,padding:"9px 15px",fontSize:12.5,fontFamily:F.sans,
+                    fontWeight:on?800:600,background:on?C.bg2:"transparent",color:on?C.pri:C.t2,
+                    boxShadow:on?C.sh:"none",display:"inline-flex",alignItems:"center",gap:7,cursor:"pointer",
+                    whiteSpace:"nowrap",transition:"all .14s ease"}}>
+                  <Icon size={15}/>{l}</button>;
+              })}
+            </div>
+
+            {keuSub==="neraca"&&<>
+              <div className="stat-grid-3" style={{display:"grid",gap:10}}>
+                <Stat icon="🏦" label="Total aktiva" value={rp(totalAktiva)} color={C.b} sub="Kas + persediaan"/>
+                <Stat icon="💵" label="Kas & Bank" value={rp(kas)} color={kas>=0?C.g:C.r} sub={kas>=0?"Saldo setelah pengadaan barang":"Isi modal awal di tab Perubahan Modal"}/>
+                <Stat icon="⚖️" label="Kewajiban + modal" value={rp(totalPasiva)} color={C.pri} sub={`Utang tercatat ${rp(0)}`}/>
+              </div>
+              <div className="fin-ta">
+                {side("Aktiva",[{h:"",rows:[
+                  {l:"Kas & Bank",v:kas,color:kas<0?C.r:undefined,note:"Modal awal + penjualan − biaya − pengadaan barang − prive"},
+                  {l:"Persediaan Barang Dagangan",v:persediaan,note:`${prods.length} produk · nilai stok × HPP`},
+                ]}],"Total aktiva",totalAktiva,C.b)}
+                {side("Kewajiban & Modal",[
+                  {h:"Kewajiban",rows:[{l:"Utang",v:0,note:"Belum ada utang tercatat"}]},
+                  {h:"Modal",rows:[
+                    {l:"Modal awal",v:modalAwal},
+                    {l:"Prive (penarikan pribadi)",v:-prive},
+                    {l:"Laba (rugi) bersih",v:laba,note:"Penjualan − HPP − biaya, sejak awal data"},
+                  ]},
+                ],"Total kewajiban + modal",totalPasiva,C.pri)}
+              </div>
+              <div style={{fontSize:12,color:C.t2,lineHeight:1.65}}>
+                Neraca memakai seluruh data sejak awal. Persediaan dihitung dari stok × HPP, dan pengadaan barang diperkirakan sebagai <b>HPP terjual + sisa persediaan</b> sehingga aktiva selalu sama dengan kewajiban + modal. Modal awal &amp; prive diatur pada tab <b>Perubahan Modal</b>.
+              </div>
+            </>}
+
+            {keuSub==="modal"&&<>
+              <div className="fin-ta">
+                {side("Perubahan modal",[{h:"",rows:[
+                  {l:"Modal awal",v:modalAwal},
+                  {l:"Laba (rugi) bersih",v:laba,note:"Penjualan − HPP − biaya, sejak awal data"},
+                  {l:"Prive (penarikan pribadi)",v:-prive},
+                ]}],"Modal akhir",modalAkhir,C.pri)}
+                <div className="fin-side">
+                  <div className="fin-h">Pengaturan modal</div>
+                  <div style={{display:"flex",flexDirection:"column",gap:4,marginBottom:14}}>
+                    <label style={{fontSize:12,fontWeight:700,color:C.t2}}>Modal awal (Rp)</label>
+                    <input type="number" min="0" step="1000" value={lf.modalAwal??0} onChange={e=>setF("modalAwal",e.target.value)} style={IS}/>
+                    <span style={{fontSize:11,color:C.t3}}>Tersimpan: {rp(modalAwal)}</span>
+                  </div>
+                  <div style={{display:"flex",flexDirection:"column",gap:4}}>
+                    <label style={{fontSize:12,fontWeight:700,color:C.t2}}>Prive / penarikan pribadi (Rp)</label>
+                    <input type="number" min="0" step="1000" value={lf.prive??0} onChange={e=>setF("prive",e.target.value)} style={IS}/>
+                    <span style={{fontSize:11,color:C.t3}}>Tersimpan: {rp(prive)}</span>
+                  </div>
+                  <div style={{display:"flex",gap:8,marginTop:14,flexWrap:"wrap"}}>
+                    <Btn onClick={saveFin} disabled={!finDraft}>Simpan</Btn>
+                    {finDraft&&<Btn outline onClick={()=>setFinDraft(null)}>Batal</Btn>}
+                  </div>
+                </div>
+              </div>
+              <div style={{fontSize:12,color:C.t2,lineHeight:1.65}}>
+                Modal akhir = modal awal + laba (rugi) bersih − prive. Angka laba dihitung otomatis dari seluruh penjualan dikurangi HPP dan biaya, sehingga selaras dengan Jurnal.
+              </div>
+            </>}
+          </div>;
+        })()}
+
+        {/* ── OPERASIONAL / LAPORAN BIAYA ── */}
         {adminTab==="operasional"&&(()=>{
           const q=expQ.trim().toLowerCase();
           const list=expenses.filter(e=>(expBiz==="ALL"||e.business===expBiz)&&(expCat==="ALL"||e.category===expCat)
             &&inRangeDate(expDate(e),expRange,expFrom,expTo)&&(!q||((e.description||"")+" "+e.category).toLowerCase().includes(q)))
             .sort((a,b)=>(b.dateISO||"").localeCompare(a.dateISO||""));
           const total=list.reduce((t,e)=>t+e.amount,0);
+          // Biaya pokok penjualan (HPP) pada periode & bisnis yang sama — melengkapi Laporan Biaya
+          const hppPeriod=trxs.filter(t=>!t.returned&&inRangeDate(parseD(t.date),expRange,expFrom,expTo)&&(expBiz==="ALL"||t.business===expBiz))
+            .reduce((s,t)=>s+(Number(t.totalHpp)||0),0);
           const byCat={};list.forEach(e=>{byCat[e.category]=(byCat[e.category]||0)+e.amount;});
           const top=Object.entries(byCat).sort((a,b)=>b[1]-a[1])[0];
           const del=(e)=>{if(!window.confirm(`Hapus belanja ${e.category} ${rp(e.amount)}?`))return;
@@ -6898,14 +7230,14 @@ function AppInner() {
           const bizChip=(b)=>b==="ALL"?"Semua":BIZ[b]?.name;
           return <div style={{display:"flex",flexDirection:"column",gap:10}}>
             <div style={{display:"flex",alignItems:"center",gap:8,flexWrap:"wrap"}}>
-              <div style={{flex:1,minWidth:180}}><h2 style={{fontSize:15,fontWeight:800}}>Belanja Operasional</h2>
-                <p style={{fontSize:12.5,color:C.t2,marginTop:2}}>Biaya di luar pembelian barang dagangan. Otomatis masuk ke Laba Rugi.</p></div>
+              <div style={{flex:1,minWidth:180}}><h2 style={{fontSize:15,fontWeight:800}}>Laporan Biaya</h2>
+                <p style={{fontSize:12.5,color:C.t2,marginTop:2}}>Biaya operasional di luar pembelian barang dagangan. Rinciannya otomatis masuk ke Jurnal dan Laporan Keuangan.</p></div>
               <Btn size="sm" outline onClick={()=>downloadXLSX(list,[
                 {key:"date",label:"Tanggal",w:14},{key:"business",label:"Bisnis",fn:r=>BIZ[r.business]?.name||r.business,w:14},
                 {key:"category",label:"Kategori",w:24},{key:"description",label:"Keterangan",w:36},{key:"payment",label:"Dibayar",w:12},
                 {key:"by",label:"Dicatat oleh",w:18},{key:"amount",label:"Jumlah (Rp)",fn:r=>r.amount,num:true,w:16},
               ],"Operasional","belanja_operasional")}>Export Excel</Btn>
-              <Btn size="sm" onClick={()=>setExpenseModal(true)}><Plus size={16}/>Catat belanja</Btn>
+              <Btn size="sm" onClick={()=>setExpenseModal(true)}><Plus size={16}/>Catat biaya</Btn>
             </div>
             <div style={{display:"flex",gap:6,flexWrap:"wrap",alignItems:"center"}}>
               {["ALL","JS_CLOTHING","JB_STORE"].map(b=><button key={b} onClick={()=>setExpBiz(b)} className={`chip${expBiz===b?" on":""}`}>{bizChip(b)}</button>)}
@@ -6925,11 +7257,11 @@ function AppInner() {
             </div>
             <Inp value={expQ} onChange={e=>setExpQ(e.target.value)} placeholder="Cari keterangan atau kategori" icon={<Search size={16}/>} style={{minHeight:42}}/>
             <div className="stat-grid-3" style={{display:"grid",gap:10,gridTemplateColumns:"repeat(3,1fr)"}}>
-              <Stat icon="💰" label="Total belanja" value={rp(total)} color={C.r}/>
-              <Stat icon="🧾" label="Jumlah catatan" value={list.length} color={C.cy}/>
-              <Stat icon="📋" label="Kategori terbesar" value={top?top[0]:"–"} color={C.a} sub={top?rp(top[1]):undefined}/>
+              <Stat icon="📦" label="Biaya pokok penjualan (HPP)" value={rp(hppPeriod)} color={C.r}/>
+              <Stat icon="🧾" label="Biaya operasional" value={rp(total)} color={C.a} sub={top?`${list.length} catatan · terbesar ${top[0]}`:`${list.length} catatan`}/>
+              <Stat icon="📊" label="Total biaya" value={rp(hppPeriod+total)} color={C.pri} sub="Jadi dasar Jurnal & Laporan Keuangan"/>
             </div>
-            {list.length===0?<Card><EmptyState icon={<ShoppingBasket size={24} strokeWidth={1.6}/>} title="Belum ada belanja operasional" hint="Catat pengeluaran seperti listrik, sewa, kemasan, atau transport, lalu hasilnya muncul di Laba Rugi."/></Card>:(()=>{
+            {list.length===0?<Card><EmptyState icon={<ShoppingBasket size={24} strokeWidth={1.6}/>} title="Belum ada catatan biaya" hint="Catat pengeluaran seperti listrik, sewa, kemasan, atau transport, lalu hasilnya masuk ke Jurnal dan Laporan Keuangan."/></Card>:(()=>{
               const paginatedExpenses = list.slice((expPage - 1) * expPerPage, expPage * expPerPage);
               return <>
               <div className="hide-mobile"><Card noPad style={{overflow:"hidden"}}><TableWrap>
@@ -6986,8 +7318,8 @@ function AppInner() {
           </div>;
         })()}
 
-        {/* ── LABA RUGI ── */}
-        {adminTab==="labarugi"&&(()=>{
+        {/* ── LABA RUGI (sub-tab Laporan Keuangan) ── */}
+        {(adminTab==="keuangan"||adminTab==="labarugi")&&keuSub==="laba"&&(()=>{
           const tIn=trxs.filter(t=>inRangeDate(parseD(t.date),plRange,plFrom,plTo));
           const plTrx=tIn.filter(t=>!t.returned);
           const returnedN=tIn.length-plTrx.length;
@@ -7018,12 +7350,12 @@ function AppInner() {
           ];
           const periodLabel={all:"Semua waktu",today:"Hari ini",week:"7 hari terakhir",month:"Bulan ini",lastmonth:"Bulan lalu",custom:"Rentang tanggal"}[plRange];
           const exportRows=rows.filter(r=>!r.head).map(r=>({l:r.l,...Object.fromEntries(colIds.map(id=>["c_"+id,r.f(D[id])]))}));
-          return <div style={{display:"flex",flexDirection:"column",gap:10}}>
+          return <div style={{display:"flex",flexDirection:"column",gap:10,marginTop:10}}>
             <div style={{display:"flex",alignItems:"center",gap:8,flexWrap:"wrap"}}>
               <div style={{flex:1,minWidth:180}}><h2 style={{fontSize:15,fontWeight:800}}>Laporan Laba Rugi</h2>
                 <p style={{fontSize:12.5,color:C.t2,marginTop:2}}>{periodLabel} · {main.trx} transaksi · {plExp.filter(e=>plBiz==="ALL"||e.business===plBiz).length} catatan operasional</p></div>
               <Btn size="sm" outline onClick={()=>downloadXLSX(exportRows,[{key:"l",label:"Keterangan",w:34},...colIds.map(id=>({key:"c_"+id,label:colName(id)+" (Rp)",fn:r=>r["c_"+id],num:true,w:20}))],"Laba Rugi","laporan_laba_rugi")}>Export Excel</Btn>
-              <Btn size="sm" onClick={()=>setExpenseModal(true)}><ShoppingBasket size={16}/>Catat belanja</Btn>
+              <Btn size="sm" onClick={()=>setExpenseModal(true)}><ShoppingBasket size={16}/>Catat biaya</Btn>
             </div>
             <div style={{display:"flex",gap:6,flexWrap:"wrap",alignItems:"center"}}>
               {["ALL","JS_CLOTHING","JB_STORE"].map(b=><button key={b} onClick={()=>setPlBiz(b)} className={`chip${plBiz===b?" on":""}`}>{b==="ALL"?"Semua bisnis":BIZ[b].name}</button>)}
@@ -7071,7 +7403,7 @@ function AppInner() {
               </div>
             </Card>}
             <div style={{fontSize:12.5,color:C.t2,lineHeight:1.6,padding:"4px 2px"}}>
-              Penjualan bersih adalah total transaksi setelah diskon{returnedN>0?`, tidak termasuk ${returnedN} transaksi yang diretur`:", tidak termasuk transaksi yang diretur"}. HPP diambil dari HPP produk saat transaksi terjadi. Biaya operasional berasal dari menu Operasional; belanja yang dibagi rata sudah terpecah per bisnis.
+              Penjualan bersih adalah total transaksi setelah diskon{returnedN>0?`, tidak termasuk ${returnedN} transaksi yang diretur`:", tidak termasuk transaksi yang diretur"}. HPP diambil dari HPP produk saat transaksi terjadi. Biaya operasional berasal dari menu Laporan Biaya; belanja yang dibagi rata sudah terpecah per bisnis.
             </div>
           </div>;
         })()}
