@@ -3560,7 +3560,10 @@ function AppInner() {
   useEffect(()=>{
     if(!fbReady) return;
     const uns=[
-      subscribeUsers(d=>setUsers(d.map(u=>({...u,faceDescriptor:u.faceDescriptor?new Float32Array(u.faceDescriptor):null})))),
+      // access dinormalisasi: dokumen Firestore lama bisa tidak punya field access
+      subscribeUsers(d=>setUsers(d.map(u=>({...u,
+        access:Array.isArray(u.access)?u.access:[],
+        faceDescriptor:u.faceDescriptor?new Float32Array(u.faceDescriptor):null})))),
       subscribeProducts(d=>setProds(d)),
       subscribeTransactions(d=>setTrxs(d)),
       subscribeStockLogs(d=>setSlogs(d)),
@@ -3599,10 +3602,10 @@ function AppInner() {
     if(user) return;
     try{
       const s=JSON.parse(saved);
-      if(!s.userId||!s.biz||!s.screen) return;
-      if(Date.now()-s.t > SESSION_TTL){sessionStorage.removeItem("je_session");return;}
+      if(!s.userId||!s.biz||!s.screen){sessionStorage.removeItem("je_session");setScreen("login");return;}
+      if(Date.now()-s.t > SESSION_TTL){sessionStorage.removeItem("je_session");setScreen("login");return;}
       const u=users.find(x=>x.id===s.userId&&x.active);
-      if(!u){sessionStorage.removeItem("je_session");return;}
+      if(!u){sessionStorage.removeItem("je_session");setScreen("login");return;}
       setUser(u);setBiz(s.biz);setSessionStart(s.t);
       if(s.adminTab) setAdminTab(s.adminTab);
 
@@ -3798,16 +3801,18 @@ function AppInner() {
     else localStorage.removeItem("je_remember");
     setSessionStart(Date.now());
     if(u.role==="admin"){
-      setUser(u);setBiz(u.access[0]);setAdminTab("dashboard");setScreen("admin");
-      sessionStorage.setItem("je_session",JSON.stringify({userId:u.id,biz:u.access[0],screen:"admin",t:Date.now()}));
+      const b0=u.access[0]||"JS_CLOTHING";
+      setUser(u);setBiz(b0);setAdminTab("dashboard");setScreen("admin");
+      sessionStorage.setItem("je_session",JSON.stringify({userId:u.id,biz:b0,screen:"admin",t:Date.now()}));
     }
     else{setPending(u);setScreen("facescan");}
   };
   const afterFace=async(u)=>{
     setUser(u);setPending(null);
-    if(u.role==="kasir"||u.access.length===1){
-      const b=u.access[0];setBiz(b);
-      for(const x of (u.role==="kasir"?u.access:[b])) await doCheckIn(u,x);
+    const acc=Array.isArray(u.access)&&u.access.length?u.access:["JS_CLOTHING","JB_STORE"];
+    if(u.role==="kasir"||acc.length===1){
+      const b=acc[0];setBiz(b);
+      for(const x of (u.role==="kasir"?acc:[b])) await doCheckIn(u,x);
       const sc=u.role==="kasir"?"kasir":"stok";
       setScreen(sc);
       sessionStorage.setItem("je_session",JSON.stringify({userId:u.id,biz:b,screen:sc,t:Date.now()}));
@@ -4724,17 +4729,13 @@ function AppInner() {
   if(screen==="kasir") {
     if(!user) {
       const hasSaved = typeof sessionStorage !== "undefined" && !!sessionStorage.getItem("je_session");
-      if(hasSaved && (!fbReady || !users.length)) {
-        return <div style={{fontFamily:F.sans,background:C.bg1,color:C.t0,height:"100vh",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:14}}>
-          <style>{CSS}</style>
-          <div style={{width:40,height:40,border:`2.5px solid ${C.bg4}`,borderTopColor:C.pri,borderRadius:"50%",animation:"spin 1s linear infinite"}}/>
-          <div style={{fontSize:13,color:C.t2,fontWeight:600}}>Memuat sesi kasir...</div>
-        </div>;
-      }
-      if(!hasSaved) {
-        setScreen("login");
-        return null;
-      }
+      if(!hasSaved) { setScreen("login"); return null; }
+      // Sesi ada tapi belum dipulihkan efek restore (atau gagal -> efek itu yang redirect ke login).
+      return <div style={{fontFamily:F.sans,background:C.bg1,color:C.t0,height:"100vh",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:14}}>
+        <style>{CSS}</style>
+        <div style={{width:40,height:40,border:`2.5px solid ${C.bg4}`,borderTopColor:C.pri,borderRadius:"50%",animation:"spin 1s linear infinite"}}/>
+        <div style={{fontSize:13,color:C.t2,fontWeight:600}}>Memuat sesi kasir...</div>
+      </div>;
     }
     const subtotal=cart.reduce((s,c)=>s+c.price*c.qty,0);
     const discAmt=calcDiscount(subtotal);
@@ -4959,17 +4960,12 @@ function AppInner() {
   if(screen==="stok") {
     if(!user) {
       const hasSaved = typeof sessionStorage !== "undefined" && !!sessionStorage.getItem("je_session");
-      if(hasSaved && (!fbReady || !users.length)) {
-        return <div style={{fontFamily:F.sans,background:C.bg1,color:C.t0,height:"100vh",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:14}}>
-          <style>{CSS}</style>
-          <div style={{width:40,height:40,border:`2.5px solid ${C.bg4}`,borderTopColor:C.pri,borderRadius:"50%",animation:"spin 1s linear infinite"}}/>
-          <div style={{fontSize:13,color:C.t2,fontWeight:600}}>Memuat sesi stok...</div>
-        </div>;
-      }
-      if(!hasSaved) {
-        setScreen("login");
-        return null;
-      }
+      if(!hasSaved) { setScreen("login"); return null; }
+      return <div style={{fontFamily:F.sans,background:C.bg1,color:C.t0,height:"100vh",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:14}}>
+        <style>{CSS}</style>
+        <div style={{width:40,height:40,border:`2.5px solid ${C.bg4}`,borderTopColor:C.pri,borderRadius:"50%",animation:"spin 1s linear infinite"}}/>
+        <div style={{fontSize:13,color:C.t2,fontWeight:600}}>Memuat sesi stok...</div>
+      </div>;
     }
     const bc=biz==="JS_CLOTHING"?C.b:C.a;
     const filtered=bizProds().filter(p=>!stokSearch||p.name.toLowerCase().includes(stokSearch.toLowerCase())||p.barcode.includes(stokSearch));
@@ -5208,17 +5204,12 @@ function AppInner() {
   if(screen==="admin") {
     if(!user) {
       const hasSaved = typeof sessionStorage !== "undefined" && !!sessionStorage.getItem("je_session");
-      if(hasSaved && (!fbReady || !users.length)) {
-        return <div style={{fontFamily:F.sans,background:C.bg1,color:C.t0,height:"100vh",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:14}}>
-          <style>{CSS}</style>
-          <div style={{width:40,height:40,border:`2.5px solid ${C.bg4}`,borderTopColor:C.pri,borderRadius:"50%",animation:"spin 1s linear infinite"}}/>
-          <div style={{fontSize:13,color:C.t2,fontWeight:600}}>Memuat sesi admin...</div>
-        </div>;
-      }
-      if(!hasSaved) {
-        setScreen("login");
-        return null;
-      }
+      if(!hasSaved) { setScreen("login"); return null; }
+      return <div style={{fontFamily:F.sans,background:C.bg1,color:C.t0,height:"100vh",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:14}}>
+        <style>{CSS}</style>
+        <div style={{width:40,height:40,border:`2.5px solid ${C.bg4}`,borderTopColor:C.pri,borderRadius:"50%",animation:"spin 1s linear infinite"}}/>
+        <div style={{fontSize:13,color:C.t2,fontWeight:600}}>Memuat sesi admin...</div>
+      </div>;
     }
     const IS={width:"100%",padding:"11px 13px",background:C.bg3,border:`1.5px solid ${C.bo0}`,borderRadius:10,color:C.t0,fontSize:13,fontFamily:F.mono,transition:"border-color .15s"};
     const newCustomOrdersCount = (customOrders||[]).filter(o => o && (o.status || "Baru") === "Baru").length;
