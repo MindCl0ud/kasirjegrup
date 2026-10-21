@@ -3032,10 +3032,9 @@ function ProductLandingPage({ prods, cfg, user, onLogin, onToggleTheme, isDark, 
               : "linear-gradient(135deg, rgba(27,100,176,0.12) 0%, rgba(240,244,255,0.96) 100%)",
             border:`1.5px solid ${C.b}44`,
             padding:"clamp(24px, 4.5vw, 36px)",
-            display:"grid",
-            gridTemplateColumns:"repeat(auto-fit, minmax(min(290px,100%), 1fr))",
-            gap:24,
-            alignItems:"center",
+            display:"flex",
+            flexDirection:"column",
+            gap:18,
             boxShadow:C.sh2
           }}>
             <div>
