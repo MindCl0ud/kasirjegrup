@@ -383,6 +383,16 @@ const makeCSS = () => `
   .lp-video-poster:active .lp-video-play{transform:translate(-50%,-50%) scale(.96);}
   .lp-video-label{position:absolute;left:0;right:0;bottom:16px;z-index:2;text-align:center;
     color:#fff;font-size:13px;font-weight:700;text-shadow:0 1px 10px rgba(0,0,0,.55);}
+  /* Banner Studio Desain: teks + fitur di kiri, foto koleksi besar di kanan */
+  .sd-row{display:flex;flex-direction:column;gap:20px;}
+  .sd-left{flex:1;min-width:0;}
+  .sd-photo{position:relative;padding:0;border:none;border-radius:18px;overflow:hidden;cursor:pointer;
+    background:${C.bg3};box-shadow:${C.sh};width:100%;aspect-ratio:16 / 11;flex-shrink:0;}
+  .sd-photo>img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;}
+  @media(min-width:880px){
+    .sd-row{flex-direction:row;align-items:stretch;}
+    .sd-photo{width:46%;max-width:520px;aspect-ratio:auto;align-self:stretch;min-height:340px;}
+  }
   /* ── Galeri preview foto ── */
   .lp-gal{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(200px,45vw),1fr));gap:14px;margin-top:18px;}
   @media(max-width:560px){.lp-gal{grid-template-columns:repeat(2,1fr);gap:10px;}}
@@ -2996,22 +3006,10 @@ function ProductLandingPage({ prods, cfg, user, onLogin, onToggleTheme, isDark, 
       {/* Pita ikat (ciri merek) */}
       <div className="ikat-band" aria-hidden="true"/>
 
-      {/* ── Sekilas toko: dua foto + video profil (di atas banner Studio Desain) ── */}
+      {/* ── Sekilas toko: video profil (di atas banner Studio Desain) ── */}
       <section id="galeri" style={{maxWidth:1180,width:"100%",margin:"0 auto",padding:"36px 20px 4px"}}>
-        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
-          {galPhotos.slice(0, 2).map((it, i) => (
-            <button key={i} type="button" className="press" onClick={() => setGalIdx(i)}
-              aria-label={`Perbesar foto: ${it.cap}`}
-              style={{position:"relative",aspectRatio:"4 / 3",padding:0,border:"none",borderRadius:18,overflow:"hidden",cursor:"pointer",background:C.bg3}}>
-              <img src={it.src} alt={it.cap} style={{position:"absolute",inset:0,width:"100%",height:"100%",objectFit:"cover"}} loading="lazy" decoding="async"/>
-              <span style={{position:"absolute",inset:0,background:"linear-gradient(180deg,rgba(22,8,18,0) 45%,rgba(22,8,18,.6))"}} aria-hidden="true"/>
-              <span style={{position:"absolute",left:12,right:12,bottom:10,textAlign:"left",color:"#fff",fontSize:13,fontWeight:700,textShadow:"0 1px 8px rgba(0,0,0,.5)"}}>{it.cap}</span>
-            </button>
-          ))}
-        </div>
-
         {videoSrc && (
-          <div style={{marginTop:12}}>
+          <div>
             <div className="lp-video">
               {playVid ? (
                 <iframe key={videoSrc} className="lp-video-frame" src={videoSrc} title="Video promosi JE Grup"
@@ -3061,52 +3059,49 @@ function ProductLandingPage({ prods, cfg, user, onLogin, onToggleTheme, isDark, 
               : "linear-gradient(135deg, rgba(27,100,176,0.12) 0%, rgba(240,244,255,0.96) 100%)",
             border:`1.5px solid ${C.b}44`,
             padding:"clamp(24px, 4.5vw, 36px)",
-            display:"grid",
-            gridTemplateColumns:"repeat(auto-fit, minmax(min(290px,100%), 1fr))",
-            gap:24,
-            alignItems:"center",
             boxShadow:C.sh2
           }}>
-            <div>
-              <div style={{display:"inline-flex",alignItems:"center",gap:7,padding:"4px 12px",borderRadius:50,background:C.b1,color:C.b,fontSize:12,fontWeight:800,marginBottom:10}}>
-                <Sparkles size={14}/> Studio Desain Baju Online
-              </div>
-              <h3 style={{fontSize:"clamp(22px, 3.2vw, 29px)",fontWeight:850,letterSpacing:"-.025em",lineHeight:1.2,marginBottom:8}}>
-                Bikin Kaos Custom Sendiri, Kirim Hasilnya ke WhatsApp
-              </h3>
-              <p style={{fontSize:14,color:C.t1,lineHeight:1.6,marginBottom:18,maxWidth:490}}>
-                Bebas pilih warna kain, ketik nama komunitas atau nomor punggung, dan unggah logo Anda. Desain tampak depan &amp; belakang, simpan di koleksi, lalu kirim spesifikasinya langsung ke admin konveksi kami.
-              </p>
-              <div style={{display:"flex",gap:10,flexWrap:"wrap"}}>
-                <button onClick={onOpenCustomizer} className="press" style={{...btnPrimary, background:C.b, color:"#fff"}}>
-                  <Shirt size={17}/> Buka Studio Desain Baju
-                </button>
-              </div>
-            </div>
+            <div className="sd-row">
+              <div className="sd-left">
+                <div>
+                  <div style={{display:"inline-flex",alignItems:"center",gap:7,padding:"4px 12px",borderRadius:50,background:C.b1,color:C.b,fontSize:12,fontWeight:800,marginBottom:10}}>
+                    <Sparkles size={14}/> Studio Desain Baju Online
+                  </div>
+                  <h3 style={{fontSize:"clamp(22px, 3.2vw, 29px)",fontWeight:850,letterSpacing:"-.025em",lineHeight:1.2,marginBottom:8}}>
+                    Bikin Kaos Custom Sendiri, Kirim Hasilnya ke WhatsApp
+                  </h3>
+                  <p style={{fontSize:14,color:C.t1,lineHeight:1.6,marginBottom:18,maxWidth:490}}>
+                    Bebas pilih warna kain, ketik nama komunitas atau nomor punggung, dan unggah logo Anda. Desain tampak depan &amp; belakang, simpan di koleksi, lalu kirim spesifikasinya langsung ke admin konveksi kami.
+                  </p>
+                  <div style={{display:"flex",gap:10,flexWrap:"wrap"}}>
+                    <button onClick={onOpenCustomizer} className="press" style={{...btnPrimary, background:C.b, color:"#fff"}}>
+                      <Shirt size={17}/> Buka Studio Desain Baju
+                    </button>
+                  </div>
+                </div>
 
-            {/* Foto JE Clothing (slot Koleksi Unggulan 1) di dalam card studio */}
-            <button type="button" className="press" aria-label="Lihat foto JE Clothing"
-              onClick={() => setGalIdx(0)}
-              style={{position:"relative",padding:0,border:"none",borderRadius:18,overflow:"hidden",cursor:"pointer",
-                background:C.bg3,aspectRatio:"16 / 11",boxShadow:C.sh}}>
-              <img src={klcPhoto("koleksi1","hero",900,620)} alt="JE Clothing"
-                style={{position:"absolute",inset:0,width:"100%",height:"100%",objectFit:"cover"}} loading="lazy" decoding="async"/>
-              <span style={{position:"absolute",inset:0,background:"linear-gradient(180deg,rgba(22,8,18,0) 50%,rgba(22,8,18,.55))"}} aria-hidden="true"/>
-              <span style={{position:"absolute",left:14,bottom:12,color:"#fff",fontSize:13,fontWeight:800,textShadow:"0 1px 8px rgba(0,0,0,.5)"}}>JE Clothing</span>
-            </button>
+                <div style={{marginTop:18,display:"flex",flexDirection:"column",gap:10,background:C.bg2,padding:18,borderRadius:18,border:`1px solid ${C.bo1}`}}>
+                  <div style={{fontSize:13,fontWeight:800,color:C.t0,display:"flex",alignItems:"center",gap:6}}>
+                    <ShieldCheck size={16} color={C.g}/> Fitur Studio Desain:
+                  </div>
+                  <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,fontSize:12,color:C.t1}}>
+                    <div style={{display:"flex",alignItems:"center",gap:6}}>• Kaos 30s, 24s, Polo, Hoodie</div>
+                    <div style={{display:"flex",alignItems:"center",gap:6}}>• 12 Pilihan Warna Kain Distro</div>
+                    <div style={{display:"flex",alignItems:"center",gap:6}}>• Bebas Upload Logo Sendiri</div>
+                    <div style={{display:"flex",alignItems:"center",gap:6}}>• Preview Depan &amp; Belakang</div>
+                    <div style={{display:"flex",alignItems:"center",gap:6}}>• Simpan &amp; Edit Kapan Saja</div>
+                    <div style={{display:"flex",alignItems:"center",gap:6}}>• Download Mockup PNG Jernih</div>
+                  </div>
+                </div>
+              </div>
 
-            <div style={{gridColumn:"1 / -1",display:"flex",flexDirection:"column",gap:10,background:C.bg2,padding:18,borderRadius:18,border:`1px solid ${C.bo1}`}}>
-              <div style={{fontSize:13,fontWeight:800,color:C.t0,display:"flex",alignItems:"center",gap:6}}>
-                <ShieldCheck size={16} color={C.g}/> Fitur Studio Desain:
-              </div>
-              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,fontSize:12,color:C.t1}}>
-                <div style={{display:"flex",alignItems:"center",gap:6}}>• Kaos 30s, 24s, Polo, Hoodie</div>
-                <div style={{display:"flex",alignItems:"center",gap:6}}>• 12 Pilihan Warna Kain Distro</div>
-                <div style={{display:"flex",alignItems:"center",gap:6}}>• Bebas Upload Logo Sendiri</div>
-                <div style={{display:"flex",alignItems:"center",gap:6}}>• Preview Depan &amp; Belakang</div>
-                <div style={{display:"flex",alignItems:"center",gap:6}}>• Simpan &amp; Edit Kapan Saja</div>
-                <div style={{display:"flex",alignItems:"center",gap:6}}>• Download Mockup PNG Jernih</div>
-              </div>
+              {/* Foto JE Clothing (slot Koleksi Unggulan 1) — besar, di kanan seukuran tinggi card */}
+              <button type="button" className="sd-photo press" aria-label="Lihat foto JE Clothing"
+                onClick={() => setGalIdx(0)}>
+                <img src={klcPhoto("koleksi1","hero",1100,760)} alt="JE Clothing" loading="lazy" decoding="async"/>
+                <span style={{position:"absolute",inset:0,background:"linear-gradient(180deg,rgba(22,8,18,0) 55%,rgba(22,8,18,.5))"}} aria-hidden="true"/>
+                <span style={{position:"absolute",left:14,bottom:12,color:"#fff",fontSize:13,fontWeight:800,textShadow:"0 1px 8px rgba(0,0,0,.5)"}}>JE Clothing</span>
+              </button>
             </div>
           </div>
         </section>
