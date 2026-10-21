@@ -3008,7 +3008,15 @@ function ProductLandingPage({ prods, cfg, user, onLogin, onToggleTheme, isDark, 
 
       {/* ── Sekilas toko: video profil (di atas banner Studio Desain) ── */}
       <section id="galeri" style={{maxWidth:1180,width:"100%",margin:"0 auto",padding:"36px 20px 4px"}}>
-        {videoSrc && (
+        {!videoSrc ? (
+          <div className="lp-video" style={{display:"grid",placeItems:"center",background:"transparent",
+            border:`1.5px dashed ${C.bo2}`,boxShadow:"none"}}>
+            <div style={{textAlign:"center",padding:20,color:C.t2,fontSize:13.5,lineHeight:1.6}}>
+              <Play size={26} style={{display:"block",margin:"0 auto 8px"}} color={C.t3}/>
+              Video promosi belum diisi. Admin bisa menambahkan link video Google Drive di menu <b>Landing Page</b>.
+            </div>
+          </div>
+        ) : (
           <div>
             <div className="lp-video">
               {playVid ? (
