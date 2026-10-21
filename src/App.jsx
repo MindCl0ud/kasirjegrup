@@ -2799,7 +2799,7 @@ const klcPhoto = (slot, fb, w, h) => driveImg(LANDING[slot], w) || driveImg(LAND
 const DEFAULT_REVIEWS = [
   { name:"Rani Putri",      biz:"JS_CLOTHING", stars:5, date:"12 Okt 2026", text:"Kaos custom buat komunitas kami hasilnya rapi, sablonnya awet, dan dikirim tepat waktu. Admin fast response banget." },
   { name:"Dewi Lestari",    biz:"JB_STORE",    stars:5, date:"8 Okt 2026",  text:"Skincare original dan harganya bersahabat. Packing aman, saya sudah repeat order tiga kali." },
-  { name:"Andi Saputra",    biz:"JS_CLOTHING", stars:4, date:"28 Sep 2026", text:"Bahan katunnya adem dan jahitannya bagus. Pesan hari itu, sehari kemudian barang sudah sampai. Worth it." },
+  { name:"Ardi Hari",       biz:"JS_CLOTHING", stars:4, date:"28 Sep 2026", text:"Bahan katunnya adem dan jahitannya bagus. Pesan hari itu, sehari kemudian barang sudah sampai. Worth it." },
   { name:"Siti Aulia",      biz:"JB_STORE",    stars:5, date:"21 Sep 2026", text:"Pelayanannya ramah, dibantu pilih ukuran dan warna. Produk sesuai foto, tidak mengecewakan." },
   { name:"Bagas Pratama",   biz:"JS_CLOTHING", stars:5, date:"14 Sep 2026", text:"Seragam kantor 40 pcs dikerjakan cepat dan hasilnya seragam semua. Recommended buat yang butuh partai besar." },
   { name:"Nadia Rahma",     biz:"JB_STORE",    stars:5, date:"2 Sep 2026",  text:"Paket hematnya cocok buat mahasiswa, pengemasan rapi dan pengirimannya cepat." },
