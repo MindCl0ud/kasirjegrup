@@ -2817,9 +2817,17 @@ const productPhoto = (p) => (p.photo ? driveImg(p.photo, 700) : picPhoto(p.barco
 function ProductLandingPage({ prods, cfg, user, onLogin, onToggleTheme, isDark, onOpenCustomizer }) {
   const [selectedBiz, setSelectedBiz] = React.useState("ALL");
   const [searchWord, setSearchWord] = React.useState("");
-  // Video promosi: link Google Drive diisi admin (tab Landing Page).
+  // Video promosi: boleh lebih dari satu, diatur admin (tab Landing Page). Link lama `video` tetap didukung.
   const [playVid, setPlayVid] = React.useState(false);
-  const videoSrc = driveVideo(LANDING.video);
+  const vids = React.useMemo(() => {
+    const raw = Array.isArray(cfg?.videos) && cfg.videos.length ? cfg.videos : (cfg?.video ? [cfg.video] : []);
+    return raw.map(s => String(s || "").trim()).filter(s => driveVideo(s));
+  }, [cfg]);
+  const [vidIdx, setVidIdx] = React.useState(0);
+  React.useEffect(() => { setPlayVid(false); }, [vidIdx]);
+  const vi = Math.min(vidIdx, Math.max(vids.length - 1, 0));
+  const videoSrc = vids[vi] ? driveVideo(vids[vi]) : "";
+  const goVid = (d) => setVidIdx(i => (i + d + vids.length) % vids.length);
   // Preview galeri foto: indeks -1 = lightbox tertutup.
   const [galIdx, setGalIdx] = React.useState(-1);
 
@@ -3003,18 +3011,39 @@ function ProductLandingPage({ prods, cfg, user, onLogin, onToggleTheme, isDark, 
         </div>
 
         {videoSrc && (
-          <div className="lp-video" style={{marginTop:12}}>
-            {playVid ? (
-              <iframe className="lp-video-frame" src={videoSrc} title="Video profil JE Grup"
-                allow="autoplay; encrypted-media; picture-in-picture" allowFullScreen loading="lazy"/>
-            ) : (
-              <button type="button" className="lp-video-poster press" onClick={() => setPlayVid(true)}
-                aria-label="Putar video profil toko">
-                <img src={photo("hero2", 1200, 675)} alt="" className="lp-photo" loading="lazy" decoding="async"/>
-                <span className="lp-video-scrim" aria-hidden="true"/>
-                <span className="lp-video-play" aria-hidden="true"><Play size={28} fill="currentColor" strokeWidth={1.4}/></span>
-                <span className="lp-video-label">Putar video</span>
-              </button>
+          <div style={{marginTop:12}}>
+            <div className="lp-video">
+              {playVid ? (
+                <iframe key={videoSrc} className="lp-video-frame" src={videoSrc} title="Video promosi JE Grup"
+                  allow="autoplay; encrypted-media; picture-in-picture" allowFullScreen loading="lazy"/>
+              ) : (
+                <button type="button" className="lp-video-poster press" onClick={() => setPlayVid(true)}
+                  aria-label="Putar video promosi toko">
+                  <img src={driveImg(vids[vi], 1200) || photo("hero2", 1200, 675)} alt="" className="lp-photo" loading="lazy" decoding="async"/>
+                  <span className="lp-video-scrim" aria-hidden="true"/>
+                  <span className="lp-video-play" aria-hidden="true"><Play size={28} fill="currentColor" strokeWidth={1.4}/></span>
+                  <span className="lp-video-label">Putar video{vids.length > 1 ? ` ${vi + 1} / ${vids.length}` : ""}</span>
+                </button>
+              )}
+            </div>
+            {vids.length > 1 && (
+              <div style={{display:"flex",alignItems:"center",justifyContent:"center",gap:14,marginTop:10}}>
+                <button type="button" className="press" onClick={() => goVid(-1)} aria-label="Video sebelumnya"
+                  style={{width:34,height:34,borderRadius:"50%",border:`1px solid ${C.bo1}`,background:C.bg2,color:C.t1,cursor:"pointer",display:"grid",placeItems:"center",padding:0}}>
+                  <ChevronLeft size={17}/>
+                </button>
+                <div style={{display:"flex",gap:7,alignItems:"center"}}>
+                  {vids.map((_, d) => (
+                    <button key={d} type="button" onClick={() => setVidIdx(d)} aria-label={`Video ${d + 1}`}
+                      style={{width:d === vi ? 20 : 8,height:8,borderRadius:50,padding:0,border:"none",cursor:"pointer",
+                        background:d === vi ? C.pri : C.bo2,transition:"width .2s"}}/>
+                  ))}
+                </div>
+                <button type="button" className="press" onClick={() => goVid(1)} aria-label="Video berikutnya"
+                  style={{width:34,height:34,borderRadius:"50%",border:`1px solid ${C.bo1}`,background:C.bg2,color:C.t1,cursor:"pointer",display:"grid",placeItems:"center",padding:0}}>
+                  <ChevronRight size={17}/>
+                </button>
+              </div>
             )}
           </div>
         )}
@@ -3032,9 +3061,10 @@ function ProductLandingPage({ prods, cfg, user, onLogin, onToggleTheme, isDark, 
               : "linear-gradient(135deg, rgba(27,100,176,0.12) 0%, rgba(240,244,255,0.96) 100%)",
             border:`1.5px solid ${C.b}44`,
             padding:"clamp(24px, 4.5vw, 36px)",
-            display:"flex",
-            flexDirection:"column",
-            gap:18,
+            display:"grid",
+            gridTemplateColumns:"repeat(auto-fit, minmax(min(290px,100%), 1fr))",
+            gap:24,
+            alignItems:"center",
             boxShadow:C.sh2
           }}>
             <div>
@@ -3054,7 +3084,18 @@ function ProductLandingPage({ prods, cfg, user, onLogin, onToggleTheme, isDark, 
               </div>
             </div>
 
-            <div style={{display:"flex",flexDirection:"column",gap:10,background:C.bg2,padding:18,borderRadius:18,border:`1px solid ${C.bo1}`}}>
+            {/* Foto JE Clothing (slot Koleksi Unggulan 1) di dalam card studio */}
+            <button type="button" className="press" aria-label="Lihat foto JE Clothing"
+              onClick={() => setGalIdx(0)}
+              style={{position:"relative",padding:0,border:"none",borderRadius:18,overflow:"hidden",cursor:"pointer",
+                background:C.bg3,aspectRatio:"16 / 11",boxShadow:C.sh}}>
+              <img src={klcPhoto("koleksi1","hero",900,620)} alt="JE Clothing"
+                style={{position:"absolute",inset:0,width:"100%",height:"100%",objectFit:"cover"}} loading="lazy" decoding="async"/>
+              <span style={{position:"absolute",inset:0,background:"linear-gradient(180deg,rgba(22,8,18,0) 50%,rgba(22,8,18,.55))"}} aria-hidden="true"/>
+              <span style={{position:"absolute",left:14,bottom:12,color:"#fff",fontSize:13,fontWeight:800,textShadow:"0 1px 8px rgba(0,0,0,.5)"}}>JE Clothing</span>
+            </button>
+
+            <div style={{gridColumn:"1 / -1",display:"flex",flexDirection:"column",gap:10,background:C.bg2,padding:18,borderRadius:18,border:`1px solid ${C.bo1}`}}>
               <div style={{fontSize:13,fontWeight:800,color:C.t0,display:"flex",alignItems:"center",gap:6}}>
                 <ShieldCheck size={16} color={C.g}/> Fitur Studio Desain:
               </div>
@@ -3544,6 +3585,7 @@ function AppInner() {
   const [landingCfg, setLandingCfg] = useState({});
   const [landingDraft, setLandingDraft] = useState(null);
   const [landPrev, setLandPrev] = useState(null); // preview foto besar di tab Landing Page
+  const [landVidIdx, setLandVidIdx] = useState(0); // indeks video pada preview carousel video landing
   const [customOrders, setCustomOrders] = useState(() => {
     try {
       const raw = localStorage.getItem("je_custom_orders_backup");
@@ -6490,11 +6532,16 @@ function AppInner() {
           const limits=lf.limits||{};
           const setLf=(k,v)=>setLandingDraft({...lf,[k]:v});
           const setLimit=(b,v)=>setLandingDraft({...lf,limits:{JS_CLOTHING:0,JB_STORE:0,...limits,[b]:v}});
+          // Daftar video promosi: banyak, urut; data lama `video` (satu link) tetap didukung.
+          const vids=Array.isArray(lf.videos)?lf.videos:(lf.video?[lf.video]:[]);
+          const setVids=(arr)=>setLandingDraft({...lf,videos:arr,video:arr[0]||""});
           const save=async()=>{
             try{
               const data={};
               PHOTO_FIELDS.forEach(([k])=>{data[k]=String(lf[k]||"").trim();});
-              data.video=String(lf.video||"").trim();
+              const vs=(Array.isArray(lf.videos)?lf.videos:(lf.video?[lf.video]:[])).map(s=>String(s||"").trim()).filter(Boolean);
+              data.videos=vs;
+              data.video=vs[0]||""; // kompatibilitas dengan data/klien lama
               data.wa=String(lf.wa||"").replace(/[^\d+]/g,"");
               data.limits={JS_CLOTHING:+limits.JS_CLOTHING||0,JB_STORE:+limits.JB_STORE||0};
               await fbSetLanding(data,user.name);
@@ -6552,30 +6599,69 @@ function AppInner() {
                   </div>
                 </div>;
               })}
-              <div style={{display:"flex",gap:12,alignItems:"flex-start",padding:"10px 0",borderTop:`1px solid ${C.bo0}`}}>
-                <div style={{width:76,height:76,borderRadius:12,overflow:"hidden",flexShrink:0,background:C.bg3,border:`1px solid ${C.bo1}`,display:"grid",placeItems:"center"}}>
-                  {driveImg(lf.video,200)
-                    ? <img src={driveImg(lf.video,200)} alt="" style={{width:"100%",height:"100%",objectFit:"cover"}}/>
-                    : <Play size={18} color={C.t3}/>}
+              {/* Video promosi: daftar (bisa lebih dari satu) + preview carousel */}
+              <div style={{padding:"10px 0 2px",borderTop:`1px solid ${C.bo0}`}}>
+                <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:8,flexWrap:"wrap",marginBottom:6}}>
+                  <label style={{fontSize:11,fontWeight:700,color:C.t2}}>Link video promosi (Google Drive) — boleh lebih dari satu</label>
+                  <button type="button" onClick={()=>setVids([...vids,""])} className="press" style={toolBtn}>
+                    <Plus size={13}/> Tambah video
+                  </button>
                 </div>
-                <div style={{flex:1,minWidth:0}}>
-                  <label style={{fontSize:11,fontWeight:700,color:C.t2,display:"block",marginBottom:4}}>Link video promosi (Google Drive)</label>
-                  <input value={lf.video||""} onChange={e=>setLf("video",e.target.value)} placeholder="https://drive.google.com/file/d/..." style={IS}/>
-                  <div style={{fontSize:10.5,color:C.t3,marginTop:4,lineHeight:1.4}}>
-                    Atur izin file &ldquo;Siapa saja yang memiliki link&rdquo;. Kosongkan untuk menyembunyikan bagian video di halaman promosi.
+                {vids.length===0 && (
+                  <div style={{fontSize:10.5,color:C.t3,lineHeight:1.4,marginBottom:6}}>
+                    Belum ada video — bagian video disembunyikan di halaman promosi.
                   </div>
-                  {driveVideo(lf.video) && (
-                    <div style={{marginTop:12}}>
-                      <div style={{fontSize:11,fontWeight:700,color:C.t2,marginBottom:6,display:"flex",alignItems:"center",gap:6}}>
-                        <Play size={12}/> Preview video yang tampil di halaman
-                      </div>
-                      <div className="lp-video" style={{borderRadius:16,boxShadow:"none"}}>
-                        <iframe className="lp-video-frame" src={driveVideo(lf.video)} title="Preview video promosi"
-                          allow="autoplay; encrypted-media; picture-in-picture" allowFullScreen loading="lazy"/>
-                      </div>
+                )}
+                {vids.map((v,i)=>{
+                  const th=driveImg(v,200);
+                  return <div key={i} style={{display:"flex",gap:12,alignItems:"flex-start",padding:"8px 0"}}>
+                    <div style={{width:76,height:76,borderRadius:12,overflow:"hidden",flexShrink:0,background:C.bg3,border:`1px solid ${C.bo1}`,display:"grid",placeItems:"center"}}>
+                      {th ? <img src={th} alt="" style={{width:"100%",height:"100%",objectFit:"cover"}}/>
+                          : <Play size={18} color={C.t3}/>}
                     </div>
-                  )}
+                    <div style={{flex:1,minWidth:0}}>
+                      <div style={{fontSize:11,fontWeight:700,color:C.t2,marginBottom:4}}>Video {i+1}{i===0?" (utama)":""}</div>
+                      <input value={v} onChange={e=>{const a=[...vids];a[i]=e.target.value;setVids(a);}}
+                        placeholder="https://drive.google.com/file/d/..." style={IS}/>
+                    </div>
+                    <button type="button" onClick={()=>setVids(vids.filter((_,x)=>x!==i))} title="Hapus video ini" className="press"
+                      style={{width:34,height:34,borderRadius:10,background:"transparent",border:`1px solid ${C.bo1}`,color:C.r,
+                        display:"grid",placeItems:"center",cursor:"pointer",flexShrink:0,marginTop:20}}>
+                      <Trash2 size={15}/>
+                    </button>
+                  </div>;
+                })}
+                <div style={{fontSize:10.5,color:C.t3,lineHeight:1.4}}>
+                  Atur izin file &ldquo;Siapa saja yang memiliki link&rdquo;. Urutan daftar = urutan carousel di halaman promosi. Kosongkan semua untuk menyembunyikan video.
                 </div>
+                {(() => {
+                  const pv=vids.map(s=>String(s||"").trim()).filter(s=>driveVideo(s));
+                  if(!pv.length) return null;
+                  const pi=Math.min(landVidIdx, pv.length-1);
+                  return <div style={{marginTop:12}}>
+                    <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:6,gap:8}}>
+                      <div style={{fontSize:11,fontWeight:700,color:C.t2,display:"flex",alignItems:"center",gap:6}}>
+                        <Play size={12}/> Preview video yang tampil di halaman {pv.length>1?`(${pi+1} / ${pv.length})`:""}
+                      </div>
+                      {pv.length>1 && (
+                        <div style={{display:"flex",gap:6}}>
+                          <button type="button" className="press" onClick={()=>setLandVidIdx((pi-1+pv.length)%pv.length)} aria-label="Video sebelumnya"
+                            style={{width:30,height:30,borderRadius:"50%",border:`1px solid ${C.bo1}`,background:C.bg3,color:C.t1,cursor:"pointer",display:"grid",placeItems:"center",padding:0}}>
+                            <ChevronLeft size={15}/>
+                          </button>
+                          <button type="button" className="press" onClick={()=>setLandVidIdx((pi+1)%pv.length)} aria-label="Video berikutnya"
+                            style={{width:30,height:30,borderRadius:"50%",border:`1px solid ${C.bo1}`,background:C.bg3,color:C.t1,cursor:"pointer",display:"grid",placeItems:"center",padding:0}}>
+                            <ChevronRight size={15}/>
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                    <div className="lp-video" style={{borderRadius:16,boxShadow:"none"}}>
+                      <iframe key={pv[pi]} className="lp-video-frame" src={pv[pi]} title="Preview video promosi"
+                        allow="autoplay; encrypted-media; picture-in-picture" allowFullScreen loading="lazy"/>
+                    </div>
+                  </div>;
+                })()}
               </div>
               <div style={{padding:"12px 0 2px",borderTop:`1px solid ${C.bo0}`}}>
                 <label style={{fontSize:11,fontWeight:700,color:C.t2,display:"block",marginBottom:4}}>Nomor WhatsApp (62xxx, tanpa + dan spasi)</label>
