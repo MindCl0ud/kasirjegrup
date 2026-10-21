@@ -2786,8 +2786,7 @@ const PHOTO_FIELDS = [
   ["hero",    "Foto utama (tegak) - koleksi unggulan satu toko"],
   ["hero2",   "Poster video (16:9) - tampil sebelum video diputar"],
   ["atelier", "Foto lebar bagian Kenapa belanja di sini"],
-  ["koleksi1","Koleksi Unggulan 1 - JE Clothing (grid foto kiri)"],
-  ["koleksi2","Koleksi Unggulan 2 - JE Beauty (grid foto kanan)"],
+  ["koleksi1","Foto JE Clothing - tampil besar di card Studio Desain"],
 ];
 const LANDING = {}; // diisi subscribeLanding dari settings/landing
 const photo = (slot, w, h) => driveImg(LANDING[slot], w) || picPhoto(slot, w, h);
@@ -2866,7 +2865,6 @@ function ProductLandingPage({ prods, cfg, user, onLogin, onToggleTheme, isDark, 
   // Foto yang bisa di-preview di lightbox galeri (koleksi unggulan + foto toko + foto produk unggulan).
   const galPhotos = React.useMemo(() => ([
     { src: klcPhoto("koleksi1", "hero", 900, 675), cap: "JE Clothing", sub: "Koleksi unggulan" },
-    { src: klcPhoto("koleksi2", "atelier", 900, 675), cap: "JE Beauty", sub: "Koleksi unggulan" },
     { src: photo("hero", 900, 1125), cap: "Koleksi unggulan", sub: "Foto utama toko" },
     { src: photo("atelier", 1200, 800), cap: "Kenapa belanja di sini", sub: "Suasana toko" },
     ...advertisedList.slice(0, 6).map(p => ({ src: productPhoto(p), cap: p.name, sub: (BIZ[p.business] || {}).name || "" })),
@@ -6573,7 +6571,7 @@ function AppInner() {
               </div>
               <div style={{display:"flex",gap:7}}>
                 {/* Preview ikut menampilkan perubahan yang belum disimpan */}
-                <button onClick={()=>{if(landingDraft)Object.assign(LANDING,landingDraft);setScreen("landing");}} className="press" style={toolBtn}><ExternalLink size={13}/> Preview</button>
+                <button onClick={()=>{if(landingDraft){Object.assign(LANDING,landingDraft);setLandingCfg({...landingCfg,...landingDraft});}setScreen("landing");}} className="press" style={toolBtn}><ExternalLink size={13}/> Preview</button>
                 <Btn onClick={save} size="sm"><Check size={16}/> Simpan</Btn>
               </div>
             </div>
@@ -6612,7 +6610,7 @@ function AppInner() {
                 </div>
                 {vids.length===0 && (
                   <div style={{fontSize:10.5,color:C.t3,lineHeight:1.4,marginBottom:6}}>
-                    Belum ada video — bagian video disembunyikan di halaman promosi.
+                    Belum ada video — halaman promosi menampilkan kotak kosong berisi petunjuk pengisian.
                   </div>
                 )}
                 {vids.map((v,i)=>{
@@ -6635,7 +6633,7 @@ function AppInner() {
                   </div>;
                 })}
                 <div style={{fontSize:10.5,color:C.t3,lineHeight:1.4}}>
-                  Atur izin file &ldquo;Siapa saja yang memiliki link&rdquo;. Urutan daftar = urutan carousel di halaman promosi. Kosongkan semua untuk menyembunyikan video.
+                  Atur izin file &ldquo;Siapa saja yang memiliki link&rdquo;. Urutan daftar = urutan carousel di halaman promosi. Kosongkan semua untuk mengosongkan slot video.
                 </div>
                 {(() => {
                   const pv=vids.map(s=>String(s||"").trim()).filter(s=>driveVideo(s));
