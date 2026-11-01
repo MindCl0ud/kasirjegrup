@@ -2815,10 +2815,13 @@ const Stars = ({ n = 5, size = 14 }) => (
 // Nomor WhatsApp toko, format internasional tanpa tanda plus (contoh: "6281234567890").
 // Default di bawah bisa ditimpa admin dari tab Landing Page.
 const LANDING_WA = "6285191435249";
-const waHref = (text) => {
-  const n = String(LANDING.wa || LANDING_WA).replace(/\D/g, "");
+const LANDING_WA_BEAUTY = "6282322204402";
+const waHref = (text, num) => {
+  const n = String(num || LANDING.wa || LANDING_WA).replace(/\D/g, "");
   return `https://wa.me/${n}${text ? "?text=" + encodeURIComponent(text) : ""}`;
 };
+// Nomor WhatsApp khusus JE Beauty (produk perawatan), bisa diatur dari tab Landing Page.
+const waHrefBeauty = (text) => waHref(text, LANDING.waBeauty || LANDING_WA_BEAUTY);
 
 // Foto per produk: pakai p.photo (diisi di form produk), selain itu placeholder.
 const productPhoto = (p) => (p.photo ? driveImg(p.photo, 700) : picPhoto(p.barcode || p.id, 700, 700));
@@ -3236,7 +3239,7 @@ function ProductLandingPage({ prods, cfg, user, onLogin, onToggleTheme, isDark, 
 
                               {/* Tombol Pesan Sekarang Mengarah ke WA dengan Nama Produk */}
                               <a
-                                href={waHref(orderText)}
+                                href={p.business === "JB_STORE" ? waHrefBeauty(orderText) : waHref(orderText)}
                                 target="_blank"
                                 rel="noreferrer"
                                 className="press"
@@ -6544,6 +6547,7 @@ function AppInner() {
               data.videos=vs;
               data.video=vs[0]||""; // kompatibilitas dengan data/klien lama
               data.wa=String(lf.wa||"").replace(/[^\d+]/g,"");
+              data.waBeauty=String(lf.waBeauty||"").replace(/[^\d+]/g,"");
               data.limits={JS_CLOTHING:+limits.JS_CLOTHING||0,JB_STORE:+limits.JB_STORE||0};
               await fbSetLanding(data,user.name);
               toast("Etalase publik diperbarui");
@@ -6665,8 +6669,11 @@ function AppInner() {
                 })()}
               </div>
               <div style={{padding:"12px 0 2px",borderTop:`1px solid ${C.bo0}`}}>
-                <label style={{fontSize:11,fontWeight:700,color:C.t2,display:"block",marginBottom:4}}>Nomor WhatsApp (62xxx, tanpa + dan spasi)</label>
+                <label style={{fontSize:11,fontWeight:700,color:C.t2,display:"block",marginBottom:4}}>Nomor WhatsApp JE Clothing / umum (62xxx, tanpa + dan spasi)</label>
                 <input value={lf.wa||""} onChange={e=>setLf("wa",e.target.value)} placeholder={LANDING_WA} style={IS}/>
+                <label style={{fontSize:11,fontWeight:700,color:C.t2,display:"block",margin:"10px 0 4px"}}>Nomor WhatsApp JE Beauty (62xxx, tanpa + dan spasi)</label>
+                <input value={lf.waBeauty||""} onChange={e=>setLf("waBeauty",e.target.value)} placeholder={LANDING_WA_BEAUTY} style={IS}/>
+                <div style={{fontSize:10.5,color:C.t3,marginTop:4,lineHeight:1.4}}>Tombol pesan pada produk JE Beauty memakai nomor ini. Kosongkan untuk memakai nomor default.</div>
               </div>
             </Card>
 
