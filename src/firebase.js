@@ -4,10 +4,50 @@
 import { initializeApp, getApps } from "firebase/app";
 import {
   initializeFirestore, persistentLocalCache, persistentMultipleTabManager,
-  CACHE_SIZE_UNLIMITED, collection, doc, setDoc, addDoc, getDoc, getDocs,
-  updateDoc, deleteDoc, onSnapshot, query, orderBy, limit,
-  serverTimestamp, writeBatch, where,
+  CACHE_SIZE_UNLIMITED, collection, doc, getDoc, getDocsFromCache,
+  setDoc as _setDoc, getDocs as _getDocs,
+  updateDoc as _updateDoc, deleteDoc as _deleteDoc,
+  writeBatch as _writeBatch, onSnapshot, query, orderBy, limit,
+  serverTimestamp, where,
 } from "firebase/firestore";
+
+// ═══════════════════════════════════════════════════════════════
+//  OFFLINE-SAFE WRITE WRAPPERS
+//  Promise tulis Firestore baru resolve setelah server membalas, jadi saat
+//  offline `await` menggantung selamanya (UI checkout macet). Data SUDAH masuk
+//  antrean lokal & listener onSnapshot langsung menerimanya. Wrapper ini:
+//   - offline (navigator.onLine=false) -> langsung resolve
+//   - online tapi tanpa internet/lambat -> resolve setelah QUEUE_WAIT_MS
+//   - error cepat (mis. permission-denied) -> tetap di-throw ke pemanggil
+// ═══════════════════════════════════════════════════════════════
+const QUEUE_WAIT_MS = 4000;
+const isOffline = () => typeof navigator !== "undefined" && navigator.onLine === false;
+const syncWrite = (p) => {
+  p.catch((e) => console.warn("[firestore write]", e?.code || e?.message || e));
+  if (isOffline()) return Promise.resolve();
+  return Promise.race([p, new Promise((r) => setTimeout(r, QUEUE_WAIT_MS))]);
+};
+const setDoc    = (...a) => syncWrite(_setDoc(...a));
+const updateDoc = (...a) => syncWrite(_updateDoc(...a));
+const deleteDoc = (...a) => syncWrite(_deleteDoc(...a));
+// addDoc dibuat dari doc(colRef) + setDoc agar id tersedia tanpa menunggu server
+const addDoc = async (colRef, data) => {
+  const ref = doc(colRef);
+  await setDoc(ref, data);
+  return ref;
+};
+const writeBatch = (db) => {
+  const b = _writeBatch(db);
+  const w = {
+    set:    (...a) => { b.set(...a);    return w; },
+    update: (...a) => { b.update(...a); return w; },
+    delete: (...a) => { b.delete(...a); return w; },
+    commit: () => syncWrite(b.commit()),
+  };
+  return w;
+};
+// Saat offline baca dari cache lokal (jangan menunggu server)
+const getDocs = (q) => (isOffline() ? getDocsFromCache(q) : _getDocs(q));
 
 // ── Config ─────────────────────────────────────────────────────
 const CONFIG_KEY = "je_grup_fb_config";
@@ -64,7 +104,9 @@ export const initFirebase = async (config) => {
 
 // ── Seed ────────────────────────────────────────────────────────
 export const isSeeded = async () => {
-  try { return (await getDoc(doc(_db,"meta","seeded"))).exists(); } catch { return false; }
+  // Jika gagal dibaca (offline & cache kosong, atau rules menolak) anggap SUDAH
+  // di-seed, supaya data awal tidak menimpa user/produk asli saat kembali online.
+  try { return (await getDoc(doc(_db,"meta","seeded"))).exists(); } catch { return true; }
 };
 export const seedDatabase = async (users, products) => {
   try {
@@ -448,4 +490,3 @@ export const fbDeleteCustomOrder = async (orderId, actor) => {
     console.warn("fbDeleteCustomOrder error:", err);
   }
 };
-
