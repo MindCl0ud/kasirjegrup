@@ -3,7 +3,7 @@
 // Jalankan SETELAH `npx cap add android`:  npm run android-icons
 // Menghasilkan: ikon adaptive (Android 8+), ikon legacy (kotak & bulat),
 // dan menimpa ikon bawaan Capacitor. Warna latar dibaca dari rect#bg di icon.svg.
-import { readFileSync, writeFileSync, mkdirSync, existsSync, rmSync } from 'fs';
+import { readFileSync, writeFileSync, mkdirSync, existsSync, rmSync, readdirSync } from 'fs';
 import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
 import { Resvg } from '@resvg/resvg-js';
@@ -65,4 +65,17 @@ writeFileSync(join(values, 'je_colors.xml'),
     <color name="je_launcher_bg">${bg}</color>
 </resources>
 `);
+// Splash native (menimpa gambar splash bawaan Capacitor): latar pink + ikon di tengah
+const splashSvg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1080 1920"><rect width="1080" height="1920" fill="${bg}"/><g transform="translate(540 960) scale(1.1) translate(-256 -287)">${glyph.replace('<g id="icon">', '<g>')}</g></svg>`;
+const splashPng = new Resvg(splashSvg, { fitTo: { mode: 'width', value: 1080 }, font: { loadSystemFonts: false } }).render().asPng();
+{
+  let n = 0;
+  for (const d of readdirSync(res)) {
+    if (!d.startsWith('drawable')) continue;
+    const f = join(res, d, 'splash.png');
+    if (existsSync(f)) { writeFileSync(f, splashPng); n++; }
+  }
+  console.log(`✓ splash native diganti (${n} file)`);
+}
+
 console.log(`✅ Ikon Android mengikuti logo sistem (latar ${bg})`);

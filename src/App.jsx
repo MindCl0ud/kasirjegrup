@@ -503,15 +503,21 @@ const lumOf=h=>{const m=/^#?([0-9a-f]{6})$/i.exec(h||"");if(!m)return 0;const n=
   return .2126*f((n>>16)&255)+.7152*f((n>>8)&255)+.0722*f(n&255);};
 const onColor=h=>lumOf(h)>.34?"#10143A":"#FFFFFF";
 
-// Logo: monogram JE di atas indigo dengan garis tenun kecil di bawahnya
+// Logo: sama persis dengan ikon aplikasi (public/icons/icon.svg) — monogram JE kuning di atas pink + pita ikat.
+// onDark = versi terbalik (latar kuning) untuk dipakai di atas latar pink.
 function BrandMark({size=32,onDark}) {
-  return <div aria-hidden="true" style={{width:size,height:size,borderRadius:Math.round(size*.3),flexShrink:0,position:"relative",overflow:"hidden",
-    background:onDark?"var(--ik2)":"var(--ik1)",color:onDark?"var(--ik1)":"#fff",display:"grid",placeItems:"center",
-    fontWeight:800,fontSize:Math.round(size*.4),letterSpacing:"-.03em",paddingBottom:Math.round(size*.1)}}>
-    JE
-    <span style={{position:"absolute",left:0,right:0,bottom:0,height:Math.max(3,Math.round(size*.13)),
-      background:"repeating-linear-gradient(90deg,var(--ik3) 0 4px,"+(onDark?"var(--ik1)":"var(--ik2)")+" 4px 8px)"}}/>
-  </div>;
+  const bg=onDark?"#F5C518":"#C2185B", fg=onDark?"#C2185B":"#F5C518", ln=onDark?"#C2185B":"#FFE7B8";
+  return <svg aria-hidden="true" viewBox="0 0 512 512" width={size} height={size} style={{flexShrink:0,display:"block"}}>
+    <rect width="512" height="512" rx="112" fill={bg}/>
+    <path d="M196 110V268Q196 330 144 330Q112 330 98 300" fill="none" stroke={fg} strokeWidth="44"/>
+    <rect x="150" y="110" width="92" height="44" fill={fg}/>
+    <rect x="262" y="110" width="44" height="220" fill={fg}/><rect x="262" y="110" width="130" height="44" fill={fg}/><rect x="262" y="198" width="100" height="44" fill={fg}/><rect x="262" y="286" width="130" height="44" fill={fg}/>
+    <rect x="56" y="388" width="400" height="8" fill={ln}/><rect x="56" y="456" width="400" height="8" fill={ln}/>
+    {[106,181,256,331,406].map(x=><g key={x}>
+      <path d={`M${x} 398L${x+28} 426L${x} 454L${x-28} 426Z`} fill="none" stroke={fg} strokeWidth="6" strokeLinejoin="miter"/>
+      <path d={`M${x} 415L${x+11} 426L${x} 437L${x-11} 426Z`} fill={ln}/>
+    </g>)}
+  </svg>;
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -4900,13 +4906,35 @@ function AppInner() {
           {kasirTab==="kasir"&&<div style={{flex:1,display:"flex",minHeight:0}}>
             <section style={{flex:1,minWidth:0,display:"flex",flexDirection:"column",minHeight:0}}>
               <div style={{padding:"10px 12px 8px",background:C.bg2,borderBottom:`1px solid ${C.bo0}`,display:"flex",flexDirection:"column",gap:8,flexShrink:0}}>
-                <div style={{position:"relative"}}>
+                <div style={{display:"flex",gap:8}}>
+                <div style={{position:"relative",flex:1,minWidth:0}}>
                   <span style={{position:"absolute",left:13,top:"50%",transform:"translateY(-50%)",color:C.t2,display:"flex",pointerEvents:"none"}}><ScanLine size={19}/></span>
                   <input ref={scanRef} value={scanIn} onChange={e=>setScanIn(e.target.value)} onKeyDown={e=>e.key==="Enter"&&kasirScan(scanIn)}
                     placeholder="Cari produk atau scan barcode" aria-label="Cari produk atau scan barcode"
                     style={{width:"100%",minHeight:46,padding:"11px 44px 11px 42px",background:C.bg3,border:`1.5px solid ${C.bo1}`,borderRadius:12,color:C.t0,fontSize:15,fontFamily:F.sans}}/>
                   {scanIn&&<button onClick={()=>{setScanIn("");scanRef.current?.focus();}} aria-label="Hapus pencarian" className="press"
                     style={{position:"absolute",right:4,top:3,width:40,height:40,border:"none",background:"transparent",color:C.t2,display:"grid",placeItems:"center"}}><X size={18}/></button>}
+                  {/* Saran produk saat mengetik (sama seperti menu admin & stok) */}
+                  {scanIn.trim().length>1&&(()=>{
+                    const sq=scanIn.trim().toLowerCase();
+                    const hits=baseProds.filter(p=>p.name.toLowerCase().includes(sq)||p.barcode.toLowerCase().includes(sq));
+                    return <div style={{position:"absolute",top:"100%",left:0,right:0,zIndex:100,background:C.bg2,border:`1px solid ${C.bo1}`,borderRadius:12,marginTop:6,boxShadow:C.sh2,overflow:"hidden",animation:"fadeUp 0.2s ease"}}>
+                      {hits.slice(0,5).map((p,i)=>(
+                        <div key={p.id} onClick={()=>{kasirAdd(p);setScanIn("");scanRef.current?.focus();}} className="hrow"
+                          style={{padding:"10px 14px",cursor:"pointer",borderTop:i>0?`1px solid ${C.bo0}`:undefined,display:"flex",justifyContent:"space-between",alignItems:"center",gap:10,opacity:p.stock===0?.5:1}}>
+                          <div style={{minWidth:0}}>
+                            <div style={{fontWeight:600,fontSize:13.5,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{p.name}</div>
+                            <div className="mn" style={{fontSize:11,color:C.t2,marginTop:2}}>{p.barcode} · {p.stock===0?"Habis":"stok "+p.stock}</div>
+                          </div>
+                          <div className="mn" style={{color:C.g,fontWeight:700,fontSize:13,flexShrink:0}}>{rp(p.price)}</div>
+                        </div>
+                      ))}
+                      {hits.length===0&&<div style={{padding:"12px 14px",fontSize:12.5,color:C.t3,textAlign:"center"}}>Produk tidak ditemukan</div>}
+                    </div>;
+                  })()}
+                </div>
+                <button onClick={()=>kasirScan(scanIn)} className="press"
+                  style={{minHeight:46,padding:"0 18px",background:C.pri,border:"none",borderRadius:12,color:onColor(C.pri),fontWeight:800,fontSize:14,flexShrink:0}}>Scan</button>
                 </div>
                 {user.access.length>1&&<div style={{display:"flex",gap:6}}>
                   {["ALL",...user.access].map(b=><button key={b} onClick={()=>{setCatBiz(b);setCatCat("ALL");}} className={`chip${catBiz===b?" on":""}`}>{b==="ALL"?"Semua toko":BIZ[b].name}</button>)}

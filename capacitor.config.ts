@@ -14,18 +14,18 @@ const config: CapacitorConfig = {
     buildOptions: {
       releaseType: 'APK',
     },
-    backgroundColor: '#F4F5FA',
+    backgroundColor: '#F8F6F9',
     allowMixedContent: true,
   },
   ios: {
-    backgroundColor: '#F4F5FA',
+    backgroundColor: '#F8F6F9',
     contentInset: 'automatic',
     limitsNavigationsToAppBoundDomains: true,
   },
   plugins: {
     SplashScreen: {
       launchShowDuration: 2000,
-      backgroundColor: '#232C75',
+      backgroundColor: '#C2185B',
       androidSplashResourceName: 'splash',
       androidScaleType: 'CENTER_CROP',
       showSpinner: false,
